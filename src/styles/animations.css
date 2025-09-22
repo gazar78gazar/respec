@@ -1,0 +1,461 @@
+/* CSS Variables for Colors */
+:root {
+  --success-color: #10b981;
+  --error-color: #ef4444;
+  --warning-color: #f59e0b;
+  --info-color: #3b82f6;
+  --animation-duration-fast: 0.2s;
+  --animation-duration-normal: 0.5s;
+  --animation-duration-slow: 1s;
+  --animation-duration-very-slow: 2s;
+  --animation-easing: cubic-bezier(0.4, 0, 0.2, 1);
+  --animation-easing-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* 1. Field Update Animations */
+.field-updated {
+  animation: fieldUpdateGlow 2s var(--animation-easing) forwards;
+}
+
+.field-error {
+  border: 2px solid var(--error-color);
+  animation: fieldErrorShake 0.5s var(--animation-easing);
+}
+
+.field-warning {
+  animation: warningPulse 1.5s var(--animation-easing) infinite;
+}
+
+.field-processing {
+  position: relative;
+  overflow: hidden;
+}
+
+.field-processing::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(59, 130, 246, 0.3),
+    transparent
+  );
+  animation: processingShimmer 2s var(--animation-easing) infinite;
+}
+
+/* 2. Keyframe Animations */
+@keyframes fieldUpdateGlow {
+  0% {
+    box-shadow: 0 0 0 0 var(--success-color);
+    background-color: rgba(16, 185, 129, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(16, 185, 129, 0.4);
+    background-color: rgba(16, 185, 129, 0.2);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    background-color: transparent;
+  }
+}
+
+@keyframes fieldErrorShake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-4px);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(4px);
+  }
+}
+
+@keyframes warningPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 var(--warning-color);
+    border-color: var(--warning-color);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.3);
+    border-color: rgba(245, 158, 11, 0.8);
+  }
+}
+
+@keyframes processingShimmer {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+/* 3. Transition Classes */
+.smooth-highlight {
+  background-color: #fef3c7;
+  animation: smoothHighlightFade 3s var(--animation-easing) forwards;
+}
+
+@keyframes smoothHighlightFade {
+  0% {
+    background-color: #fef3c7;
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.focus-ring {
+  outline: none;
+  position: relative;
+}
+
+.focus-ring::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  right: -3px;
+  bottom: -3px;
+  border: 2px solid var(--info-color);
+  border-radius: inherit;
+  opacity: 0;
+  transform: scale(0.95);
+  pointer-events: none;
+  transition: all var(--animation-duration-fast) var(--animation-easing);
+}
+
+.focus-ring:focus::before {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.collapse-expand {
+  overflow: hidden;
+  transition: height var(--animation-duration-normal) var(--animation-easing);
+}
+
+/* 4. State Indicators */
+.saving {
+  position: relative;
+}
+
+.saving::after {
+  content: '💾';
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  animation: savingPulse 1s var(--animation-easing) infinite;
+}
+
+@keyframes savingPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: translateY(-50%) scale(0.9);
+  }
+}
+
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.loading-overlay::after {
+  content: '';
+  width: 24px;
+  height: 24px;
+  border: 3px solid #f3f4f6;
+  border-top: 3px solid var(--info-color);
+  border-radius: 50%;
+  animation: loadingSpinner 1s linear infinite;
+}
+
+@keyframes loadingSpinner {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.success-check {
+  position: relative;
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+}
+
+.success-check::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 3px;
+  width: 6px;
+  height: 10px;
+  border: solid var(--success-color);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  animation: checkmarkDraw 0.6s var(--animation-easing-bounce) forwards;
+  opacity: 0;
+}
+
+@keyframes checkmarkDraw {
+  0% {
+    opacity: 0;
+    transform: rotate(45deg) scale(0);
+  }
+  50% {
+    opacity: 1;
+    transform: rotate(45deg) scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(45deg) scale(1);
+  }
+}
+
+.error-cross {
+  position: relative;
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+}
+
+.error-cross::before,
+.error-cross::after {
+  content: '';
+  position: absolute;
+  left: 9px;
+  top: 3px;
+  width: 2px;
+  height: 14px;
+  background-color: var(--error-color);
+  animation: crossDraw 0.6s var(--animation-easing-bounce) forwards;
+  opacity: 0;
+}
+
+.error-cross::before {
+  transform: rotate(45deg);
+}
+
+.error-cross::after {
+  transform: rotate(-45deg);
+}
+
+@keyframes crossDraw {
+  0% {
+    opacity: 0;
+    transform: rotate(45deg) scale(0);
+  }
+  50% {
+    opacity: 1;
+    transform: rotate(45deg) scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(45deg) scale(1);
+  }
+}
+
+/* 5. Interactive Feedback */
+.hover-lift {
+  transition: transform var(--animation-duration-fast) var(--animation-easing);
+  cursor: pointer;
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+}
+
+.click-scale {
+  transition: transform var(--animation-duration-fast) var(--animation-easing);
+  cursor: pointer;
+}
+
+.click-scale:active {
+  transform: scale(0.95);
+}
+
+.disabled-fade {
+  opacity: 0.5;
+  pointer-events: none;
+  transition: opacity var(--animation-duration-normal) var(--animation-easing);
+}
+
+/* Utility Classes for Animation Control */
+.animate-success {
+  border: 2px solid var(--success-color);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.3);
+  animation: successGlow 2s var(--animation-easing) forwards;
+}
+
+@keyframes successGlow {
+  0% {
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.3);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+.animate-error {
+  border: 2px solid var(--error-color);
+  animation: fieldErrorShake 0.5s var(--animation-easing);
+}
+
+.animate-warning {
+  border: 2px solid var(--warning-color);
+  animation: warningPulse 1.5s var(--animation-easing) infinite;
+}
+
+.highlight-field {
+  background-color: #fef3c7;
+  transition: background-color 0.3s var(--animation-easing);
+}
+
+.focus-feedback {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+  border-color: var(--info-color);
+  transition: all var(--animation-duration-fast) var(--animation-easing);
+}
+
+/* Enhanced state classes for better UX */
+.field-valid {
+  border-color: var(--success-color);
+  transition: border-color var(--animation-duration-fast) var(--animation-easing);
+}
+
+.field-invalid {
+  border-color: var(--error-color);
+  transition: border-color var(--animation-duration-fast) var(--animation-easing);
+}
+
+.field-pending {
+  border-color: var(--warning-color);
+  transition: border-color var(--animation-duration-fast) var(--animation-easing);
+}
+
+/* Loading states for buttons and interactive elements */
+.button-loading {
+  position: relative;
+  color: transparent;
+  pointer-events: none;
+}
+
+.button-loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  animation: loadingSpinner 1s linear infinite;
+}
+
+/* Fade transitions for dynamic content */
+.fade-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.fade-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: all var(--animation-duration-normal) var(--animation-easing);
+}
+
+.fade-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.fade-exit-active {
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: all var(--animation-duration-normal) var(--animation-easing);
+}
+
+/* Slide animations for panels and modals */
+.slide-up-enter {
+  transform: translateY(100%);
+}
+
+.slide-up-enter-active {
+  transform: translateY(0);
+  transition: transform var(--animation-duration-normal) var(--animation-easing);
+}
+
+.slide-up-exit {
+  transform: translateY(0);
+}
+
+.slide-up-exit-active {
+  transform: translateY(100%);
+  transition: transform var(--animation-duration-normal) var(--animation-easing);
+}
+
+/* Reduced Motion Media Query */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  /* Maintain essential feedback but remove motion */
+  .field-updated {
+    background-color: rgba(16, 185, 129, 0.1);
+    border: 2px solid var(--success-color);
+  }
+  
+  .field-error {
+    border: 2px solid var(--error-color);
+    background-color: rgba(239, 68, 68, 0.1);
+  }
+  
+  .field-warning {
+    border: 2px solid var(--warning-color);
+    background-color: rgba(245, 158, 11, 0.1);
+  }
+  
+  .field-processing {
+    border: 2px solid var(--info-color);
+    background-color: rgba(59, 130, 246, 0.1);
+  }
+  
+  .hover-lift:hover {
+    transform: none;
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+  
+  .click-scale:active {
+    transform: none;
+    background-color: rgba(0, 0, 0, 0.1);
+  }
+}
