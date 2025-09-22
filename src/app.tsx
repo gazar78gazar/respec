@@ -1036,24 +1036,38 @@ function App() {
   };
 
   const calculateAccuracy = () => {
-    let totalWeight = 0;
+    const TOTAL_FIELDS = 37; // Total number of fields in the system
+    const REQUIREMENT_WEIGHT = 100 / TOTAL_FIELDS; // ~2.7% per field
+    const ASSUMPTION_WEIGHT = 60 / TOTAL_FIELDS;   // ~1.62% per field
+
     let accuracyScore = 0;
-    
+    let fieldCount = 0;
+
+    // Count all fields across all sections
     Object.values(requirements).forEach(section => {
       Object.values(section).forEach(field => {
+        fieldCount++;
+
         if (field.isComplete) {
-          const weight = 5 - field.priority;
-          totalWeight += weight;
           if (!field.isAssumption) {
-            accuracyScore += weight;
+            // Field is a requirement (confirmed/verified data)
+            accuracyScore += REQUIREMENT_WEIGHT;
           } else {
-            accuracyScore += weight * 0.5;
+            // Field is an assumption (inferred/estimated data)
+            accuracyScore += ASSUMPTION_WEIGHT;
           }
         }
+        // Missing/incomplete fields contribute 0 to accuracy
       });
     });
-    
-    return totalWeight > 0 ? Math.round((accuracyScore / totalWeight) * 100) : 0;
+
+    // Validate we have 37 fields total (optional check)
+    if (fieldCount !== TOTAL_FIELDS) {
+      console.warn(`Field count mismatch: Expected ${TOTAL_FIELDS}, found ${fieldCount}`);
+    }
+
+    // Return accuracy capped at 100% and rounded to 1 decimal
+    return Math.min(100, Math.round(accuracyScore * 10) / 10);
   };
 
   const getMustFieldsStatus = () => {

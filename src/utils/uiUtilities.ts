@@ -98,15 +98,12 @@ export function calculateCompletionScore(requirements: Requirements): number {
   Object.entries(requirements).forEach(([fieldName, requirement]) => {
     const priority = requirement.priority;
     const weight = 5 - priority; // Priority 1 = weight 4, Priority 2 = weight 3, etc.
-    
+
     totalWeight += weight;
-    
+
+    // Completion only cares if field has a value, not whether it's an assumption
     if (requirement.value !== undefined && requirement.value !== null && requirement.value !== '') {
-      if (requirement.isAssumption) {
-        completedWeight += weight * 0.5; // Assumptions count as 50%
-      } else {
-        completedWeight += weight;
-      }
+      completedWeight += weight; // All completed fields contribute fully, regardless of assumption status
     }
   });
 
