@@ -94,289 +94,462 @@ const StepProgressIndicator = ({ currentStep, setCurrentStage, chatWindowWidth =
   );
 };
 
-// Import your new form_fields.json structure (abbreviated for demo)
+// Standardized form specification with hierarchical structure: Areas → Categories → Specifications
 const formFieldsData = {
   field_definitions: {
-    performance_computing: {
-      processorTier: {
+    // Area: Compute Performance
+    compute_performance: {
+      // Processing Category
+      processor_type: {
         type: "dropdown",
         label: "Processor Type",
-        required: false,
-        group: "essential",
-        options: ["Entry (Intel Atom)", "Standard (Intel Core i3)", "Performance (Intel Core i5)", "Premium (Intel Core i7)", "Any"],
-        autofill_default: "Standard (Intel Core i3)"
+        options: [
+          "Not Required",
+          "Intel U300E",
+          "Intel Atom",
+          "Intel Core i3",
+          "Intel Core i5",
+          "Intel Core i7",
+          "Intel Core i9"
+        ],
+        group: "processing"
       },
-      memoryCapacity: {
-        type: "dropdown",
-        label: "Memory Capacity",
-        required: false,
-        group: "essential",
-        options: ["4GB", "8GB", "16GB", "32GB", "64GB"],
-        autofill_default: "8GB"
-      },
-      storageCapacity: {
-        type: "dropdown",
-        label: "Storage Capacity",
-        required: false,
-        group: "essential",
-        options: ["128GB", "256GB", "512GB", "1TB", "2TB"],
-        autofill_default: "256GB"
-      },
-      storageType: {
-        type: "dropdown",
-        label: "Storage Type",
-        required: false,
-        group: "processing",
-        options: ["SATA SSD", "NVMe", "NVMe Gen4", "Any"],
-        autofill_default: "NVMe"
-      },
-      memoryType: {
-        type: "dropdown",
-        label: "Memory Type",
-        required: false,
-        group: "processing",
-        options: ["DDR4", "DDR5", "Any"],
-        autofill_default: "Any"
-      },
-      aiAcceleration: {
+      ai_gpu_acceleration: {
         type: "dropdown",
         label: "AI/GPU Acceleration",
-        required: false,
-        group: "advanced",
-        options: ["None", "Intel Xe Graphics", "Dedicated GPU Required"],
-        autofill_default: "None"
+        options: [
+          "Not Required",
+          "Intel Xe Graphics",
+          "Dedicated GPU Required"
+        ],
+        group: "processing"
       },
-      operatingSystem: {
+      // Memory Category
+      memory_capacity: {
+        type: "dropdown",
+        label: "Memory Capacity",
+        options: ["Not Required", "4GB", "8GB", "16GB", "32GB", "64GB"],
+        group: "memory"
+      },
+      memory_type: {
+        type: "dropdown",
+        label: "Memory Type",
+        options: ["Not Required", "DDR4", "DDR5"],
+        group: "memory"
+      },
+      // Storage Category
+      storage_capacity: {
+        type: "dropdown",
+        label: "Storage Capacity",
+        options: ["Not Required", "128GB", "256GB", "512GB", "1TB", "2TB"],
+        group: "storage"
+      },
+      storage_type: {
+        type: "dropdown",
+        label: "Storage Type",
+        options: ["Not Required", "SATA SSD", "NVMe", "NVMe Gen4"],
+        group: "storage"
+      },
+      // Response Time Category
+      time_sensitive_features: {
+        type: "multi-select",
+        label: "Time Sensitive Features",
+        options: [
+          "Not Required",
+          "TSN Support",
+          "PTP IEEE1588",
+          "Hardware Timestamping"
+        ],
+        group: "response_time"
+      },
+      response_latency: {
+        type: "dropdown",
+        label: "Response Latency",
+        options: [
+          "Not Required",
+          "Standard Real-Time (<10ms)",
+          "Near Real-Time (<20ms)",
+          "Interactive (<50ms)",
+          "Responsive (<100ms)"
+        ],
+        group: "response_time"
+      },
+      // Software Category
+      operating_system: {
         type: "dropdown",
         label: "Operating System",
-        required: false,
-        group: "advanced",
-        options: ["Windows 10 IoT", "Windows 11 IoT", "Ubuntu 20.04 LTS", "Ubuntu 22.04 LTS", "Any"],
-        autofill_default: "Any"
+        options: [
+          "Not Required",
+          "Windows 11 IoT",
+          "Ubuntu 20.04 LTS",
+          "Ubuntu 22.04 LTS",
+          "Real-Time Linux"
+        ],
+        group: "software"
       }
     },
+
+    // Area: I/O & Connectivity
     io_connectivity: {
-      digitalIO: {
-        type: "number",
-        label: "Digital IO",
-        required: true,
-        group: "core_io",
-        min: 0,
-        max: 128,
-        autofill_default: 8
-      },
-      analogIO: {
-        type: "number",
-        label: "Analog IO",
-        required: true,
-        group: "core_io",
-        min: 0,
-        max: 32,
-        autofill_default: 4
-      },
-      networkPorts: {
+      // Core I/O Requirements Category
+      digital_io: {
         type: "dropdown",
-        label: "Network Ports",
-        required: true,
-        group: "core_io",
-        options: ["1 x RJ45", "2 x RJ45", "3 x RJ45", "4+ x RJ45"],
-        autofill_default: "2 x RJ45"
+        label: "Digital IO",
+        options: ["Not Required", "2", "4", "6", "8", "16", "32", "64", "Over 64"],
+        group: "core_io"
       },
-      ethernetSpeed: {
+      analog_io: {
+        type: "dropdown",
+        label: "Analog IO",
+        options: ["Not Required", "2", "4", "6", "8", "16", "32", "64", "Over 64"],
+        group: "core_io"
+      },
+      // Ethernet Category
+      ethernet_ports: {
+        type: "dropdown",
+        label: "Ethernet (RJ45) Ports",
+        options: ["Not Required", "2", "4", "6", "8", "Over 8"],
+        group: "ethernet"
+      },
+      ethernet_speed: {
         type: "dropdown",
         label: "Ethernet Speed",
-        required: false,
-        group: "network_protocols",
-        options: ["100 Mbps", "1 Gbps", "10 Gbps", "Any"],
-        autofill_default: "1 Gbps"
+        options: ["Not Required", "100 Mbps", "1 Gbps", "10 Gbps"],
+        group: "ethernet"
       },
-      wirelessExtension: {
+      ethernet_protocols: {
         type: "multi-select",
-        label: "Wireless Extension",
-        required: false,
-        group: "network_protocols",
-        options: ["WiFi 6", "WiFi 6E", "5G", "4G LTE", "LoRaWAN", "None"],
-        autofill_default: []
+        label: "Ethernet Protocols",
+        options: [
+          "Not Required",
+          "OPC UA",
+          "MQTT",
+          "PROFINET",
+          "EtherCAT",
+          "Ethernet/IP",
+          "BACnet/IP",
+          "Modbus TCP"
+        ],
+        group: "ethernet"
       },
-      serialPorts: {
-        type: "dropdown",
-        label: "Serial Ports",
-        required: false,
-        group: "serial_usb",
-        options: ["None", "2x RS-232/422/485", "4x RS-232/422/485", "Any"],
-        autofill_default: "Any"
-      },
-      usbPorts: {
+      // Serial & USB Category
+      usb_ports: {
         type: "dropdown",
         label: "USB Ports",
-        required: false,
-        group: "serial_usb",
-        options: ["None", "4x USB 3.0", "6x USB 3.0", "Any"],
-        autofill_default: "Any"
+        options: ["Not Required", "2", "4", "6", "8", "Over 8"],
+        group: "serial_usb"
       },
-      canBusSupport: {
+      serial_ports_amount: {
         type: "dropdown",
-        label: "CAN Bus Support",
-        required: false,
-        group: "industrial_protocols",
-        options: ["Not Required", "1 Port", "2 Ports"],
-        autofill_default: "Not Required"
+        label: "Serial Ports Amount",
+        options: ["Not Required", "1", "2", "3", "4", "5", "6", "Over 6"],
+        group: "serial_usb"
       },
-      modbusSupport: {
+      serial_port_type: {
+        type: "multi-select",
+        label: "Serial Port Type",
+        options: ["Not Required", "RS-232", "RS-422", "RS-485"],
+        group: "serial_usb"
+      },
+      // Industrial Protocols Category
+      serial_protocol_support: {
         type: "dropdown",
-        label: "Modbus Support",
-        required: false,
-        group: "industrial_protocols",
-        options: ["Not Required", "RTU", "TCP", "RTU + TCP"],
-        autofill_default: "Not Required"
+        label: "Serial Protocol Support",
+        options: ["Not Required", "CANbus", "TTL", "UART"],
+        group: "industrial_protocols"
+      },
+      fieldbus_protocol_support: {
+        type: "multi-select",
+        label: "Fieldbus Protocol Support",
+        options: [
+          "Not Required",
+          "Modbus RTU",
+          "PROFIBUS",
+          "DeviceNet",
+          "CANOpen"
+        ],
+        group: "industrial_protocols"
+      },
+      // Wireless Category
+      wireless_extension: {
+        type: "multi-select",
+        label: "Wireless Extension",
+        options: [
+          "Not Required",
+          "WiFi 6",
+          "WiFi 6E",
+          "5G",
+          "4G LTE",
+          "LoRaWAN"
+        ],
+        group: "wireless"
       }
     },
-    power_environment: {
-      powerInput: {
+
+    // Area: Form Factor
+    form_factor: {
+      // Power Requirements Category
+      power_input: {
         type: "dropdown",
         label: "Power Input",
-        required: false,
-        group: "power",
-        options: ["9-36V DC", "18-36V DC", "24V DC", "PoE+", "Any"],
-        autofill_default: "24V DC"
+        options: ["Not Required", "9-36V DC", "18-36V DC", "24V DC", "PoE+"],
+        group: "power_requirements"
       },
-      powerConsumption: {
+      max_power_consumption: {
         type: "dropdown",
         label: "Max Power Consumption",
-        required: false,
-        group: "power",
-        options: ["< 10W", "10-20W", "20-35W", "35-65W", "> 65W"],
-        autofill_default: "20-35W"
+        options: ["Not Required", "< 10W", "10-20W", "20-35W", "35-65W", "> 65W"],
+        group: "power_requirements"
       },
-      operatingTemperature: {
+      redundant_power: {
+        type: "dropdown",
+        label: "Redundant Power",
+        options: ["Not Required", "Single", "Dual", "N+1"],
+        group: "power_requirements"
+      },
+      dimensions: {
+        type: "dropdown",
+        label: "Dimensions",
+        options: [
+          "Not Required",
+          "Ultra Compact (<100mm)",
+          "Compact (100-200mm)",
+          "Standard (200-300mm)",
+          "Large (>300mm)"
+        ],
+        group: "power_requirements"
+      },
+      mounting: {
+        type: "dropdown",
+        label: "Mounting",
+        options: [
+          "Not Required",
+          "19-inch Rack",
+          "DIN Rail",
+          "Compact",
+          "Panel/Wall Mount",
+          "Embedded"
+        ],
+        group: "power_requirements"
+      }
+    },
+
+    // Area: Environment & Standards
+    environment_standards: {
+      // Environment Category
+      operating_temperature: {
         type: "dropdown",
         label: "Operating Temperature",
-        required: false,
-        group: "environmental",
-        options: ["-40°C to 70°C", "-20°C to 60°C", "0°C to 50°C", "Any"],
-        autofill_default: "0°C to 50°C"
+        options: [
+          "Not Required",
+          "0°C to 50°C",
+          "-20°C to 60°C",
+          "-40°C to 70°C"
+        ],
+        group: "environment"
       },
       humidity: {
         type: "dropdown",
         label: "Humidity",
-        required: false,
-        group: "environmental",
-        options: ["95% RH @ 40°C", "90% RH non-condensing", "None"],
-        autofill_default: "90% RH non-condensing"
+        options: [
+          "Not Required",
+          "+90% RH non-condensing",
+          "+90% RH @ 40°C",
+          "Condensing Allowed (100% RH)"
+        ],
+        group: "environment"
       },
-      ingressProtection: {
+      vibration_resistance: {
+        type: "dropdown",
+        label: "Vibration Resistance",
+        options: ["Not Required", "Standard (2G)", "Heavy (5G)", "Extreme (10G)"],
+        group: "environment"
+      },
+      ingress_protection: {
         type: "dropdown",
         label: "Ingress Protection",
-        required: false,
-        group: "environmental",
-        options: ["IP20", "IP40", "IP54", "IP65", "IP67"],
-        autofill_default: "IP20"
+        options: ["Not Required", "IP20", "IP40", "IP54", "IP65", "IP67", "IP69"],
+        group: "environment"
       },
-      vibrationProtection: {
+      // Standards Category
+      vibration_protection: {
         type: "dropdown",
         label: "Vibration Protection",
-        required: false,
-        group: "certifications",
-        options: ["IEC 60068-2-64", "MIL-STD-810", "None"],
-        autofill_default: "None"
+        options: ["Not Required", "IEC 60068-2-64", "MIL-STD-810"],
+        group: "standards"
       },
       certifications: {
         type: "multi-select",
         label: "Certifications",
-        required: false,
-        group: "certifications",
-        options: ["CE", "FCC", "UL", "CCC", "ATEX", "IECEx"],
-        autofill_default: ["CE", "FCC"]
+        options: ["Not Required", "CE", "FCC", "UL", "CCC", "ATEX", "IECEx"],
+        group: "standards"
       }
     },
+
+    // Area: Commercial
     commercial: {
-      budgetPerUnit: {
-        type: "text",
+      // Pricing & Quantity Category
+      budget_per_unit: {
+        type: "number",
         label: "Budget Per Unit",
-        required: true,
-        group: "pricing",
-        placeholder: "e.g., $2000",
-        autofill_default: ""
+        min: 0,
+        group: "pricing_quantity"
       },
       quantity: {
         type: "number",
         label: "Quantity",
-        required: true,
-        group: "pricing",
         min: 1,
-        max: 10000,
-        autofill_default: 1
+        max: 1000,
+        group: "pricing_quantity"
       },
-      totalBudget: {
-        type: "text",
+      total_budget: {
+        type: "number",
         label: "Total Budget",
-        required: false,
-        group: "pricing",
-        placeholder: "Auto-calculated",
-        autofill_default: ""
+        min: 0,
+        calculated: true, // Flag for auto-calculation
+        group: "pricing_quantity"
       },
-      deliveryTimeframe: {
-        type: "date",
+      // Logistics & Support Category
+      delivery_timeframe: {
+        type: "dropdown",
         label: "Delivery Timeframe",
-        required: false,
-        group: "logistics",
-        autofill_default: ""
+        options: ["Not Required", "2 Weeks", "4 Weeks", "6 Weeks", "8 Weeks", "10 Weeks", "Over 10 Weeks"],
+        group: "logistics_support"
       },
-      warrantyRequirements: {
+      shipping_incoterms: {
+        type: "dropdown",
+        label: "Shipping Incoterms",
+        options: ["Not Required", "FOB", "CIF", "DDP", "EXW"],
+        group: "logistics_support"
+      },
+      warranty_requirements: {
         type: "dropdown",
         label: "Warranty Requirements",
-        required: false,
-        group: "logistics",
-        options: ["1 Year", "2 Years", "3 Years", "5 Years"],
-        autofill_default: "3 Years"
+        options: ["Not Required", "1 Year", "2 Years", "3 Years", "5 Years"],
+        group: "logistics_support"
       }
     }
   },
+
   field_groups: {
-    performance_computing: {
-      essential: { label: "Essential Specifications", fields: ["processorTier", "memoryCapacity", "storageCapacity"], defaultOpen: true },
-      processing: { label: "Processing Details", fields: ["storageType", "memoryType"], defaultOpen: false },
-      advanced: { label: "Advanced Features", fields: ["aiAcceleration", "operatingSystem"], defaultOpen: false }
+    compute_performance: {
+      processing: {
+        label: "Processing",
+        fields: ["processor_type", "ai_gpu_acceleration"],
+        defaultOpen: true
+      },
+      memory: {
+        label: "Memory",
+        fields: ["memory_capacity", "memory_type"],
+        defaultOpen: false
+      },
+      storage: {
+        label: "Storage",
+        fields: ["storage_capacity", "storage_type"],
+        defaultOpen: false
+      },
+      response_time: {
+        label: "Response Time",
+        fields: ["time_sensitive_features", "response_latency"],
+        defaultOpen: false
+      },
+      software: {
+        label: "Software",
+        fields: ["operating_system"],
+        defaultOpen: false
+      }
     },
     io_connectivity: {
-      core_io: { label: "Core I/O Requirements", fields: ["digitalIO", "analogIO", "networkPorts"], defaultOpen: true },
-      network_protocols: { label: "Network & Protocols", fields: ["ethernetSpeed", "wirelessExtension"], defaultOpen: false },
-      serial_usb: { label: "Serial & USB", fields: ["serialPorts", "usbPorts"], defaultOpen: false },
-      industrial_protocols: { label: "Industrial Protocols", fields: ["canBusSupport", "modbusSupport"], defaultOpen: false }
+      core_io: {
+        label: "Core I/O Requirements",
+        fields: ["digital_io", "analog_io"],
+        defaultOpen: true
+      },
+      ethernet: {
+        label: "Ethernet",
+        fields: ["ethernet_ports", "ethernet_speed", "ethernet_protocols"],
+        defaultOpen: false
+      },
+      serial_usb: {
+        label: "Serial & USB",
+        fields: ["usb_ports", "serial_ports_amount", "serial_port_type"],
+        defaultOpen: false
+      },
+      industrial_protocols: {
+        label: "Industrial Protocols",
+        fields: ["serial_protocol_support", "fieldbus_protocol_support"],
+        defaultOpen: false
+      },
+      wireless: {
+        label: "Wireless",
+        fields: ["wireless_extension"],
+        defaultOpen: false
+      }
     },
-    power_environment: {
-      power: { label: "Power Requirements", fields: ["powerInput", "powerConsumption"], defaultOpen: true },
-      environmental: { label: "Environmental Conditions", fields: ["operatingTemperature", "humidity", "ingressProtection"], defaultOpen: false },
-      certifications: { label: "Certifications & Standards", fields: ["vibrationProtection", "certifications"], defaultOpen: false }
+    form_factor: {
+      power_requirements: {
+        label: "Power Requirements & Form Factor",
+        fields: ["power_input", "max_power_consumption", "redundant_power", "dimensions", "mounting"],
+        defaultOpen: true
+      }
+    },
+    environment_standards: {
+      environment: {
+        label: "Environment",
+        fields: ["operating_temperature", "humidity", "vibration_resistance", "ingress_protection"],
+        defaultOpen: true
+      },
+      standards: {
+        label: "Standards",
+        fields: ["vibration_protection", "certifications"],
+        defaultOpen: false
+      }
     },
     commercial: {
-      pricing: { label: "Pricing & Quantity", fields: ["budgetPerUnit", "quantity", "totalBudget"], defaultOpen: true },
-      logistics: { label: "Logistics & Support", fields: ["deliveryTimeframe", "warrantyRequirements"], defaultOpen: false }
+      pricing_quantity: {
+        label: "Pricing & Quantity",
+        fields: ["budget_per_unit", "quantity", "total_budget"],
+        defaultOpen: true
+      },
+      logistics_support: {
+        label: "Logistics & Support",
+        fields: ["delivery_timeframe", "shipping_incoterms", "warranty_requirements"],
+        defaultOpen: false
+      }
     }
   },
+
+  // Priority system for required fields
   priority_system: {
-    must_fields: ["digitalIO", "analogIO", "networkPorts", "budgetPerUnit", "quantity"],
+    must_fields: ["digital_io", "analog_io", "ethernet_ports", "budget_per_unit", "quantity"],
     priority_levels: {
-      "1": { fields: ["digitalIO", "analogIO", "networkPorts", "budgetPerUnit", "quantity"] },
-      "2": { fields: ["processorTier", "memoryCapacity", "storageCapacity"] },
-      "3": { fields: ["operatingTemperature", "ingressProtection"] },
-      "4": { fields: ["serialPorts", "usbPorts", "deliveryTimeframe"] }
+      "1": { fields: ["digital_io", "analog_io", "ethernet_ports", "budget_per_unit", "quantity"] },
+      "2": { fields: ["processor_type", "memory_capacity", "storage_capacity"] },
+      "3": { fields: ["operating_temperature", "ingress_protection"] },
+      "4": { fields: ["serial_ports_amount", "usb_ports", "delivery_timeframe"] }
     }
   }
 };
 
-// Map new sections to old UI tabs
+// Map sections to new standardized areas
 const SECTION_MAPPING = {
-  'System': ['performance_computing'],
-  'Performance': ['io_connectivity'],
-  'Environment': ['power_environment'],
+  'Compute Performance': ['compute_performance'],
+  'I/O & Connectivity': ['io_connectivity'],
+  'Form Factor': ['form_factor'],
+  'Environment & Standards': ['environment_standards'],
   'Commercial': ['commercial']
 };
 
-// Import validation service functions
+// Validation service functions for new standardized specification
 const validateField = (fieldKey, value, fieldDef) => {
   const errors = [];
-  
+
+  // Handle "Not Required" as valid empty value
+  if (value === "Not Required" || (Array.isArray(value) && value.includes("Not Required"))) {
+    return errors; // Valid, no errors
+  }
+
+  // Check required fields
   if (fieldDef.required && (!value || value === '')) {
     errors.push({
       severity: 'error',
@@ -384,13 +557,13 @@ const validateField = (fieldKey, value, fieldDef) => {
     });
     return errors;
   }
-  
+
   switch (fieldDef.type) {
     case 'number':
-      const numValue = parseInt(value);
-      if (value && isNaN(numValue)) {
+      const numValue = parseFloat(value);
+      if (value && value !== '' && isNaN(numValue)) {
         errors.push({ severity: 'error', message: 'Must be a valid number' });
-      } else if (value) {
+      } else if (value && value !== '') {
         if (fieldDef.min !== undefined && numValue < fieldDef.min) {
           errors.push({ severity: 'error', message: `Minimum value is ${fieldDef.min}` });
         }
@@ -398,14 +571,14 @@ const validateField = (fieldKey, value, fieldDef) => {
           errors.push({ severity: 'error', message: `Maximum value is ${fieldDef.max}` });
         }
       }
-      break;
-    
-    case 'text':
-      if (fieldKey === 'budgetPerUnit' || fieldKey === 'totalBudget') {
-        if (value && !value.match(/^\$?\d+(\.\d{0,2})?$/)) {
-          errors.push({ severity: 'warning', message: 'Expected format: $1000 or 1000' });
-        }
+      // Special handling for budget fields
+      if (fieldKey === 'budget_per_unit' && value && value < 0) {
+        errors.push({ severity: 'error', message: 'Budget cannot be negative' });
       }
+      break;
+
+    case 'text':
+      // Note: budget fields are now 'number' type, not 'text'
       break;
     
     case 'date':
@@ -418,113 +591,135 @@ const validateField = (fieldKey, value, fieldDef) => {
         }
       }
       break;
+
+    case 'dropdown':
+      // Validate dropdown selection is in the allowed options
+      if (value && value !== '' && fieldDef.options && !fieldDef.options.includes(value)) {
+        errors.push({ severity: 'error', message: 'Please select a valid option' });
+      }
+      break;
+
+    case 'multi-select':
+      // Validate multi-select - all selected values must be in options
+      if (value && Array.isArray(value) && value.length > 0) {
+        const invalidOptions = value.filter(v => v !== "Not Required" && !fieldDef.options.includes(v));
+        if (invalidOptions.length > 0) {
+          errors.push({ severity: 'error', message: `Invalid options selected: ${invalidOptions.join(', ')}` });
+        }
+      }
+      break;
   }
-  
+
   return errors;
 };
 
 const validateCrossFields = (requirements) => {
   const crossFieldErrors = {};
-  
-  // Budget Calculation Validation
+
+  // Budget Calculation Validation - updated for new field names
   const commercial = requirements.commercial || {};
-  if (commercial.budgetPerUnit?.value && commercial.quantity?.value) {
-    const unitBudget = parseFloat(commercial.budgetPerUnit.value.replace(/[$,]/g, ''));
-    const quantity = parseInt(commercial.quantity.value);
+  if (commercial.budget_per_unit?.value && commercial.quantity?.value) {
+    const unitBudget = parseFloat((commercial.budget_per_unit.value || 0).toString().replace(/[$,]/g, ''));
+    const quantity = parseInt(commercial.quantity.value || 0);
     const calculatedTotal = unitBudget * quantity;
-    
-    if (commercial.totalBudget?.value) {
-      const enteredTotal = parseFloat(commercial.totalBudget.value.replace(/[$,]/g, ''));
+
+    // Note: total_budget is now auto-calculated, so this validation may not be needed
+    // but keeping it for consistency check
+    if (commercial.total_budget?.value) {
+      const enteredTotal = parseFloat((commercial.total_budget.value || 0).toString().replace(/[$,]/g, ''));
       if (Math.abs(calculatedTotal - enteredTotal) > 0.01) {
-        crossFieldErrors['commercial.totalBudget'] = {
-          severity: 'warning',
-          message: `Should be ${calculatedTotal.toFixed(2)} based on unit price × quantity`
+        crossFieldErrors['commercial.total_budget'] = {
+          severity: 'info',
+          message: `Auto-calculated: ${calculatedTotal.toFixed(2)}`
         };
       }
     }
   }
   
-  // I/O and Network Validation
+  // I/O and Network Validation - updated for new field names
   const io = requirements.io_connectivity || {};
-  const digitalIO = parseInt(io.digitalIO?.value) || 0;
-  const analogIO = parseInt(io.analogIO?.value) || 0;
+  const digitalIO = parseInt(io.digital_io?.value) || 0;
+  const analogIO = parseInt(io.analog_io?.value) || 0;
   const totalIO = digitalIO + analogIO;
-  
-  if (totalIO > 32 && io.networkPorts?.value === "1 x RJ45") {
-    crossFieldErrors['io_connectivity.networkPorts'] = {
+
+  // Check if ethernet ports value needs multiple ports
+  if (totalIO > 32 && io.ethernet_ports?.value === "2") {
+    crossFieldErrors['io_connectivity.ethernet_ports'] = {
       severity: 'warning',
-      message: 'High I/O count typically requires 2+ network ports for distributed I/O modules'
+      message: 'High I/O count typically requires 4+ ethernet ports for distributed I/O modules'
     };
   }
   
-  // Power Consumption Validation
-  const computing = requirements.performance_computing || {};
-  const power = requirements.power_environment || {};
-  
-  if (computing.processorTier?.value && power.powerConsumption?.value) {
-    const processorTier = computing.processorTier.value;
-    const powerConsumption = power.powerConsumption.value;
-    
+  // Power Consumption Validation - updated for new field names and structure
+  const computing = requirements.compute_performance || {};
+  const formFactor = requirements.form_factor || {};
+
+  if (computing.processor_type?.value && formFactor.max_power_consumption?.value) {
+    const processorType = computing.processor_type.value;
+    const powerConsumption = formFactor.max_power_consumption.value;
+
     const powerRequirements = {
-      'Premium (Intel Core i7)': ['35-65W', '> 65W'],
-      'Performance (Intel Core i5)': ['20-35W', '35-65W', '> 65W'],
-      'Standard (Intel Core i3)': ['10-20W', '20-35W', '35-65W'],
-      'Entry (Intel Atom)': ['< 10W', '10-20W', '20-35W']
+      'Intel Core i9': ['35-65W', '> 65W'],
+      'Intel Core i7': ['35-65W', '> 65W'],
+      'Intel Core i5': ['20-35W', '35-65W', '> 65W'],
+      'Intel Core i3': ['10-20W', '20-35W', '35-65W'],
+      'Intel Atom': ['< 10W', '10-20W', '20-35W'],
+      'Intel U300E': ['< 10W', '10-20W']
     };
-    
-    const validPower = powerRequirements[processorTier];
-    if (validPower && !validPower.includes(powerConsumption)) {
-      crossFieldErrors['power_environment.powerConsumption'] = {
+
+    const validPower = powerRequirements[processorType];
+    if (validPower && powerConsumption !== 'Not Required' && !validPower.includes(powerConsumption)) {
+      crossFieldErrors['form_factor.max_power_consumption'] = {
         severity: 'warning',
-        message: `${processorTier} typically requires: ${validPower.join(' or ')}`
+        message: `${processorType} typically requires: ${validPower.join(' or ')}`
       };
     }
   }
   
-  // Temperature Range vs Processor Validation
-  if (power.operatingTemperature?.value && computing.processorTier?.value) {
-    const temp = power.operatingTemperature.value;
-    const processor = computing.processorTier.value;
+  // Temperature Range vs Processor Validation - updated for new field names
+  const envStandards = requirements.environment_standards || {};
+  if (envStandards.operating_temperature?.value && computing.processor_type?.value) {
+    const temp = envStandards.operating_temperature.value;
+    const processor = computing.processor_type.value;
     
-    if (temp === '-40°C to 70°C' && processor.includes('Core i7')) {
-      crossFieldErrors['performance_computing.processorTier'] = {
+    if (temp === '-40°C to 70°C' && (processor === 'Intel Core i7' || processor === 'Intel Core i9')) {
+      crossFieldErrors['compute_performance.processor_type'] = {
         severity: 'warning',
         message: 'Extended temperature range may limit high-performance processor options'
       };
     }
   }
   
-  // Wireless and Power Validation
-  if (io.wirelessExtension?.value && power.powerConsumption?.value) {
-    const wireless = Array.isArray(io.wirelessExtension.value) 
-      ? io.wirelessExtension.value 
+  // Wireless and Power Validation - updated for new field names
+  if (io.wireless_extension?.value && formFactor.max_power_consumption?.value) {
+    const wireless = Array.isArray(io.wireless_extension.value)
+      ? io.wireless_extension.value
       : [];
-    
+
     const highPowerWireless = ['5G', '4G LTE'];
     const hasHighPowerWireless = wireless.some(w => highPowerWireless.includes(w));
-    
-    if (hasHighPowerWireless && power.powerConsumption.value === '< 10W') {
-      crossFieldErrors['power_environment.powerConsumption'] = {
+
+    if (hasHighPowerWireless && formFactor.max_power_consumption.value === '< 10W') {
+      crossFieldErrors['form_factor.max_power_consumption'] = {
         severity: 'error',
         message: '5G/4G LTE modules require minimum 20W power budget'
       };
     }
   }
   
-  // Storage and AI Validation
-  if (computing.aiAcceleration?.value === 'Dedicated GPU Required' && 
-      computing.storageCapacity?.value === '64GB') {
-    crossFieldErrors['performance_computing.storageCapacity'] = {
+  // Storage and AI Validation - updated for new field names
+  if (computing.ai_gpu_acceleration?.value === 'Dedicated GPU Required' &&
+      computing.storage_capacity?.value === '64GB') {
+    crossFieldErrors['compute_performance.storage_capacity'] = {
       severity: 'warning',
       message: 'AI/ML workloads with GPU typically require 256GB+ storage'
     };
   }
   
-  // Industrial Protocol Requirements
-  if ((io.canBusSupport?.value !== 'Not Required' || 
-       io.modbusSupport?.value !== 'Not Required') && 
-       (!io.serialPorts?.value || io.serialPorts.value === 'None')) {
-    crossFieldErrors['io_connectivity.serialPorts'] = {
+  // Industrial Protocol Requirements - updated for new field names
+  if (io.serial_protocol_support?.value && io.serial_protocol_support.value !== 'Not Required' &&
+      (!io.serial_ports_amount?.value || io.serial_ports_amount.value === 'Not Required')) {
+    crossFieldErrors['io_connectivity.serial_ports_amount'] = {
       severity: 'info',
       message: 'Industrial protocols often benefit from RS-232/422/485 ports'
     };
@@ -535,37 +730,28 @@ const validateCrossFields = (requirements) => {
 
 const autoCalculateFields = (changedField, newValue, requirements) => {
   const updates = {};
-  
-  // Budget calculations
-  if (changedField === 'budgetPerUnit' || changedField === 'quantity') {
+
+  // Budget calculations - updated for new field names
+  if (changedField === 'budget_per_unit' || changedField === 'quantity') {
     const commercial = requirements.commercial || {};
-    const unitBudget = parseFloat((commercial.budgetPerUnit?.value || '').replace(/[$,]/g, ''));
+    const unitBudget = parseFloat((commercial.budget_per_unit?.value || 0).toString().replace(/[$,]/g, ''));
     const quantity = parseInt(commercial.quantity?.value || 0);
-    
-    if (changedField === 'budgetPerUnit') {
-      const newUnitBudget = parseFloat(newValue.replace(/[$,]/g, ''));
+
+    if (changedField === 'budget_per_unit') {
+      const newUnitBudget = parseFloat(newValue.toString().replace(/[$,]/g, ''));
       if (!isNaN(newUnitBudget) && quantity > 0) {
-        updates['commercial.totalBudget'] = `${(newUnitBudget * quantity).toFixed(2)}`;
+        updates['commercial.total_budget'] = (newUnitBudget * quantity).toFixed(2);
       }
     } else if (changedField === 'quantity') {
       const newQuantity = parseInt(newValue);
-      if (!isNaN(unitBudget) && !isNaN(newQuantity)) {
-        updates['commercial.totalBudget'] = `${(unitBudget * newQuantity).toFixed(2)}`;
+      if (!isNaN(unitBudget) && !isNaN(newQuantity) && unitBudget > 0) {
+        updates['commercial.total_budget'] = (unitBudget * newQuantity).toFixed(2);
       }
     }
   }
-  
-  // If total budget is manually changed, update unit budget
-  if (changedField === 'totalBudget') {
-    const commercial = requirements.commercial || {};
-    const quantity = parseInt(commercial.quantity?.value || 0);
-    const totalBudget = parseFloat(newValue.replace(/[$,]/g, ''));
-    
-    if (!isNaN(totalBudget) && quantity > 0) {
-      updates['commercial.budgetPerUnit'] = `${(totalBudget / quantity).toFixed(2)}`;
-    }
-  }
-  
+
+  // Note: total_budget is read-only and auto-calculated, so no reverse calculation needed
+
   return updates;
 };
 const getNextMustField = (requirements) => {
@@ -1610,38 +1796,49 @@ function FormField({ fieldKey, fieldDef, data, section, onChange, validation }) 
         );
       
       case 'number':
+        // Check if this is the total_budget field (read-only, auto-calculated)
+        const isReadOnly = fieldKey === 'total_budget' && fieldDef.calculated === true;
+
         return (
           <div className="flex-1 flex items-center space-x-2">
-            <button
-              onClick={() => handleValueChange(Math.max((parseInt(localValue) || 0) - 1, fieldDef.min || 0))}
-              className="px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded"
-            >
-              -
-            </button>
+            {!isReadOnly && (
+              <button
+                onClick={() => handleValueChange(Math.max((parseInt(localValue) || 0) - 1, fieldDef.min || 0))}
+                className="px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded"
+              >
+                -
+              </button>
+            )}
             <input
               id={`field-${fieldKey}`}
               type="number"
               value={localValue}
-              onChange={(e) => handleValueChange(e.target.value)}
+              onChange={(e) => !isReadOnly && handleValueChange(e.target.value)}
               min={fieldDef.min}
               max={fieldDef.max}
+              readOnly={isReadOnly}
+              disabled={isReadOnly}
               className={`
                 flex-1 px-3 py-2 border rounded-lg text-sm text-center transition-all duration-500
-                ${localAssumption 
-                  ? 'border-amber-300 bg-amber-50' 
+                ${isReadOnly
+                  ? 'border-gray-200 bg-gray-50 cursor-not-allowed'
+                  : localAssumption
+                  ? 'border-amber-300 bg-amber-50'
                   : !localValue || localValue === ''
                   ? 'border-gray-300 bg-yellow-50'
                   : 'border-gray-300 bg-white'}
-                focus:outline-none focus:ring-2 focus:ring-blue-500
+                ${!isReadOnly && 'focus:outline-none focus:ring-2 focus:ring-blue-500'}
               `}
-              placeholder={`${fieldDef.min || 0}-${fieldDef.max || 999}`}
+              placeholder={isReadOnly ? 'Auto-calculated' : `${fieldDef.min || 0}-${fieldDef.max || 999}`}
             />
-            <button
-              onClick={() => handleValueChange(Math.min((parseInt(localValue) || 0) + 1, fieldDef.max || 999))}
-              className="px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded"
-            >
-              +
-            </button>
+            {!isReadOnly && (
+              <button
+                onClick={() => handleValueChange(Math.min((parseInt(localValue) || 0) + 1, fieldDef.max || 999))}
+                className="px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded"
+              >
+                +
+              </button>
+            )}
           </div>
         );
       
