@@ -215,3 +215,22 @@ code {
 .opacity-50 {
   opacity: 0.5;
 }
+
+/* Resize Handle Styles */
+.cursor-col-resize {
+  cursor: col-resize !important;
+}
+
+/* Prevent text selection during resize */
+.select-none {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* Smooth transitions for resize handle */
+.resize-handle-active {
+  background-color: #3b82f6;
+  width: 2px;
+}

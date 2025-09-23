@@ -782,6 +782,48 @@ function App() {
   const [sessionId, setSessionId] = useState<string>('');
   const [clarificationRequest, setClarificationRequest] = useState<ClarificationRequest | null>(null);
   const chatEndRef = useRef(null);
+  const [chatWidth, setChatWidth] = useState(384); // Default 24rem = 384px
+  const [isResizing, setIsResizing] = useState(false);
+
+  // Resize handler functions
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  };
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isResizing) return;
+
+    const newWidth = window.innerWidth - e.clientX;
+    // Constrain between min (320px) and max (600px)
+    const constrainedWidth = Math.min(600, Math.max(320, newWidth));
+    setChatWidth(constrainedWidth);
+  }, [isResizing]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsResizing(false);
+  }, []);
+
+  // Add mouse event listeners for resize
+  useEffect(() => {
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      // Prevent text selection while resizing
+      document.body.style.userSelect = 'none';
+      document.body.style.cursor = 'col-resize';
+    } else {
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+    };
+  }, [isResizing, handleMouseMove, handleMouseUp]);
 
   // reqMAS Integration
   const {
@@ -1345,9 +1387,9 @@ function App() {
   const nextField = getNextMustField(requirements);
 
   // ChatWindow Component
-  function ChatWindow({ onSendMessage, messages, pendingClarification, loading }: any) {
+  function ChatWindow({ onSendMessage, messages, pendingClarification, loading, width, onMouseDown, isResizing }: any) {
     const [input, setInput] = useState('');
-    
+
     const handleSend = async () => {
       if (input.trim() && !loading) {
         await onSendMessage(input);
@@ -1356,7 +1398,25 @@ function App() {
     };
 
     return (
-      <div className="w-96 bg-white border-l shadow-lg flex flex-col">
+      <div
+        className="bg-white border-l shadow-lg flex flex-col relative"
+        style={{ width: `${width}px` }}
+      >
+        {/* Resize Handle */}
+        <div
+          onMouseDown={onMouseDown}
+          className={`absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 transition-colors ${
+            isResizing ? 'bg-blue-500' : 'bg-gray-300'
+          } group`}
+        >
+          {/* Grip indicator */}
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-1 h-8 flex flex-col justify-between opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="w-1 h-1 bg-gray-600 rounded-full"></div>
+            <div className="w-1 h-1 bg-gray-600 rounded-full"></div>
+            <div className="w-1 h-1 bg-gray-600 rounded-full"></div>
+          </div>
+        </div>
+
         <div className="bg-white border-b px-4 py-3">
           <h3 className="text-sm font-semibold text-gray-800">Requirements Assistant</h3>
           {pendingClarification && (
@@ -1585,18 +1645,21 @@ function App() {
       </div>
 
       {/* Chat Panel */}
-      <ChatWindow 
+      <ChatWindow
         onSendMessage={sendMessage}
         messages={reqMASMessages}
         pendingClarification={pendingClarification}
         loading={loading}
+        width={chatWidth}
+        onMouseDown={handleMouseDown}
+        isResizing={isResizing}
       />
       
       {/* Step Progress Indicator */}
-      <StepProgressIndicator 
-        currentStep={currentStage} 
+      <StepProgressIndicator
+        currentStep={currentStage}
         setCurrentStage={setCurrentStage}
-        chatWindowWidth={384}
+        chatWindowWidth={chatWidth}
       />
     </div>
   );
