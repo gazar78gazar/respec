@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Check, ChevronRight, ChevronDown, Download, Share, Wand2, AlertTriangle, AlertCircle, Info } from 'lucide-react';
+import { Check, ChevronRight, ChevronDown, Download, Share, Wand2, AlertCircle, Info } from 'lucide-react';
 import { reqmasClient } from './services/reqmasClient';
 import type { ClarificationRequest } from './services/reqmasClient';
 import * as uiUtils from './utils/uiUtilities';
@@ -14,13 +14,13 @@ const RequirementLegend = () => (
     <div className="flex items-center space-x-6 text-sm text-gray-600">
       <div className="flex items-center space-x-2">
         <div className="w-4 h-4 rounded-full bg-blue-200 flex items-center justify-center">
-          <Check size={10} className="text-blue-700" />
+          <img src="/assets/icons/requirement-icon.png" alt="Requirement" className="w-2.5 h-2.5" />
         </div>
         <span>Requirement</span>
       </div>
       <div className="flex items-center space-x-2">
         <div className="w-4 h-4 rounded-full bg-amber-200 flex items-center justify-center">
-          <AlertTriangle size={10} className="text-amber-700" />
+          <img src="/assets/icons/assumption-icon.png" alt="Assumption" className="w-2.5 h-2.5" />
         </div>
         <span>Assumption</span>
       </div>
@@ -1626,13 +1626,13 @@ function RequirementsForm({ activeTab, requirements, updateField, autofillSectio
           <div className="flex items-center space-x-6 text-sm text-gray-600">
             <div className="flex items-center space-x-2">
               <div className="w-4 h-4 rounded-full bg-blue-200 flex items-center justify-center">
-                <Check size={10} className="text-blue-700" />
+                <img src="/assets/icons/requirement-icon.png" alt="Requirement" className="w-2.5 h-2.5" />
               </div>
               <span>Requirement</span>
             </div>
             <div className="flex items-center space-x-2">
               <div className="w-4 h-4 rounded-full bg-amber-200 flex items-center justify-center">
-                <AlertTriangle size={10} className="text-amber-700" />
+                <img src="/assets/icons/assumption-icon.png" alt="Assumption" className="w-2.5 h-2.5" />
               </div>
               <span>Assumption</span>
             </div>
@@ -1922,11 +1922,11 @@ function FormField({ fieldKey, fieldDef, data, section, onChange, validation }) 
                   : 'left-0.5 bg-blue-500 text-white'
               }`}
             >
-              {localAssumption ? (
-                <AlertTriangle size={10} />
-              ) : (
-                <Check size={10} />
-              )}
+              <img
+                src={localAssumption ? "/assets/icons/assumption-icon.png" : "/assets/icons/requirement-icon.png"}
+                alt={localAssumption ? "Assumption" : "Requirement"}
+                className="w-2.5 h-2.5"
+              />
             </div>
           </div>
           <span className="text-sm text-gray-500 ml-2">
