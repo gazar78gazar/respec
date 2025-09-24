@@ -1,13 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Check, ChevronRight, ChevronDown, Download, Share, Wand2, AlertTriangle, AlertCircle, Info } from 'lucide-react';
-import { reqmasClient } from './services/reqmasClient';
-import type { ClarificationRequest } from './services/reqmasClient';
+// ReqmasClient imports removed - ReSpec will handle communication
 import * as uiUtils from './utils/uiUtilities';
 import { dataServices } from './services/dataServices';
 import './styles/animations.css';
-import { useReqMAS } from './hooks/useReqMAS';
-import { RequirementArtifact } from './services/reqmas/types';
-import { reqMASService } from './services/reqmas/ReqMASService';
+// ReqMAS imports removed - ReSpec will replace this functionality
 
 // RequirementLegend component
 const RequirementLegend = () => (
@@ -780,8 +777,7 @@ function App() {
     { role: 'assistant', content: 'How can I help you with filling out these requirements?' }
   ]);
   const [chatInput, setChatInput] = useState('');
-  const [sessionId, setSessionId] = useState<string>('');
-  const [clarificationRequest, setClarificationRequest] = useState<ClarificationRequest | null>(null);
+  // ReqMAS state variables removed - ReSpec will manage its own state
   const chatEndRef = useRef(null);
   const [chatWidth, setChatWidth] = useState(384); // Default 24rem = 384px
   const [isResizing, setIsResizing] = useState(false);
@@ -826,79 +822,220 @@ function App() {
     };
   }, [isResizing, handleMouseMove, handleMouseUp]);
 
+  // ReSpec Integration State
+  const [loading, setLoading] = useState(false);
+
+  // === Validation Functions for System Updates ===
+  const validateSystemFieldUpdate = useCallback((section: string, field: string, value: any): boolean => {
+    try {
+      // Rule 1: Never overwrite user-entered values without explicit permission
+      const currentField = requirements[section]?.[field];
+      if (currentField?.source === 'user' && currentField?.value !== '' && currentField?.value !== null) {
+        console.warn(`[UI-MAS] Blocked system update to user field: ${section}.${field}`);
+        return false;
+      }
+
+      // Rule 2: Validate field exists in form definition
+      const fieldExists = formFieldsData.field_definitions[section]?.[field];
+      if (!fieldExists) {
+        console.error(`[UI-MAS] Invalid field reference: ${section}.${field}`);
+        return false;
+      }
+
+      // Rule 3: Validate value type matches field definition
+      const fieldDef = formFieldsData.field_definitions[section][field];
+      if (fieldDef.type === 'dropdown' && fieldDef.options && !fieldDef.options.includes(value)) {
+        console.warn(`[UI-MAS] Invalid dropdown value for ${section}.${field}: ${value}`);
+        return false;
+      }
+
+      if (fieldDef.type === 'number' && value !== null && value !== '' && isNaN(Number(value))) {
+        console.warn(`[UI-MAS] Invalid number value for ${section}.${field}: ${value}`);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error(`[UI-MAS] Validation error for ${section}.${field}:`, error);
+      return false;
+    }
+  }, [requirements]);
+
+  const validateSystemMessage = useCallback((message: string): boolean => {
+    try {
+      // Rule 1: Prevent infinite message loops
+      const recentSystemMessages = chatMessages
+        .slice(-5)
+        .filter(msg => msg.role === 'assistant')
+        .length;
+
+      if (recentSystemMessages >= 3) {
+        console.warn('[UI-MAS] System message rate limit exceeded');
+        return false;
+      }
+
+      // Rule 2: Validate message content
+      if (!message || typeof message !== 'string' || message.trim().length === 0) {
+        console.warn('[UI-MAS] Invalid message content');
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('[UI-MAS] Message validation error:', error);
+      return false;
+    }
+  }, [chatMessages]);
+
   // === UI-MAS Communication Hub ===
   const communicateWithMAS = async (action: string, data: any) => {
     console.log(`[UI-MAS] ${action}:`, data); // Simple tracing
 
     switch (action) {
       case 'chat_message':
-        const chatResult = await sendMessage(data.message);
-        // Sync form with MAS state
-        const masState = reqMASService.getPublicState();
-        if (masState.requirements) {
-          setRequirements(prev => ({ ...prev, ...masState.requirements }));
-        }
-        return chatResult;
+        // ReSpec will handle chat processing
+        console.log(`[UI-MAS] Chat message for ReSpec: ${data.message}`);
+        // TODO: ReSpec integration - send message to ReSpec system
+        // ReSpec should queue field updates and/or response messages
+        return { success: true, message: 'Chat message queued for ReSpec processing' };
 
       case 'form_update':
-        // Update MAS with form changes
-        reqMASService.updateFormField?.(data.field, data.value);
-        console.log(`[UI-MAS] Form updated: ${data.field} = ${data.value}`);
-        return;
+        // ReSpec will receive form field updates
+        console.log(`[UI-MAS] Form updated for ReSpec: ${data.field} = ${data.value}`);
+        // TODO: ReSpec integration - notify ReSpec of field change
+        return { success: true };
 
       case 'autofill':
-        const autofillResult = reqMASService.triggerAutofill();
-        // Update form with autofilled data
-        setRequirements(prev => ({ ...prev, ...autofillResult }));
-        console.log('[UI-MAS] Autofill completed:', Object.keys(autofillResult));
-        return autofillResult;
+        // ReSpec will handle autofill logic
+        console.log(`[UI-MAS] Autofill request for ReSpec: ${data.section}`);
+        // TODO: ReSpec integration - trigger ReSpec autofill
+        // ReSpec should queue multiple field updates
+        return { success: true, message: 'Autofill request queued for ReSpec processing' };
+
+      case 'system_populate_field':
+        // Populate single form field from MAS
+        const { section, field, value, isSystemGenerated } = data;
+
+        // Validate the field update
+        if (!validateSystemFieldUpdate(section, field, value)) {
+          return { success: false, error: 'Field update validation failed' };
+        }
+
+        try {
+          setRequirements(prev => ({
+            ...prev,
+            [section]: {
+              ...prev[section],
+              [field]: {
+                ...prev[section][field],
+                value,
+                isComplete: value !== '' && value !== null,
+                isAssumption: isSystemGenerated || false,
+                lastUpdated: new Date().toISOString(),
+                source: 'system'
+              }
+            }
+          }));
+          console.log(`[UI-MAS] System populated: ${section}.${field} = ${value}`);
+          return { success: true };
+        } catch (error) {
+          console.error(`[UI-MAS] System update failed:`, error);
+          return { success: false, error: error.message };
+        }
+
+      case 'system_populate_multiple':
+        // Populate multiple form fields from MAS
+        const updates = data.fieldUpdates; // Array of {section, field, value, isSystemGenerated}
+
+        try {
+          // Validate all updates first
+          const invalidUpdates = updates.filter(update =>
+            !validateSystemFieldUpdate(update.section, update.field, update.value)
+          );
+
+          if (invalidUpdates.length > 0) {
+            console.warn('[UI-MAS] Some field updates failed validation:', invalidUpdates);
+            return { success: false, error: `${invalidUpdates.length} updates failed validation` };
+          }
+
+          setRequirements(prev => {
+            const updated = { ...prev };
+            updates.forEach(update => {
+              const { section, field, value, isSystemGenerated } = update;
+              updated[section] = {
+                ...updated[section],
+                [field]: {
+                  ...updated[section][field],
+                  value,
+                  isComplete: value !== '' && value !== null,
+                  isAssumption: isSystemGenerated || false,
+                  lastUpdated: new Date().toISOString(),
+                  source: 'system'
+                }
+              };
+            });
+            return updated;
+          });
+          console.log(`[UI-MAS] System populated ${updates.length} fields`);
+          return { success: true, updatesApplied: updates.length };
+        } catch (error) {
+          console.error(`[UI-MAS] System multiple update failed:`, error);
+          return { success: false, error: error.message };
+        }
+
+      case 'system_send_message':
+        // Add system message to chat
+        try {
+          if (!validateSystemMessage(data.message)) {
+            return { success: false, error: 'System message validation failed' };
+          }
+
+          // Add message to chat state
+          setChatMessages(prev => [...prev, {
+            role: 'assistant',
+            content: data.message
+          }]);
+
+          console.log(`[UI-MAS] System message added to chat: ${data.message}`);
+          return { success: true };
+        } catch (error) {
+          console.error(`[UI-MAS] System message failed:`, error);
+          return { success: false, error: error.message };
+        }
 
       default:
         console.warn(`[UI-MAS] Unknown action: ${action}`);
     }
   };
 
-  // Modified sendMessage function wrapper
+  // Chat message handler for ReSpec
   const sendMessageWrapper = async (message: string) => {
     if (!loading) {
+      setLoading(true);
       try {
-        // Use MAS communication
-        return await communicateWithMAS('chat_message', { message });
+        // Add user message to chat immediately
+        setChatMessages(prev => [...prev, {
+          role: 'user',
+          content: message
+        }]);
+
+        // Send to ReSpec for processing
+        const result = await communicateWithMAS('chat_message', { message });
+
+        // ReSpec will send back system messages and field updates via communicateWithMAS
+        return result;
       } catch (error) {
-        console.error('[UI-MAS] Chat message failed:', error);
+        console.error('[UI-ReSpec] Chat message failed:', error);
         throw error;
+      } finally {
+        setLoading(false);
       }
     }
   };
 
-  // reqMAS Integration
-  const {
-    connected,
-    loading,
-    error: reqMASError,
-    chatMessages: reqMASMessages,
-    requirements: reqMASRequirements,
-    currentStep,
-    pendingClarification,
-    conflicts,
-    sendMessage,
-    initializeSession,
-    clearSession
-  } = useReqMAS();
+  // Note: ReSpec will provide MAS capabilities through communicateWithMAS
 
-  // Map reqMAS requirements to form fields
-  const mapReqMASToFormFields = (reqMASReqs: RequirementArtifact) => {
-    const mapped: any = {};
-    
-    // Map each category
-    Object.keys(reqMASReqs).forEach(category => {
-      if (category !== 'constraints') {
-        mapped[category] = reqMASReqs[category as keyof RequirementArtifact];
-      }
-    });
-    
-    return mapped;
-  };
+  // ReSpec will handle requirement mapping through communicateWithMAS
 
   // Initialize requirements and expanded groups
   useEffect(() => {
@@ -930,49 +1067,24 @@ function App() {
     setRequirements(initialRequirements);
     setExpandedGroups(initialExpanded);
 
-    // Initialize ReqMAS session
-    reqmasClient.initSession({
-      application_domain: 'industrial',
-      enable_assessment: false
-    }).then(sessionId => {
-      setSessionId(sessionId);
-    }).catch(err => {
-      console.warn('ReqMAS initialization failed:', err);
-    });
+    // ReSpec initialization will happen when ReSpec system is integrated
+    console.log('[UI] Form initialized and ready for ReSpec integration');
   }, []);
 
-  // Initialize reqMAS session on mount
-  useEffect(() => {
-    // Initialization handled by the hook itself
-    // No need to call initializeSession explicitly
-  }, []);
+  // ReSpec requirements synchronization will happen through communicateWithMAS polling
 
-  // Sync reqMAS requirements with form state
-  useEffect(() => {
-    if (reqMASRequirements && reqMASRequirements.constraints.length > 0) {
-      // Map reqMAS requirements to form fields
-      const mappedRequirements = mapReqMASToFormFields(reqMASRequirements);
-      setRequirements(prev => ({ ...prev, ...mappedRequirements }));
-    }
-  }, [reqMASRequirements]);
-
-  // Simple bi-directional state sync
+  // ReSpec bi-directional state sync - ready for ReSpec integration
   useEffect(() => {
     const syncInterval = setInterval(() => {
-      const masState = reqMASService.getPublicState();
-      if (masState.requirements && Object.keys(masState.requirements).length > 0) {
-        setRequirements(prev => {
-          const merged = { ...prev };
-          // Only sync if there are actual changes
-          Object.keys(masState.requirements).forEach(section => {
-            if (masState.requirements[section] && Object.keys(masState.requirements[section]).length > 0) {
-              merged[section] = { ...merged[section], ...masState.requirements[section] };
-            }
-          });
-          return merged;
-        });
-      }
-    }, 1000); // Check every second - simple but effective
+      // TODO: ReSpec integration
+      // When ReSpec is integrated, this will:
+      // 1. Call ReSpec.getPublicState() to get requirements and pendingUIUpdates
+      // 2. Process any pending updates through communicateWithMAS
+      // 3. Call ReSpec.clearPendingUIUpdates() after processing
+
+      // For now, this is a placeholder that ensures the polling structure is in place
+      console.log('[UI-ReSpec] Polling ready - waiting for ReSpec integration');
+    }, 5000); // Reduced frequency until ReSpec is integrated
 
     return () => clearInterval(syncInterval);
   }, []);
@@ -996,7 +1108,7 @@ function App() {
     return 4;
   };
 
-  // Helper function to map sections to categories for ReqMAS
+  // Helper function to map sections - ready for ReSpec integration
   const mapSectionToCategory = (section: string): string => {
     const mapping: Record<string, string> = {
       'performance_computing': 'system',
@@ -1029,7 +1141,8 @@ function App() {
             value,
             isComplete: value !== '' && value !== null,
             isAssumption,
-            lastUpdated: new Date().toISOString()
+            lastUpdated: new Date().toISOString(),
+            source: 'user' // Mark as user-entered to prevent system overwrites
           }
         }
       };
@@ -1051,17 +1164,7 @@ function App() {
       return updated;
     });
 
-    // Notify ReqMAS backend
-    if (sessionId) {
-      reqmasClient.updateFormField({
-        sessionId,
-        field_name: field,
-        value,
-        field_category: mapSectionToCategory(section)
-      }).catch(err => {
-        console.warn('ReqMAS field update failed:', err);
-      });
-    }
+    // Form changes already notified to ReSpec via communicateWithMAS at the end of updateField
     
     // Run field-level validation and add animations
     const fieldDef = formFieldsData.field_definitions[section]?.[field];
@@ -1259,22 +1362,15 @@ function App() {
   };
 
   const autofillAll = async () => {
-    if (sessionId) {
-      try {
-        const response = await reqmasClient.triggerAutofill(sessionId);
-        
-        // Apply autofilled fields from ReqMAS
-        Object.entries(response.fields).forEach(([field, value]) => {
-          const section = findFieldSection(field);
-          updateField(section, field, value, true);
-        });
-        return;
-      } catch (err) {
-        console.warn('ReqMAS autofill failed, using fallback:', err);
-      }
+    // Use ReSpec autofill via communicateWithMAS
+    try {
+      const result = await communicateWithMAS('autofill', { section: 'all' });
+      console.log('ReSpec autofill result:', result);
+    } catch (err) {
+      console.warn('ReSpec autofill failed, using fallback:', err);
     }
 
-    // Fallback to local autofill
+    // Local autofill fallback
     const updatedRequirements = { ...requirements };
     
     Object.entries(formFieldsData.field_definitions).forEach(([section, fields]) => {
@@ -1348,49 +1444,21 @@ function App() {
 
   const handleChatSubmit = async () => {
     if (!chatInput.trim()) return;
-    
-    setChatMessages(prev => [...prev, { role: 'user', content: chatInput }]);
-    
-    if (sessionId) {
-      try {
-        const response = await reqmasClient.sendChatMessage({
-          sessionId,
-          message: chatInput
-        });
-        
-        // Add assistant response
-        setChatMessages(prev => [...prev, {
-          role: 'assistant',
-          content: response.agentResponse
-        }]);
-        
-        // Apply extracted fields
-        response.extractedFields?.forEach(f => {
-          updateField(f.section, f.field, f.value, f.isAssumption);
-        });
 
-        // Handle clarification if needed
-        if (response.clarificationNeeded) {
-          setClarificationRequest(response.clarificationNeeded);
-        }
-      } catch (err) {
-        console.warn('ReqMAS chat failed:', err);
-        setChatMessages(prev => [...prev, {
-          role: 'assistant',
-          content: 'I apologize, but I\'m having trouble connecting to the backend. Please try again.'
-        }]);
-      }
-    } else {
-      // Fallback response
-      setTimeout(() => {
-        setChatMessages(prev => [...prev, {
-          role: 'assistant',
-          content: 'ReqMAS integration pending. Your requirements have been noted.'
-        }]);
-      }, 500);
-    }
-    
+    // Clear input immediately
+    const message = chatInput;
     setChatInput('');
+
+    // Use ReSpec via sendMessageWrapper
+    try {
+      await sendMessageWrapper(message);
+    } catch (err) {
+      console.error('Chat submission failed:', err);
+      setChatMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'I apologize, but I\'m having trouble processing your message. Please try again.'
+      }]);
+    }
   };
 
   useEffect(() => {
@@ -1664,17 +1732,7 @@ function App() {
         </div>
 
 
-        {reqMASError && (
-          <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm text-red-700">Connection Error: {reqMASError}</p>
-            <button 
-              onClick={initializeSession}
-              className="mt-2 text-xs text-red-600 underline"
-            >
-              Retry Connection
-            </button>
-          </div>
-        )}
+        {/* ReSpec error handling will be managed through communicateWithMAS */}
 
         {/* Tabs */}
         <div className="bg-white px-6 py-3 border-b">
@@ -1720,8 +1778,8 @@ function App() {
       {/* Chat Panel */}
       <ChatWindow
         onSendMessage={sendMessageWrapper}
-        messages={reqMASMessages}
-        pendingClarification={pendingClarification}
+        messages={chatMessages}
+        pendingClarification={null}
         loading={loading}
         width={chatWidth}
         onMouseDown={handleMouseDown}

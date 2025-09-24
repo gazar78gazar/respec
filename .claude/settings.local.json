@@ -36,7 +36,8 @@
       "Read(/C:\\dev\\frontend_new\\src\\services\\reqmas/**)",
       "Read(/C:\\dev\\frontend_new/**)",
       "Read(/C:\\dev\\frontend_new\\src/**)",
-      "Read(/C:\\dev\\frontend_new\\src\\services\\reqmas/**)"
+      "Read(/C:\\dev\\frontend_new\\src\\services\\reqmas/**)",
+      "Read(//g/My Drive/~WORK/Portune/System Development/Plans/sep 22 - align UC, Mapping.json, form_fields.json/**)"
     ],
     "deny": [],
     "ask": [],
