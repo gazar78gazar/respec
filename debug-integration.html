@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReSpec Integration Debug Tool</title>
+    <style>
+        body { font-family: monospace; margin: 20px; }
+        .test-section { border: 1px solid #ccc; margin: 10px 0; padding: 15px; }
+        .test-result { margin: 5px 0; padding: 5px; }
+        .pass { background: #d4edda; color: #155724; }
+        .fail { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        button { margin: 5px; padding: 10px; }
+        textarea { width: 100%; height: 100px; margin: 5px 0; }
+        pre { background: #f8f9fa; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>ReSpec Integration Debug Tool</h1>
+
+    <div class="test-section">
+        <h2>1. Basic Application State</h2>
+        <button onclick="testAppState()">Test App State</button>
+        <div id="app-state-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. UC Data Loading</h2>
+        <button onclick="testUCDataLoad()">Test UC Data Load</button>
+        <div id="uc-data-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. ReSpec Service Initialization</h2>
+        <button onclick="testReSpecInit()">Test ReSpec Initialization</button>
+        <div id="respec-init-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. communicateWithMAS Function</h2>
+        <button onclick="testCommunicateWithMAS()">Test communicateWithMAS</button>
+        <div id="communicate-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>5. Chat Message Flow</h2>
+        <textarea id="test-message" placeholder="Enter test message">I need 8 digital inputs for my substation</textarea>
+        <button onclick="testChatFlow()">Test Complete Chat Flow</button>
+        <div id="chat-flow-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>6. ReSpec Service Direct Test</h2>
+        <button onclick="testReSpecDirect()">Test ReSpec Service Directly</button>
+        <div id="respec-direct-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>7. Manual Integration Test</h2>
+        <button onclick="testManualIntegration()">Test Manual Integration</button>
+        <div id="manual-integration-results"></div>
+    </div>
+
+    <script>
+        let testResults = [];
+
+        function logResult(section, test, status, message, data = null) {
+            const result = { section, test, status, message, data, timestamp: new Date().toISOString() };
+            testResults.push(result);
+
+            const resultDiv = document.getElementById(`${section}-results`);
+            const div = document.createElement('div');
+            div.className = `test-result ${status}`;
+            div.innerHTML = `<strong>${test}:</strong> ${message}`;
+            if (data) {
+                div.innerHTML += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            }
+            resultDiv.appendChild(div);
+        }
+
+        async function testAppState() {
+            const section = 'app-state';
+            document.getElementById(`${section}-results`).innerHTML = '';
+
+            try {
+                // Test if we're in the correct context
+                logResult(section, 'Context Check', 'info', `URL: ${window.location.href}`);
+                logResult(section, 'React Check', window.React ? 'pass' : 'fail',
+                    window.React ? 'React is available' : 'React not found');
+
+                // Check for global variables that should exist
+                const globalChecks = [
+                    'fetch',
+                    'console',
+                    'localStorage',
+                    'sessionStorage'
+                ];
+
+                globalChecks.forEach(check => {
+                    logResult(section, `Global ${check}`, window[check] ? 'pass' : 'fail',
+                        window[check] ? `${check} is available` : `${check} not found`);
+                });
+
+            } catch (error) {
+                logResult(section, 'App State Test', 'fail', error.message, error);
+            }
+        }
+
+        async function testUCDataLoad() {
+            const section = 'uc-data';
+            document.getElementById(`${section}-results`).innerHTML = '';
+
+            try {
+                logResult(section, 'UC Data Fetch', 'info', 'Attempting to fetch /uc1.json...');
+
+                const response = await fetch('/uc1.json');
+
+                if (!response.ok) {
+                    logResult(section, 'UC Data Fetch', 'fail',
+                        `HTTP ${response.status}: ${response.statusText}`);
+                    return;
+                }
+
+                const ucData = await response.json();
+
+                logResult(section, 'UC Data Fetch', 'pass', 'UC data loaded successfully');
+
+                // Validate structure
+                const requiredFields = ['metadata', 'domains', 'requirements', 'specifications'];
+                requiredFields.forEach(field => {
+                    logResult(section, `UC Structure - ${field}`,
+                        ucData[field] ? 'pass' : 'fail',
+                        ucData[field] ? `${field} present` : `${field} missing`);
+                });
+
+                if (ucData.specifications) {
+                    const specCount = Object.keys(ucData.specifications).length;
+                    logResult(section, 'Specifications Count', 'info',
+                        `Found ${specCount} specifications`);
+
+                    // Show first 3 specs as sample
+                    const sampleSpecs = Object.keys(ucData.specifications).slice(0, 3);
+                    logResult(section, 'Sample Specifications', 'info',
+                        `Sample spec IDs: ${sampleSpecs.join(', ')}`);
+                }
+
+            } catch (error) {
+                logResult(section, 'UC Data Test', 'fail', error.message, error);
+            }
+        }
+
+        async function testReSpecInit() {
+            const section = 'respec-init';
+            document.getElementById(`${section}-results`).innerHTML = '';
+
+            try {
+                // Try to access ReSpec classes from the module
+                logResult(section, 'Module Access Test', 'info', 'Testing ReSpec module access...');
+
+                // This will fail because we can't import ES6 modules in this context
+                // But we can test if the main app has loaded them
+
+                const testCode = `
+                    // Test if ReSpec service is available in the main app
+                    if (window.respecService) {
+                        return { status: 'pass', message: 'ReSpec service found in global scope' };
+                    } else {
+                        return { status: 'fail', message: 'ReSpec service not in global scope' };
+                    }
+                `;
+
+                logResult(section, 'ReSpec Service Global', 'info',
+                    'ReSpec service should be initialized by main app');
+
+            } catch (error) {
+                logResult(section, 'ReSpec Init Test', 'fail', error.message, error);
+            }
+        }
+
+        async function testCommunicateWithMAS() {
+            const section = 'communicate';
+            document.getElementById(`${section}-results`).innerHTML = '';
+
+            try {
+                // Test if communicateWithMAS is accessible
+                if (typeof window.communicateWithMAS === 'function') {
+                    logResult(section, 'Function Access', 'pass', 'communicateWithMAS function found');
+
+                    // Test different actions
+                    const testActions = [
+                        { action: 'test_ping', data: { test: true } },
+                        { action: 'chat_message', data: { message: 'debug test message' } },
+                        { action: 'form_update', data: { field: 'test_field', value: 'test_value' } }
+                    ];
+
+                    for (const test of testActions) {
+                        try {
+                            const result = await window.communicateWithMAS(test.action, test.data);
+                            logResult(section, `Action: ${test.action}`, 'pass',
+                                'Action executed', result);
+                        } catch (error) {
+                            logResult(section, `Action: ${test.action}`, 'fail',
+                                error.message, error);
+                        }
+                    }
+
+                } else {
+                    logResult(section, 'Function Access', 'fail',
+                        'communicateWithMAS function not found in global scope');
+                }
+
+            } catch (error) {
+                logResult(section, 'Communicate Test', 'fail', error.message, error);
+            }
+        }
+
+        async function testChatFlow() {
+            const section = 'chat-flow';
+            document.getElementById(`${section}-results`).innerHTML = '';
+
+            const message = document.getElementById('test-message').value;
+
+            try {
+                logResult(section, 'Chat Flow Start', 'info', `Testing message: "${message}"`);
+
+                // Test the full chat flow simulation
+                if (typeof window.sendMessageWrapper === 'function') {
+                    logResult(section, 'sendMessageWrapper Found', 'pass', 'Function is available');
+
+                    const result = await window.sendMessageWrapper(message);
+                    logResult(section, 'Chat Flow Result', 'pass', 'Flow completed', result);
+
+                } else if (typeof window.communicateWithMAS === 'function') {
+                    logResult(section, 'Fallback to communicateWithMAS', 'info', 'Using direct communication');
+
+                    const result = await window.communicateWithMAS('chat_message', { message });
+                    logResult(section, 'Direct Communication Result', 'pass', 'Communication completed', result);
+
+                } else {
+                    logResult(section, 'No Chat Functions', 'fail', 'Neither sendMessageWrapper nor communicateWithMAS found');
+                }
+
+            } catch (error) {
+                logResult(section, 'Chat Flow Test', 'fail', error.message, error);
+            }
+        }
+
+        async function testReSpecDirect() {
+            const section = 'respec-direct';
+            document.getElementById(`${section}-results`).innerHTML = '';
+
+            try {
+                logResult(section, 'Direct ReSpec Test', 'info', 'Testing ReSpec service directly...');
+
+                // Create a minimal ReSpec test
+                const testMessage = "Test message for ReSpec processing";
+
+                // This requires access to the actual ReSpec service instance
+                // In a real scenario, we'd need to expose it globally for debugging
+
+                logResult(section, 'Service Instance', 'info',
+                    'ReSpec service should be tested from main app context');
+
+            } catch (error) {
+                logResult(section, 'ReSpec Direct Test', 'fail', error.message, error);
+            }
+        }
+
+        async function testManualIntegration() {
+            const section = 'manual-integration';
+            document.getElementById(`${section}-results`).innerHTML = '';
+
+            try {
+                logResult(section, 'Manual Integration', 'info', 'Running comprehensive integration test...');
+
+                // Test 1: Environment check
+                const apiKey = 'VITE_ANTHROPIC_API_KEY' in window ? 'present' : 'missing';
+                logResult(section, 'API Key Check', apiKey === 'present' ? 'pass' : 'fail',
+                    `Anthropic API key is ${apiKey}`);
+
+                // Test 2: Fetch UC data and validate structure
+                try {
+                    const ucResponse = await fetch('/uc1.json');
+                    const ucData = await ucResponse.json();
+
+                    const hasCorrectStructure = ucData.specifications &&
+                                              ucData.domains &&
+                                              ucData.requirements;
+
+                    logResult(section, 'UC Data Structure', hasCorrectStructure ? 'pass' : 'fail',
+                        `UC data structure is ${hasCorrectStructure ? 'valid' : 'invalid'}`);
+
+                    if (hasCorrectStructure) {
+                        // Test mapping capabilities
+                        const specIds = Object.keys(ucData.specifications);
+                        const sampleSpec = ucData.specifications[specIds[0]];
+
+                        logResult(section, 'Form Field Mapping', 'info',
+                            `Sample spec has form mapping: ${sampleSpec.name}`, sampleSpec);
+                    }
+
+                } catch (error) {
+                    logResult(section, 'UC Data Validation', 'fail', error.message);
+                }
+
+                // Test 3: Console message test
+                console.log('[DEBUG] Manual integration test completed');
+                logResult(section, 'Console Logging', 'pass', 'Check browser console for debug messages');
+
+            } catch (error) {
+                logResult(section, 'Manual Integration Test', 'fail', error.message, error);
+            }
+        }
+
+        // Export results function
+        function exportResults() {
+            const blob = new Blob([JSON.stringify(testResults, null, 2)],
+                { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'respec-debug-results.json';
+            a.click();
+        }
+
+        // Auto-run basic tests on load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                testAppState();
+                testUCDataLoad();
+            }, 1000);
+        });
+    </script>
+
+    <div style="margin-top: 20px;">
+        <button onclick="exportResults()">Export All Results</button>
+        <button onclick="console.log(testResults)">Log Results to Console</button>
+    </div>
+</body>
+</html>

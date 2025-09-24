@@ -1,0 +1,1386 @@
+{
+  "metadata": {
+    "version": "5.1",
+    "use_case_id": "uc001",
+    "use_case_name": "Power Substation Management and Control",
+    "domain": "Energy & Utilities",
+    "last_updated": "2025-01-30",
+    "schema_version": "1.0",
+    "self_contained": true,
+    "description": "UC v5.1 with complete specification coverage and selected values for autofill support"
+  },
+  
+  "use_case": {
+    "id": "uc001",
+    "name": "Power Substation Management and Control",
+    "domain": "Energy & Utilities",
+    "safety_critical": true,
+    "child": ["dom001", "dom002", "dom003"]
+  },
+  
+  "domains": {
+    "dom001": {
+      "id": "dom001",
+      "name": "Substation Equipment Monitoring",
+      "parent": ["uc001"],
+      "child": ["req001", "req002", "req003", "req004", "req005", "req006"],
+      "required_areas": ["compute_performance", "io_connectivity", "form_factor", "environment_standards", "commercial"],
+      "dependencies": []
+    },
+    "dom002": {
+      "id": "dom002",
+      "name": "Protection and Control Systems",
+      "parent": ["uc001"],
+      "child": ["req007", "req008", "req009", "req010", "req011", "req012"],
+      "required_areas": ["compute_performance", "io_connectivity", "form_factor", "environment_standards", "commercial"],
+      "dependencies": []
+    },
+    "dom003": {
+      "id": "dom003",
+      "name": "Deployment Tier Optimization",
+      "parent": ["uc001"],
+      "child": ["req013", "req014", "req015"],
+      "required_areas": ["compute_performance", "io_connectivity", "form_factor", "environment_standards", "commercial"],
+      "dependencies": []
+    },
+    "spc044": {
+      "id": "spc044",
+      "name": "ai_gpu_acceleration",
+      "category": "processing",
+      "parent": ["req001"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["Not Required", "Intel Xe Graphics", "Dedicated GPU Required"],
+      "default_value": "Not Required",
+      "selected_value": "Not Required",
+      "description": "AI/GPU Acceleration - Autofilled for v5.1",
+      "technical_details": {
+        "type": "feature",
+        "parameter": "ai_gpu_acceleration",
+        "operator": "exact",
+        "value": "Not Required"
+      },
+      "dependencies": []
+    },
+    "spc045": {
+      "id": "spc045",
+      "name": "memory_type",
+      "category": "memory",
+      "parent": [],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["Not Required", "DDR4", "DDR5"],
+      "default_value": "Not Required",
+      "selected_value": "Not Required",
+      "description": "Memory Type - Autofilled for v5.1",
+      "technical_details": {
+        "type": "feature",
+        "parameter": "memory_type",
+        "operator": "exact",
+        "value": "Not Required"
+      },
+      "dependencies": []
+    },
+    "spc046": {
+      "id": "spc046",
+      "name": "time_sensitive_features",
+      "category": "response_time",
+      "parent": ["req007"],
+      "selection_type": "selection_group",
+      "form_field_type": "multi-select",
+      "options": ["Not Required", "TSN Support", "PTP IEEE1588", "Hardware Timestamping"],
+      "default_value": "Not Required",
+      "selected_value": "Not Required",
+      "description": "Time Sensitive Features - Autofilled for v5.1",
+      "technical_details": {
+        "type": "feature",
+        "parameter": "time_sensitive_features",
+        "operator": "exact",
+        "value": "Not Required"
+      },
+      "dependencies": []
+    },
+    "spc047": {
+      "id": "spc047",
+      "name": "digital_io",
+      "category": "core_io_requirements",
+      "parent": ["req009"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["Not Required", "2", "4", "6", "8", "16", "32", "64", "Over 64"],
+      "default_value": "Not Required",
+      "selected_value": "Not Required",
+      "description": "Digital IO - Autofilled for v5.1",
+      "technical_details": {
+        "type": "feature",
+        "parameter": "digital_io",
+        "operator": "exact",
+        "value": "Not Required"
+      },
+      "dependencies": []
+    },
+    "spc048": {
+      "id": "spc048",
+      "name": "analog_io",
+      "category": "core_io_requirements",
+      "parent": ["req009"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["Not Required", "2", "4", "6", "8", "16", "32", "64", "Over 64"],
+      "default_value": "Not Required",
+      "selected_value": "Not Required",
+      "description": "Analog IO - Autofilled for v5.1",
+      "technical_details": {
+        "type": "feature",
+        "parameter": "analog_io",
+        "operator": "exact",
+        "value": "Not Required"
+      },
+      "dependencies": []
+    },
+    "spc049": {
+      "id": "spc049",
+      "name": "ethernet_speed",
+      "category": "ethernet",
+      "parent": ["req006"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["Not Required", "100 Mbps", "1 Gbps", "10 Gbps"],
+      "default_value": "Not Required",
+      "selected_value": "Not Required",
+      "description": "Ethernet Speed - Autofilled for v5.1",
+      "technical_details": {
+        "type": "feature",
+        "parameter": "ethernet_speed",
+        "operator": "exact",
+        "value": "Not Required"
+      },
+      "dependencies": []
+    },
+    "spc050": {
+      "id": "spc050",
+      "name": "ethernet_protocols",
+      "category": "ethernet",
+      "parent": ["req006"],
+      "selection_type": "selection_group",
+      "form_field_type": "multi-select",
+      "options": ["Not Required", "OPC UA", "MQTT", "PROFINET", "EtherCAT", "Ethernet/IP", "BACnet/IP", "Modbus TCP"],
+      "default_value": "Not Required",
+      "selected_value": "Not Required",
+      "description": "Ethernet Protocols - Autofilled for v5.1",
+      "technical_details": {
+        "type": "feature",
+        "parameter": "ethernet_protocols",
+        "operator": "exact",
+        "value": "Not Required"
+      },
+      "dependencies": []
+    },
+    "spc051": {
+      "id": "spc051",
+      "name": "usb_ports",
+      "category": "serial_usb",
+      "parent": ["req012"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["Not Required", "2", "4", "6", "8", "Over 8"],
+      "default_value": "Not Required",
+      "selected_value": "Not Required",
+      "description": "USB Ports - Autofilled for v5.1",
+      "technical_details": {
+        "type": "feature",
+        "parameter": "usb_ports",
+        "operator": "exact",
+        "value": "Not Required"
+      },
+      "dependencies": []
+    },
+    "spc052": {
+      "id": "spc052",
+      "name": "serial_ports_amount",
+      "category": "serial_usb",
+      "parent": ["req012"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["Not Required", "1", "2", "3", "4", "5", "6", "Over 6"],
+      "default_value": "Not Required",
+      "selected_value": "Not Required",
+      "description": "Serial Ports Amount - Autofilled for v5.1",
+      "technical_details": {
+        "type": "feature",
+        "parameter": "serial_ports_amount",
+        "operator": "exact",
+        "value": "Not Required"
+      },
+      "dependencies": []
+    },
+    "spc053": {
+      "id": "spc053",
+      "name": "serial_protocol_support",
+      "category": "industrial_protocols",
+      "parent": ["req008"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["Not Required", "CANbus", "TTL", "UART"],
+      "default_value": "Not Required",
+      "selected_value": "Not Required",
+      "description": "Serial Protocol Support - Autofilled for v5.1",
+      "technical_details": {
+        "type": "feature",
+        "parameter": "serial_protocol_support",
+        "operator": "exact",
+        "value": "Not Required"
+      },
+      "dependencies": []
+    },
+    "spc054": {
+      "id": "spc054",
+      "name": "fieldbus_protocol_support",
+      "category": "industrial_protocols",
+      "parent": ["req008"],
+      "selection_type": "selection_group",
+      "form_field_type": "multi-select",
+      "options": ["Not Required", "Modbus RTU", "PROFIBUS", "DeviceNet", "CANOpen"],
+      "default_value": "Not Required",
+      "selected_value": "Not Required",
+      "description": "Fieldbus Protocol Support - Autofilled for v5.1",
+      "technical_details": {
+        "type": "feature",
+        "parameter": "fieldbus_protocol_support",
+        "operator": "exact",
+        "value": "Not Required"
+      },
+      "dependencies": []
+    },
+    "spc055": {
+      "id": "spc055",
+      "name": "power_input",
+      "category": "power_requirements",
+      "parent": ["req013"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["Not Required", "9-36V DC", "18-36V DC", "24V DC", "PoE+"],
+      "default_value": "Not Required",
+      "selected_value": "Not Required",
+      "description": "Power Input - Autofilled for v5.1",
+      "technical_details": {
+        "type": "feature",
+        "parameter": "power_input",
+        "operator": "exact",
+        "value": "Not Required"
+      },
+      "dependencies": []
+    },
+    "spc056": {
+      "id": "spc056",
+      "name": "redundant_power",
+      "category": "power_requirements",
+      "parent": ["req013"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["Not Required", "Single", "Dual", "N+1"],
+      "default_value": "Not Required",
+      "selected_value": "Not Required",
+      "description": "Redundant Power - Autofilled for v5.1",
+      "technical_details": {
+        "type": "feature",
+        "parameter": "redundant_power",
+        "operator": "exact",
+        "value": "Not Required"
+      },
+      "dependencies": []
+    },
+    "spc057": {
+      "id": "spc057",
+      "name": "humidity",
+      "category": "environment",
+      "parent": ["req003"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["Not Required", "+90% RH non-condensing", "+90% RH @ 40°C", "Condensing Allowed (100% RH)"],
+      "default_value": "Not Required",
+      "selected_value": "Not Required",
+      "description": "Humidity - Autofilled for v5.1",
+      "technical_details": {
+        "type": "feature",
+        "parameter": "humidity",
+        "operator": "exact",
+        "value": "Not Required"
+      },
+      "dependencies": []
+    },
+    "spc058": {
+      "id": "spc058",
+      "name": "vibration_resistance",
+      "category": "environment",
+      "parent": ["req003"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["Not Required", "Standard (2G)", "Heavy (5G)", "Extreme (10G)"],
+      "default_value": "Not Required",
+      "selected_value": "Not Required",
+      "description": "Vibration Resistance - Autofilled for v5.1",
+      "technical_details": {
+        "type": "feature",
+        "parameter": "vibration_resistance",
+        "operator": "exact",
+        "value": "Not Required"
+      },
+      "dependencies": []
+    },
+    "spc059": {
+      "id": "spc059",
+      "name": "certifications",
+      "category": "standards",
+      "parent": ["req011"],
+      "selection_type": "selection_group",
+      "form_field_type": "multi-select",
+      "options": ["Not Required", "CE", "FCC", "UL", "CCC", "ATEX", "IECEx"],
+      "default_value": "Not Required",
+      "selected_value": "Not Required",
+      "description": "Certifications - Autofilled for v5.1",
+      "technical_details": {
+        "type": "feature",
+        "parameter": "certifications",
+        "operator": "exact",
+        "value": "Not Required"
+      },
+      "dependencies": []
+    }
+  },
+  
+  "requirements": {
+    "req001": {
+      "id": "req001",
+      "name": "Real-Time Thermal Imaging",
+      "area": "compute_performance",
+      "category": "processing",
+      "parent": ["dom001"],
+      "child": ["spc001", "spc002", "spc003", "spc004", "spc005", "spc006", "spc044"],
+      "safety_critical": true,
+      "description": "Early detection of hot spots prevents equipment failure worth millions. Requires AI-based pattern recognition for thermal anomaly detection.",
+      "dependencies": [
+        {
+          "target": "req004",
+          "type": "all",
+          "inherited": "no",
+          "rationale": "Pattern recognition capability required for thermal analysis"
+        }
+      ]
+    },
+    "req002": {
+      "id": "req002",
+      "name": "Compact Form Factor",
+      "area": "form_factor",
+      "category": "physical_design",
+      "parent": ["dom001"],
+      "child": ["spc007", "spc008"],
+      "safety_critical": false,
+      "description": "Must fit within electrical cabinet constraints with DIN rail mounting",
+      "dependencies": []
+    },
+    "req003": {
+      "id": "req003",
+      "name": "Outdoor Installation Requirements",
+      "area": "environment_standards",
+      "category": "environment",
+      "parent": ["dom001"],
+      "child": ["spc009", "spc010", "spc011", "spc057", "spc058"],
+      "safety_critical": false,
+      "description": "Withstand harsh substation environment with extended temperature range",
+      "dependencies": []
+    },
+    "req004": {
+      "id": "req004",
+      "name": "AI Pattern Recognition",
+      "area": "compute_performance",
+      "category": "processing",
+      "parent": ["dom001"],
+      "child": ["spc012", "spc013", "spc014"],
+      "safety_critical": false,
+      "description": "AI-based anomaly detection in thermal patterns with GPU acceleration",
+      "dependencies": []
+    },
+    "req005": {
+      "id": "req005",
+      "name": "Operating System Platform",
+      "area": "compute_performance",
+      "category": "software",
+      "parent": ["dom001"],
+      "child": ["spc015", "spc016"],
+      "safety_critical": false,
+      "description": "Windows IoT dominates utility market (70%) vs Linux real-time (28%)",
+      "dependencies": []
+    },
+    "req006": {
+      "id": "req006",
+      "name": "Network Architecture",
+      "area": "io_connectivity",
+      "category": "ethernet",
+      "parent": ["dom001"],
+      "child": ["spc017", "spc018", "spc019", "spc049", "spc050"],
+      "safety_critical": false,
+      "description": "Ring topology critical for transmission substations",
+      "dependencies": []
+    },
+    "req007": {
+      "id": "req007",
+      "name": "Ultra-Fast Protection Response",
+      "area": "compute_performance",
+      "category": "response_time",
+      "parent": ["dom002"],
+      "child": ["spc020", "spc021", "spc022", "spc046"],
+      "safety_critical": true,
+      "description": "Critical infrastructure protection requires <4ms GOOSE response time",
+      "dependencies": [
+        {
+          "target": "req008",
+          "type": "all",
+          "inherited": "no",
+          "rationale": "IEC61850 communication required for GOOSE messaging"
+        }
+      ]
+    },
+    "req008": {
+      "id": "req008",
+      "name": "IEC61850 Communication",
+      "area": "io_connectivity",
+      "category": "industrial_protocols",
+      "parent": ["dom002"],
+      "child": ["spc023", "spc024", "spc025", "spc053", "spc054"],
+      "safety_critical": true,
+      "description": "Dominant protocol for substation automation with GOOSE and MMS",
+      "dependencies": []
+    },
+    "req009": {
+      "id": "req009",
+      "name": "Protection Logic I/O",
+      "area": "io_connectivity",
+      "category": "core_io_requirements",
+      "parent": ["dom002"],
+      "child": ["spc026", "spc027", "spc047", "spc048"],
+      "safety_critical": true,
+      "description": "Complex protection schemes and interlocking for substation safety",
+      "dependencies": []
+    },
+    "req010": {
+      "id": "req010",
+      "name": "Power Quality Monitoring",
+      "area": "io_connectivity",
+      "category": "core_io_requirements",
+      "parent": ["dom002"],
+      "child": ["spc028", "spc029"],
+      "safety_critical": false,
+      "description": "Continuous monitoring of voltage, current, harmonics per IEEE standards",
+      "dependencies": []
+    },
+    "req011": {
+      "id": "req011",
+      "name": "Cybersecurity Compliance",
+      "area": "environment_standards",
+      "category": "standards",
+      "parent": ["dom002"],
+      "child": ["spc030", "spc031", "spc059"],
+      "safety_critical": true,
+      "description": "NERC CIP mandatory for utilities, IEC 62351 for secure protocol implementation",
+      "dependencies": []
+    },
+    "req012": {
+      "id": "req012",
+      "name": "Legacy Protocol Support",
+      "area": "io_connectivity",
+      "category": "industrial_protocols",
+      "parent": ["dom002"],
+      "child": ["spc032", "spc033", "spc034", "spc051", "spc052"],
+      "safety_critical": false,
+      "description": "DNP3 backup and IEC 60870 for legacy system integration during modernization",
+      "dependencies": []
+    },
+    "req013": {
+      "id": "req013",
+      "name": "Small Distribution Substation",
+      "area": "commercial",
+      "category": "pricing_quantity",
+      "parent": ["dom003"],
+      "child": ["spc035", "spc036", "spc037", "spc055", "spc056"],
+      "safety_critical": false,
+      "description": "35% of market: 10-50 I/O points, cost-effective solution",
+      "dependencies": [
+        {
+          "target": "req002",
+          "type": "all",
+          "inherited": "no",
+          "rationale": "Compact form factor required for distribution substations"
+        }
+      ]
+    },
+    "req014": {
+      "id": "req014",
+      "name": "Medium Transmission Substation",
+      "area": "commercial",
+      "category": "pricing_quantity",
+      "parent": ["dom003"],
+      "child": ["spc038", "spc039", "spc040"],
+      "safety_critical": true,
+      "description": "35% of market: 100-500 I/O points, dual redundancy",
+      "dependencies": []
+    },
+    "req015": {
+      "id": "req015",
+      "name": "Large Transmission Substation",
+      "area": "commercial",
+      "category": "pricing_quantity",
+      "parent": ["dom003"],
+      "child": ["spc041", "spc042", "spc043"],
+      "safety_critical": true,
+      "description": "30% of market: 500-2000+ I/O points, N+1 redundancy",
+      "dependencies": []
+    }
+  },
+  
+  "specifications": {
+    "spc001": {
+      "id": "spc001",
+      "name": "processor_type",
+      "category": "processing",
+      "parent": ["req001"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["Intel Core i7", "Intel Core i5", "Intel Core i3", "AMD Ryzen 7", "AMD Ryzen 5"],
+      "default_value": "Intel Core i7",
+      "selected_value": "Intel Core i7",
+      "description": "High-performance processor for thermal image processing and AI inference",
+      "technical_details": {
+        "type": "component",
+        "parameter": "processor_tier",
+        "operator": "min",
+        "value": 3,
+        "tier": 3,
+        "failure_mode": "critical",
+        "real_time_class": "soft"
+      },
+      "dependencies": []
+    },
+    "spc002": {
+      "id": "spc002",
+      "name": "memory_capacity",
+      "category": "memory",
+      "parent": ["req001"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["8GB", "16GB", "32GB", "64GB"],
+      "default_value": "16GB",
+      "selected_value": "16GB",
+      "description": "Memory for AI model loading and thermal image buffering",
+      "technical_details": {
+        "type": "component",
+        "parameter": "memory_size",
+        "operator": "min",
+        "value": 16,
+        "unit": "GB",
+        "failure_mode": "critical",
+        "real_time_class": "soft"
+      },
+      "dependencies": []
+    },
+    "spc003": {
+      "id": "spc003",
+      "name": "storage_type",
+      "category": "storage",
+      "parent": ["req001"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["NVMe Gen4", "NVMe Gen3", "SATA SSD", "Not Required"],
+      "default_value": "NVMe Gen4",
+      "selected_value": "NVMe Gen4",
+      "description": "High-speed storage for thermal image data and AI models",
+      "technical_details": {
+        "type": "component",
+        "parameter": "storage_interface",
+        "operator": "required",
+        "value": "NVMe",
+        "failure_mode": "graceful"
+      },
+      "dependencies": []
+    },
+    "spc004": {
+      "id": "spc004",
+      "name": "storage_capacity",
+      "category": "storage",
+      "parent": ["req001"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["256GB", "512GB", "1TB", "2TB"],
+      "default_value": "512GB",
+      "selected_value": "512GB",
+      "description": "Storage capacity for thermal imaging history and pattern analysis",
+      "technical_details": {
+        "type": "component",
+        "parameter": "storage_size",
+        "operator": "min",
+        "value": 512,
+        "unit": "GB",
+        "failure_mode": "graceful"
+      },
+      "dependencies": []
+    },
+    "spc005": {
+      "id": "spc005",
+      "name": "response_latency",
+      "category": "response_time",
+      "parent": ["req001"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["Ultra-Low (<1ms)", "Low (<4ms)", "Standard Real-Time (<10ms)", "Soft Real-Time (<50ms)"],
+      "default_value": "Soft Real-Time (<50ms)",
+      "selected_value": "Soft Real-Time (<50ms)",
+      "description": "Maximum latency for thermal anomaly detection",
+      "technical_details": {
+        "type": "performance",
+        "parameter": "max_latency",
+        "operator": "max",
+        "value": 50,
+        "unit": "ms",
+        "real_time_class": "soft"
+      },
+      "dependencies": []
+    },
+    "spc006": {
+      "id": "spc006",
+      "name": "throughput_fps",
+      "category": "processing",
+      "parent": ["req001"],
+      "selection_type": "numeric_input",
+      "form_field_type": "number-input",
+      "default_value": "30",
+      "selected_value": "30",
+      "description": "Minimum 30 frames per second thermal image processing throughput",
+      "technical_details": {
+        "type": "performance",
+        "parameter": "processing_throughput",
+        "operator": "min",
+        "value": 30,
+        "unit": "fps",
+        "real_time_class": "soft"
+      },
+      "dependencies": []
+    },
+    "spc007": {
+      "id": "spc007",
+      "name": "mounting",
+      "category": "physical_design",
+      "parent": ["req002"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["DIN Rail", "19-inch Rack", "Panel Mount", "Wall Mount"],
+      "default_value": "DIN Rail",
+      "selected_value": "DIN Rail",
+      "description": "DIN rail mounting for electrical cabinet installation",
+      "technical_details": {
+        "type": "component",
+        "parameter": "mounting_type",
+        "operator": "required",
+        "value": "DIN_rail"
+      },
+      "dependencies": []
+    },
+    "spc008": {
+      "id": "spc008",
+      "name": "dimensions",
+      "category": "physical_design",
+      "parent": ["req002"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["Ultra Compact", "Compact", "Standard", "Not Required"],
+      "default_value": "Compact",
+      "selected_value": "Compact",
+      "description": "Maximum depth 110mm for cabinet constraints",
+      "technical_details": {
+        "type": "component",
+        "parameter": "max_depth",
+        "operator": "max",
+        "value": 110,
+        "unit": "mm"
+      },
+      "dependencies": []
+    },
+    "spc009": {
+      "id": "spc009",
+      "name": "operating_temperature",
+      "category": "environment",
+      "parent": ["req003"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["-40°C to +70°C", "-20°C to +60°C", "0°C to +50°C", "Not Required"],
+      "default_value": "-40°C to +70°C",
+      "selected_value": "-40°C to +70°C",
+      "description": "Extended temperature range for outdoor substation environment",
+      "technical_details": {
+        "type": "component",
+        "parameter": "temperature_range",
+        "operator": "range",
+        "value": {"min": -40, "max": 70},
+        "unit": "celsius"
+      },
+      "dependencies": []
+    },
+    "spc010": {
+      "id": "spc010",
+      "name": "ingress_protection",
+      "category": "environment",
+      "parent": ["req003"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["IP65", "IP67", "IP54", "Not Required"],
+      "default_value": "IP54",
+      "selected_value": "IP54",
+      "description": "Environmental protection rating for outdoor installation",
+      "technical_details": {
+        "type": "component",
+        "parameter": "ip_rating",
+        "operator": "min",
+        "value": "IP54"
+      },
+      "dependencies": []
+    },
+    "spc011": {
+      "id": "spc011",
+      "name": "vibration_protection",
+      "category": "environment",
+      "parent": ["req003"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["IEC 60068-2-64", "MIL-STD-810", "Not Required"],
+      "default_value": "IEC 60068-2-64",
+      "selected_value": "IEC 60068-2-64",
+      "description": "2G vibration resistance for substation environment",
+      "technical_details": {
+        "type": "component",
+        "parameter": "vibration_resistance",
+        "operator": "min",
+        "value": 2,
+        "unit": "G"
+      },
+      "dependencies": []
+    },
+    "spc012": {
+      "id": "spc012",
+      "name": "gpu_capability",
+      "category": "processing",
+      "parent": ["req004"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["Integrated GPU", "Discrete GPU", "AI Accelerator", "Not Required"],
+      "default_value": "Integrated GPU",
+      "selected_value": "Integrated GPU",
+      "description": "GPU acceleration for AI inference and pattern recognition",
+      "technical_details": {
+        "type": "component",
+        "parameter": "gpu_type",
+        "operator": "required",
+        "value": "integrated"
+      },
+      "dependencies": []
+    },
+    "spc013": {
+      "id": "spc013",
+      "name": "ai_framework_support",
+      "category": "software",
+      "parent": ["req004"],
+      "selection_type": "selection_group",
+      "form_field_type": "multi-select",
+      "options": ["TensorFlow", "PyTorch", "ONNX Runtime", "OpenVINO"],
+      "default_value": "ONNX Runtime",
+      "selected_value": "ONNX Runtime",
+      "description": "AI framework support for thermal pattern analysis",
+      "technical_details": {
+        "type": "feature",
+        "parameter": "ai_frameworks",
+        "operator": "required",
+        "value": ["ONNX"]
+      },
+      "dependencies": []
+    },
+    "spc014": {
+      "id": "spc014",
+      "name": "detection_accuracy",
+      "category": "processing",
+      "parent": ["req004"],
+      "selection_type": "numeric_input",
+      "form_field_type": "number-input",
+      "default_value": "98",
+      "selected_value": "98",
+      "description": "Minimum 98% accuracy for thermal anomaly detection",
+      "technical_details": {
+        "type": "performance",
+        "parameter": "accuracy_percentage",
+        "operator": "min",
+        "value": 98,
+        "unit": "percent"
+      },
+      "dependencies": []
+    },
+    "spc015": {
+      "id": "spc015",
+      "name": "operating_system",
+      "category": "software",
+      "parent": ["req005"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["Windows 11 IoT Enterprise LTSC", "Windows 10 IoT Enterprise LTSC", "Ubuntu 22.04 LTS", "Debian 11"],
+      "default_value": "Windows 11 IoT Enterprise LTSC",
+      "selected_value": "Windows 11 IoT Enterprise LTSC",
+      "description": "Windows IoT LTSC with 70% market share in utilities",
+      "technical_details": {
+        "type": "feature",
+        "parameter": "os_type",
+        "operator": "exact",
+        "value": "Windows_IoT_LTSC"
+      },
+      "dependencies": []
+    },
+    "spc016": {
+      "id": "spc016",
+      "name": "containerization_support",
+      "category": "software",
+      "parent": ["req005"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["Docker", "Kubernetes", "Not Required"],
+      "default_value": "Docker",
+      "selected_value": "Docker",
+      "description": "Container support for application deployment",
+      "technical_details": {
+        "type": "feature",
+        "parameter": "container_platform",
+        "operator": "required",
+        "value": "Docker"
+      },
+      "dependencies": []
+    },
+    "spc017": {
+      "id": "spc017",
+      "name": "ethernet_ports",
+      "category": "ethernet",
+      "parent": ["req006"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["2x GbE", "4x GbE", "2x 10GbE", "4x 10GbE"],
+      "default_value": "2x GbE",
+      "selected_value": "2x GbE",
+      "description": "Redundant Ethernet ports for ring topology",
+      "technical_details": {
+        "type": "component",
+        "parameter": "ethernet_count",
+        "operator": "min",
+        "value": 2
+      },
+      "dependencies": []
+    },
+    "spc018": {
+      "id": "spc018",
+      "name": "network_redundancy",
+      "category": "ethernet",
+      "parent": ["req006"],
+      "selection_type": "selection_group",
+      "form_field_type": "multi-select",
+      "options": ["HSR (IEC 62439-3)", "PRP (IEC 62439-3)", "RSTP", "Not Required"],
+      "default_value": "HSR (IEC 62439-3)",
+      "selected_value": "HSR (IEC 62439-3)",
+      "description": "HSR/PRP redundancy for critical transmission substations",
+      "technical_details": {
+        "type": "feature",
+        "parameter": "redundancy_protocol",
+        "operator": "required",
+        "value": "HSR_PRP"
+      },
+      "dependencies": []
+    },
+    "spc019": {
+      "id": "spc019",
+      "name": "time_sync_protocol",
+      "category": "ethernet",
+      "parent": ["req006"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["IEEE 1588 PTP", "NTP", "GPS", "Not Required"],
+      "default_value": "IEEE 1588 PTP",
+      "selected_value": "IEEE 1588 PTP",
+      "description": "Precision time protocol for synchronized measurements",
+      "technical_details": {
+        "type": "feature",
+        "parameter": "time_sync",
+        "operator": "required",
+        "value": "PTP"
+      },
+      "dependencies": []
+    },
+    "spc020": {
+      "id": "spc020",
+      "name": "goose_response_time",
+      "category": "response_time",
+      "parent": ["req007"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["Ultra-Low (<1ms)", "Low (<4ms)", "Standard (<10ms)"],
+      "default_value": "Low (<4ms)",
+      "selected_value": "Low (<4ms)",
+      "description": "Sub-4ms GOOSE message response for protection",
+      "technical_details": {
+        "type": "performance",
+        "parameter": "goose_latency",
+        "operator": "max",
+        "value": 4,
+        "unit": "ms",
+        "real_time_class": "hard"
+      },
+      "dependencies": []
+    },
+    "spc021": {
+      "id": "spc021",
+      "name": "real_time_kernel",
+      "category": "software",
+      "parent": ["req007"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["Required", "Not Required"],
+      "default_value": "Required",
+      "selected_value": "Required",
+      "description": "Real-time kernel for deterministic response",
+      "technical_details": {
+        "type": "feature",
+        "parameter": "kernel_type",
+        "operator": "required",
+        "value": "real_time"
+      },
+      "dependencies": []
+    },
+    "spc022": {
+      "id": "spc022",
+      "name": "tsn_support",
+      "category": "ethernet",
+      "parent": ["req007"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["Required", "Not Required"],
+      "default_value": "Required",
+      "selected_value": "Required",
+      "description": "Time-Sensitive Networking for deterministic communication",
+      "technical_details": {
+        "type": "feature",
+        "parameter": "tsn_capable",
+        "operator": "required",
+        "value": true
+      },
+      "dependencies": []
+    },
+    "spc023": {
+      "id": "spc023",
+      "name": "iec61850_protocol",
+      "category": "industrial_protocols",
+      "parent": ["req008"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["Full IEC 61850", "GOOSE Only", "MMS Only", "Not Required"],
+      "default_value": "Full IEC 61850",
+      "selected_value": "Full IEC 61850",
+      "description": "IEC 61850 protocol suite with GOOSE and MMS",
+      "technical_details": {
+        "type": "feature",
+        "parameter": "protocol_support",
+        "operator": "required",
+        "value": "IEC61850"
+      },
+      "dependencies": []
+    },
+    "spc024": {
+      "id": "spc024",
+      "name": "sampled_values",
+      "category": "industrial_protocols",
+      "parent": ["req008"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["IEC 61850-9-2", "IEC 61850-9-2LE", "Not Required"],
+      "default_value": "IEC 61850-9-2LE",
+      "selected_value": "IEC 61850-9-2LE",
+      "description": "Sampled values protocol for process bus",
+      "technical_details": {
+        "type": "feature",
+        "parameter": "sampled_values",
+        "operator": "required",
+        "value": "IEC61850-9-2"
+      },
+      "dependencies": []
+    },
+    "spc025": {
+      "id": "spc025",
+      "name": "iec61850_conformance",
+      "category": "standards",
+      "parent": ["req008"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["Ed 2.1", "Ed 2.0", "Ed 1.0", "Not Required"],
+      "default_value": "Ed 2.1",
+      "selected_value": "Ed 2.1",
+      "description": "IEC 61850 conformance edition",
+      "technical_details": {
+        "type": "feature",
+        "parameter": "conformance_edition",
+        "operator": "exact",
+        "value": "2.1"
+      },
+      "dependencies": []
+    },
+    "spc026": {
+      "id": "spc026",
+      "name": "digital_io_channels",
+      "category": "core_io_requirements",
+      "parent": ["req009"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["8", "16", "32", "64"],
+      "default_value": "16",
+      "selected_value": "16",
+      "description": "Digital I/O channels for protection logic",
+      "technical_details": {
+        "type": "component",
+        "parameter": "digital_io_count",
+        "operator": "min",
+        "value": 16,
+        "unit": "channels"
+      },
+      "dependencies": []
+    },
+    "spc027": {
+      "id": "spc027",
+      "name": "relay_outputs",
+      "category": "core_io_requirements",
+      "parent": ["req009"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["4", "8", "12", "16"],
+      "default_value": "8",
+      "selected_value": "8",
+      "description": "Relay outputs for protection control",
+      "technical_details": {
+        "type": "component",
+        "parameter": "relay_count",
+        "operator": "min",
+        "value": 8,
+        "unit": "outputs"
+      },
+      "dependencies": []
+    },
+    "spc028": {
+      "id": "spc028",
+      "name": "analog_input_channels",
+      "category": "core_io_requirements",
+      "parent": ["req010"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["4", "8", "16", "32"],
+      "default_value": "8",
+      "selected_value": "8",
+      "description": "Analog inputs for voltage/current monitoring",
+      "technical_details": {
+        "type": "component",
+        "parameter": "analog_input_count",
+        "operator": "min",
+        "value": 8,
+        "unit": "channels"
+      },
+      "dependencies": []
+    },
+    "spc029": {
+      "id": "spc029",
+      "name": "measurement_accuracy",
+      "category": "core_io_requirements",
+      "parent": ["req010"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["0.1% Class", "0.2% Class", "0.5% Class", "1% Class"],
+      "default_value": "0.2% Class",
+      "selected_value": "0.2% Class",
+      "description": "Measurement accuracy class per IEC standards",
+      "technical_details": {
+        "type": "performance",
+        "parameter": "accuracy_class",
+        "operator": "max",
+        "value": 0.2,
+        "unit": "percent"
+      },
+      "dependencies": []
+    },
+    "spc030": {
+      "id": "spc030",
+      "name": "nerc_cip_compliance",
+      "category": "standards",
+      "parent": ["req011"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["Required", "Not Required"],
+      "default_value": "Required",
+      "selected_value": "Required",
+      "description": "NERC CIP cybersecurity compliance",
+      "technical_details": {
+        "type": "feature",
+        "parameter": "compliance",
+        "operator": "required",
+        "value": "NERC_CIP"
+      },
+      "dependencies": []
+    },
+    "spc031": {
+      "id": "spc031",
+      "name": "iec_62351_security",
+      "category": "standards",
+      "parent": ["req011"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["Required", "Not Required"],
+      "default_value": "Required",
+      "selected_value": "Required",
+      "description": "IEC 62351 secure communications",
+      "technical_details": {
+        "type": "feature",
+        "parameter": "security_protocol",
+        "operator": "required",
+        "value": "IEC_62351"
+      },
+      "dependencies": []
+    },
+    "spc032": {
+      "id": "spc032",
+      "name": "dnp3_protocol",
+      "category": "industrial_protocols",
+      "parent": ["req012"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["DNP3 Level 3", "DNP3 Level 2", "Not Required"],
+      "default_value": "DNP3 Level 3",
+      "selected_value": "DNP3 Level 3",
+      "description": "DNP3 protocol for legacy integration",
+      "technical_details": {
+        "type": "feature",
+        "parameter": "protocol",
+        "operator": "required",
+        "value": "DNP3"
+      },
+      "dependencies": []
+    },
+    "spc033": {
+      "id": "spc033",
+      "name": "modbus_support",
+      "category": "industrial_protocols",
+      "parent": ["req012"],
+      "selection_type": "selection_group",
+      "form_field_type": "multi-select",
+      "options": ["Modbus TCP", "Modbus RTU", "Not Required"],
+      "default_value": "Modbus TCP",
+      "selected_value": "Modbus TCP",
+      "description": "Modbus protocol variants",
+      "technical_details": {
+        "type": "feature",
+        "parameter": "modbus_type",
+        "operator": "required",
+        "value": ["TCP", "RTU"]
+      },
+      "dependencies": []
+    },
+    "spc034": {
+      "id": "spc034",
+      "name": "serial_port_type",
+      "category": "serial_usb",
+      "parent": ["req012"],
+      "selection_type": "selection_group",
+      "form_field_type": "multi-select",
+      "options": ["RS-232", "RS-485", "RS-422", "Not Required"],
+      "default_value": "RS-485",
+      "selected_value": "RS-485",
+      "description": "Serial ports for legacy protocols",
+      "technical_details": {
+        "type": "component",
+        "parameter": "serial_type",
+        "operator": "required",
+        "value": "RS-485"
+      },
+      "dependencies": []
+    },
+    "spc035": {
+      "id": "spc035",
+      "name": "budget_tier",
+      "category": "pricing_quantity",
+      "parent": ["req013"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["Entry Level", "Standard", "Premium"],
+      "default_value": "Entry Level",
+      "selected_value": "Entry Level",
+      "description": "Cost-optimized for distribution substations",
+      "technical_details": {
+        "type": "feature",
+        "parameter": "cost_tier",
+        "operator": "exact",
+        "value": "budget"
+      },
+      "dependencies": []
+    },
+    "spc036": {
+      "id": "spc036",
+      "name": "max_power_consumption",
+      "category": "power_requirements",
+      "parent": ["req013"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["<10W", "10-20W", "20-35W", "35-65W"],
+      "default_value": "10-20W",
+      "selected_value": "10-20W",
+      "description": "Low power for cost optimization",
+      "technical_details": {
+        "type": "component",
+        "parameter": "power_max",
+        "operator": "max",
+        "value": 20,
+        "unit": "W"
+      },
+      "dependencies": []
+    },
+    "spc037": {
+      "id": "spc037",
+      "name": "wireless_extension",
+      "category": "wireless",
+      "parent": ["req013"],
+      "selection_type": "selection_group",
+      "form_field_type": "multi-select",
+      "options": ["WiFi 6", "4G LTE", "5G", "Not Required"],
+      "default_value": "Not Required",
+      "selected_value": "Not Required",
+      "description": "Optional wireless for remote sites",
+      "technical_details": {
+        "type": "feature",
+        "parameter": "wireless_type",
+        "operator": "required",
+        "value": "optional"
+      },
+      "dependencies": []
+    },
+    "spc038": {
+      "id": "spc038",
+      "name": "medium_tier_processor",
+      "category": "processing",
+      "parent": ["req014"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["Intel Core i5", "Intel Core i7", "Intel Xeon E"],
+      "default_value": "Intel Core i5",
+      "selected_value": "Intel Core i5",
+      "description": "Mid-tier processor for transmission substations",
+      "technical_details": {
+        "type": "component",
+        "parameter": "processor_tier",
+        "operator": "min",
+        "value": 3,
+        "tier": 3
+      },
+      "dependencies": []
+    },
+    "spc039": {
+      "id": "spc039",
+      "name": "dual_redundancy",
+      "category": "logistics_support",
+      "parent": ["req014"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["Required", "Not Required"],
+      "default_value": "Required",
+      "selected_value": "Required",
+      "description": "Dual redundancy for medium substations",
+      "technical_details": {
+        "type": "feature",
+        "parameter": "redundancy_level",
+        "operator": "exact",
+        "value": "dual"
+      },
+      "dependencies": []
+    },
+    "spc040": {
+      "id": "spc040",
+      "name": "io_expandability",
+      "category": "core_io_requirements",
+      "parent": ["req014"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["100-500 points", "500-1000 points", "1000+ points"],
+      "default_value": "100-500 points",
+      "selected_value": "100-500 points",
+      "description": "I/O expandability for medium substations",
+      "technical_details": {
+        "type": "component",
+        "parameter": "io_capacity",
+        "operator": "range",
+        "value": {"min": 100, "max": 500},
+        "unit": "points"
+      },
+      "dependencies": []
+    },
+    "spc041": {
+      "id": "spc041",
+      "name": "enterprise_processor",
+      "category": "processing",
+      "parent": ["req015"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["Intel Core i7", "Intel Xeon E", "Intel Xeon D"],
+      "default_value": "Intel Xeon E",
+      "selected_value": "Intel Xeon E",
+      "description": "High-end processor for large substations",
+      "technical_details": {
+        "type": "component",
+        "parameter": "processor_tier",
+        "operator": "min",
+        "value": 4,
+        "tier": 4
+      },
+      "dependencies": []
+    },
+    "spc042": {
+      "id": "spc042",
+      "name": "n_plus_1_redundancy",
+      "category": "logistics_support",
+      "parent": ["req015"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["Required", "Not Required"],
+      "default_value": "Required",
+      "selected_value": "Required",
+      "description": "N+1 redundancy for critical infrastructure",
+      "technical_details": {
+        "type": "feature",
+        "parameter": "redundancy_level",
+        "operator": "exact",
+        "value": "n_plus_1"
+      },
+      "dependencies": []
+    },
+    "spc043": {
+      "id": "spc043",
+      "name": "large_io_capacity",
+      "category": "core_io_requirements",
+      "parent": ["req015"],
+      "selection_type": "single_choice",
+      "form_field_type": "dropdown",
+      "options": ["500-1000 points", "1000-2000 points", "2000+ points"],
+      "default_value": "1000-2000 points",
+      "selected_value": "1000-2000 points",
+      "description": "High I/O capacity for large substations",
+      "technical_details": {
+        "type": "component",
+        "parameter": "io_capacity",
+        "operator": "range",
+        "value": {"min": 500, "max": 2000},
+        "unit": "points"
+      },
+      "dependencies": []
+    }
+  }
+}

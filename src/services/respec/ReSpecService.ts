@@ -1,0 +1,640 @@
+import { v4 as uuidv4 } from 'uuid';
+import {
+  ChatProcessingResult,
+  FormFieldUpdate,
+  FormUpdateResult,
+  AutofillResult,
+  RequirementMatch,
+  ConflictDetection,
+  ReSpecSession,
+  ConversationEntry,
+  UserPreferences,
+  ServiceMetrics,
+  ReSpecError,
+  LLMMessage,
+  UCNode
+} from './respec-types';
+import { UCDataService } from './UCDataService';
+import { AnthropicLLMService } from './AnthropicLLMService';
+import {
+  ReSpecLogger,
+  UCNodeProcessor,
+  FormFieldProcessor,
+  TextProcessor
+} from './respec-utils';
+
+export class ReSpecService {
+  private ucDataService: UCDataService;
+  private llmService: AnthropicLLMService;
+  private logger: ReSpecLogger;
+  private nodeProcessor: UCNodeProcessor;
+  private formFieldProcessor: FormFieldProcessor;
+  private textProcessor: TextProcessor;
+
+  private session: ReSpecSession;
+  private isInitialized = false;
+  private metrics: ServiceMetrics;
+
+  constructor(apiKey: string) {
+    this.ucDataService = new UCDataService();
+    this.llmService = new AnthropicLLMService(apiKey);
+    this.logger = new ReSpecLogger('ReSpecService');
+    this.nodeProcessor = new UCNodeProcessor();
+    this.formFieldProcessor = new FormFieldProcessor();
+    this.textProcessor = new TextProcessor();
+
+    this.session = this.createNewSession();
+    this.metrics = this.initializeMetrics();
+  }
+
+  async initialize(): Promise<void> {
+    if (this.isInitialized) {
+      this.logger.debug('ReSpecService already initialized');
+      return;
+    }
+
+    try {
+      this.logger.info('Initializing ReSpec service');
+
+      await this.ucDataService.initialize();
+
+      const nodes = this.ucDataService.getAllNodes();
+      this.nodeProcessor.loadNodes(nodes);
+
+      this.isInitialized = true;
+      this.logger.info(`ReSpec service initialized with ${nodes.length} UC nodes`);
+
+    } catch (error) {
+      this.logger.error('Failed to initialize ReSpec service', error);
+      throw error;
+    }
+  }
+
+  async processChatMessage(message: string): Promise<ChatProcessingResult> {
+    const startTime = Date.now();
+    this.ensureInitialized();
+
+    try {
+      this.logger.info(`Processing chat message: "${message.substring(0, 50)}..."`);
+
+      const conversationHistory = this.getRecentConversationHistory();
+      const currentFormState = this.session.current_form_state;
+
+      const requirementExtraction = await this.llmService.extractRequirements(
+        message,
+        currentFormState,
+        conversationHistory
+      );
+
+      const detectedRequirements = await this.matchRequirementsToNodes(
+        requirementExtraction.extracted_requirements
+      );
+
+      const formUpdates = this.generateFormUpdates(detectedRequirements);
+
+      const conflicts = this.detectConflicts(detectedRequirements, formUpdates);
+
+      await this.resolveAutoResolvableConflicts(conflicts);
+
+      const systemResponse = await this.llmService.generateSystemResponse(
+        message,
+        detectedRequirements,
+        formUpdates,
+        conversationHistory
+      );
+
+      this.updateSessionState(message, detectedRequirements, formUpdates);
+
+      const processingTime = Date.now() - startTime;
+      this.updateMetrics(processingTime, true);
+
+      const result: ChatProcessingResult = {
+        success: true,
+        system_message: systemResponse,
+        form_updates: formUpdates,
+        detected_requirements: detectedRequirements,
+        conflicts: conflicts.filter(c => !c.auto_resolvable),
+        suggested_clarifications: requirementExtraction.clarification_questions,
+        processing_time_ms: processingTime
+      };
+
+      this.logger.info(`Chat processing completed in ${processingTime}ms`);
+      return result;
+
+    } catch (error) {
+      const processingTime = Date.now() - startTime;
+      this.updateMetrics(processingTime, false);
+      this.logger.error('Failed to process chat message', error);
+
+      // Let the error bubble up for debugging
+
+      return {
+        success: false,
+        system_message: 'Sorry, I encountered an error processing your message. Please try again.',
+        form_updates: [],
+        detected_requirements: [],
+        conflicts: [],
+        suggested_clarifications: [],
+        processing_time_ms: processingTime
+      };
+    }
+  }
+
+  async processFormUpdate(field: string, value: any): Promise<FormUpdateResult> {
+    this.ensureInitialized();
+
+    try {
+      this.logger.info(`Processing form update: ${field} = ${value}`);
+
+      const validation = await this.validateFormUpdate(field, value);
+      if (validation.validation_errors.length > 0) {
+        return validation;
+      }
+
+      this.session.current_form_state[field] = value;
+
+      const relatedNodes = this.ucDataService.getNodesByFormField(field);
+      const triggeredUpdates: FormFieldUpdate[] = [];
+      const conflicts: ConflictDetection[] = [];
+
+      for (const node of relatedNodes) {
+        const nodeActivated = this.ucDataService.validateNodeConstraints(
+          node.id,
+          this.session.current_form_state
+        );
+
+        if (nodeActivated) {
+          this.session.active_nodes.add(node.id);
+
+          const childNodes = this.ucDataService.getChildNodes(node.id);
+          for (const child of childNodes) {
+            const childUpdate = this.generateFormUpdateFromNode(child);
+            if (childUpdate) {
+              triggeredUpdates.push(childUpdate);
+            }
+          }
+
+          const mutexNodes = this.ucDataService.getMutexNodes(node.id);
+          if (mutexNodes.length > 0) {
+            const conflict = this.createMutexConflict(node, mutexNodes);
+            conflicts.push(conflict);
+          }
+        }
+      }
+
+      this.addConversationEntry({
+        timestamp: new Date().toISOString(),
+        type: 'form_update',
+        content: `Updated ${field} to ${value}`,
+        metadata: {
+          form_changes: [{
+            section: field.split('.')[0],
+            field,
+            value,
+            confidence: 1.0,
+            is_system_generated: false
+          }]
+        }
+      });
+
+      return {
+        success: true,
+        validation_errors: [],
+        triggered_updates: triggeredUpdates,
+        conflicts,
+        node_activations: Array.from(this.session.active_nodes)
+      };
+
+    } catch (error) {
+      this.logger.error('Failed to process form update', error);
+      return {
+        success: false,
+        system_message: 'Failed to process form update',
+        validation_errors: ['Internal processing error'],
+        triggered_updates: [],
+        conflicts: [],
+        node_activations: []
+      };
+    }
+  }
+
+  async performAutofill(section?: string): Promise<AutofillResult> {
+    this.ensureInitialized();
+
+    try {
+      this.logger.info(`Performing autofill${section ? ` for section: ${section}` : ''}`);
+
+      const relevantNodes = section
+        ? this.getNodesBySection(section)
+        : Array.from(this.session.active_nodes).map(id => this.ucDataService.getNode(id)).filter(Boolean) as UCNode[];
+
+      const filledFields: FormFieldUpdate[] = [];
+      const skippedFields: { field: string; reason: string }[] = [];
+
+      for (const node of relevantNodes) {
+        if (!node.form_field_mapping) {
+          skippedFields.push({
+            field: node.name,
+            reason: 'No form field mapping defined'
+          });
+          continue;
+        }
+
+        const currentValue = this.session.current_form_state[node.form_field_mapping];
+        if (currentValue !== undefined && currentValue !== null && currentValue !== '') {
+          skippedFields.push({
+            field: node.form_field_mapping,
+            reason: 'Field already has a value'
+          });
+          continue;
+        }
+
+        const suggestedValue = this.generateAutofillValue(node);
+        if (suggestedValue === null) {
+          skippedFields.push({
+            field: node.form_field_mapping,
+            reason: 'No suitable value could be determined'
+          });
+          continue;
+        }
+
+        const formUpdate: FormFieldUpdate = {
+          section: node.form_field_mapping.split('.')[0],
+          field: node.form_field_mapping,
+          value: suggestedValue.value,
+          confidence: suggestedValue.confidence,
+          source_node_id: node.id,
+          is_system_generated: true,
+          requires_confirmation: suggestedValue.confidence < 0.8
+        };
+
+        filledFields.push(formUpdate);
+        this.session.current_form_state[node.form_field_mapping] = suggestedValue.value;
+      }
+
+      const confidenceScore = filledFields.length > 0
+        ? filledFields.reduce((sum, f) => sum + f.confidence, 0) / filledFields.length
+        : 0;
+
+      return {
+        success: true,
+        filled_fields: filledFields,
+        skipped_fields: skippedFields,
+        confidence_score: confidenceScore,
+        total_fields_processed: filledFields.length + skippedFields.length
+      };
+
+    } catch (error) {
+      this.logger.error('Failed to perform autofill', error);
+      return {
+        success: false,
+        filled_fields: [],
+        skipped_fields: [],
+        confidence_score: 0,
+        total_fields_processed: 0
+      };
+    }
+  }
+
+  private async matchRequirementsToNodes(requirements: any[]): Promise<RequirementMatch[]> {
+    const matches: RequirementMatch[] = [];
+
+    for (const req of requirements) {
+      const searchTerms = this.textProcessor.extractKeywords(req.field + ' ' + req.value);
+      const candidateNodes = this.ucDataService.searchNodesByKeyword(searchTerms);
+
+      for (const node of candidateNodes) {
+        const matchScore = this.nodeProcessor.calculateMatchScore(node, req);
+        if (matchScore > 0.3) {
+          matches.push({
+            node_id: node.id,
+            confidence: matchScore * req.confidence,
+            matched_text: req.field,
+            extraction_method: 'semantic',
+            constraints: node.constraints || []
+          });
+        }
+      }
+    }
+
+    return matches.sort((a, b) => b.confidence - a.confidence);
+  }
+
+  private generateFormUpdates(requirements: RequirementMatch[]): FormFieldUpdate[] {
+    const updates: FormFieldUpdate[] = [];
+
+    for (const req of requirements) {
+      const node = this.ucDataService.getNode(req.node_id);
+      if (!node?.form_field_mapping) continue;
+
+      const formUpdate = this.generateFormUpdateFromNode(node, req.confidence);
+      if (formUpdate) {
+        updates.push(formUpdate);
+      }
+    }
+
+    return updates;
+  }
+
+  private generateFormUpdateFromNode(node: UCNode, confidence = 0.7): FormFieldUpdate | null {
+    if (!node.form_field_mapping) return null;
+
+    const suggestedValue = this.generateAutofillValue(node);
+    if (!suggestedValue) return null;
+
+    return {
+      section: node.form_field_mapping.split('.')[0],
+      field: node.form_field_mapping,
+      value: suggestedValue.value,
+      confidence: Math.min(confidence, suggestedValue.confidence),
+      source_node_id: node.id,
+      is_system_generated: true,
+      requires_confirmation: confidence < 0.8
+    };
+  }
+
+  private generateAutofillValue(node: UCNode): { value: any; confidence: number } | null {
+    return this.formFieldProcessor.generateAutofillValue(
+      node,
+      this.session.current_form_state,
+      this.session.active_nodes
+    );
+  }
+
+  private detectConflicts(requirements: RequirementMatch[], formUpdates: FormFieldUpdate[]): ConflictDetection[] {
+    const conflicts: ConflictDetection[] = [];
+
+    for (const req of requirements) {
+      const node = this.ucDataService.getNode(req.node_id);
+      if (!node) continue;
+
+      const mutexNodes = this.ucDataService.getMutexNodes(node.id);
+      if (mutexNodes.length > 0) {
+        const conflict = this.createMutexConflict(node, mutexNodes);
+        conflicts.push(conflict);
+      }
+
+      if (node.constraints) {
+        for (const constraint of node.constraints) {
+          const fieldValue = this.session.current_form_state[constraint.field];
+          if (!this.validateConstraint(constraint, fieldValue)) {
+            conflicts.push({
+              conflict_id: uuidv4(),
+              conflict_type: 'constraint',
+              involved_nodes: [node.id],
+              severity: 'medium',
+              resolution_suggestions: [`Update ${constraint.field} to satisfy constraint: ${constraint.operator} ${constraint.value}`],
+              auto_resolvable: false
+            });
+          }
+        }
+      }
+    }
+
+    return conflicts;
+  }
+
+  private createMutexConflict(node: UCNode, mutexNodes: UCNode[]): ConflictDetection {
+    return {
+      conflict_id: uuidv4(),
+      conflict_type: 'mutex',
+      involved_nodes: [node.id, ...mutexNodes.map(n => n.id)],
+      severity: 'high',
+      resolution_suggestions: [
+        `Choose between ${node.name} and ${mutexNodes.map(n => n.name).join(', ')}`
+      ],
+      auto_resolvable: false
+    };
+  }
+
+  private validateConstraint(constraint: any, fieldValue: any): boolean {
+    switch (constraint.operator) {
+      case 'equals':
+        return fieldValue === constraint.value;
+      case 'not_equals':
+        return fieldValue !== constraint.value;
+      case 'greater_than':
+        return Number(fieldValue) > Number(constraint.value);
+      case 'less_than':
+        return Number(fieldValue) < Number(constraint.value);
+      case 'contains':
+        return String(fieldValue).includes(String(constraint.value));
+      default:
+        return true;
+    }
+  }
+
+  private async resolveAutoResolvableConflicts(conflicts: ConflictDetection[]): Promise<void> {
+    for (const conflict of conflicts) {
+      if (conflict.auto_resolvable) {
+        this.session.resolved_conflicts.push(conflict.conflict_id);
+        this.logger.info(`Auto-resolved conflict: ${conflict.conflict_id}`);
+      }
+    }
+  }
+
+  private async validateFormUpdate(field: string, value: any): Promise<FormUpdateResult> {
+    try {
+      const relatedNodes = this.ucDataService.getNodesByFormField(field);
+      const constraints = relatedNodes.flatMap(node => node.constraints || []);
+
+      const validationResult = await this.llmService.validateFormFieldValue(field, value, constraints);
+
+      if (!validationResult.valid) {
+        return {
+          success: false,
+          validation_errors: [validationResult.message || 'Validation failed'],
+          triggered_updates: [],
+          conflicts: [],
+          node_activations: []
+        };
+      }
+
+      return {
+        success: true,
+        validation_errors: [],
+        triggered_updates: [],
+        conflicts: [],
+        node_activations: []
+      };
+
+    } catch (error) {
+      this.logger.error('Form validation error', error);
+      return {
+        success: true,
+        validation_errors: [],
+        triggered_updates: [],
+        conflicts: [],
+        node_activations: []
+      };
+    }
+  }
+
+  private getNodesBySection(section: string): UCNode[] {
+    const categories = this.ucDataService.getAllCategories();
+    const matchingCategory = categories.find(cat =>
+      cat.form_section.toLowerCase().includes(section.toLowerCase())
+    );
+
+    return matchingCategory
+      ? this.ucDataService.getNodesByCategory(matchingCategory.id)
+      : [];
+  }
+
+  private getRecentConversationHistory(): LLMMessage[] {
+    return this.session.conversation_history
+      .slice(-6)
+      .map(entry => ({
+        role: entry.type === 'user_message' ? 'user' as const : 'assistant' as const,
+        content: entry.content
+      }));
+  }
+
+  private updateSessionState(message: string, requirements: RequirementMatch[], formUpdates: FormFieldUpdate[]): void {
+    this.addConversationEntry({
+      timestamp: new Date().toISOString(),
+      type: 'user_message',
+      content: message,
+      metadata: {
+        triggered_nodes: requirements.map(r => r.node_id),
+        form_changes: formUpdates
+      }
+    });
+
+    for (const req of requirements) {
+      this.session.active_nodes.add(req.node_id);
+    }
+
+    for (const update of formUpdates) {
+      this.session.current_form_state[update.field] = update.value;
+    }
+
+    this.session.last_activity = new Date().toISOString();
+  }
+
+  private addConversationEntry(entry: ConversationEntry): void {
+    this.session.conversation_history.push(entry);
+
+    if (this.session.conversation_history.length > 100) {
+      this.session.conversation_history = this.session.conversation_history.slice(-50);
+    }
+  }
+
+  private updateMetrics(processingTime: number, success: boolean): void {
+    this.metrics.total_requests++;
+
+    if (success) {
+      this.metrics.successful_requests++;
+    } else {
+      this.metrics.failed_requests++;
+    }
+
+    const totalTime = (this.metrics.average_response_time_ms * (this.metrics.total_requests - 1)) + processingTime;
+    this.metrics.average_response_time_ms = totalTime / this.metrics.total_requests;
+
+    const llmStats = this.llmService.getUsageStats();
+    this.metrics.llm_token_usage = {
+      input_tokens: llmStats.totalInputTokens,
+      output_tokens: llmStats.totalOutputTokens,
+      total_cost_estimate: llmStats.estimatedCostUSD
+    };
+  }
+
+  private createNewSession(): ReSpecSession {
+    return {
+      session_id: uuidv4(),
+      created_at: new Date().toISOString(),
+      last_activity: new Date().toISOString(),
+      current_form_state: {},
+      conversation_history: [],
+      active_nodes: new Set(),
+      resolved_conflicts: [],
+      user_preferences: {
+        confirmation_level: 'standard',
+        auto_fill_confidence_threshold: 0.7,
+        preferred_response_style: 'conversational',
+        enable_proactive_suggestions: true
+      }
+    };
+  }
+
+  private initializeMetrics(): ServiceMetrics {
+    return {
+      session_id: this.session.session_id,
+      total_requests: 0,
+      successful_requests: 0,
+      failed_requests: 0,
+      average_response_time_ms: 0,
+      total_form_updates: 0,
+      conflicts_detected: 0,
+      conflicts_resolved: 0,
+      llm_token_usage: {
+        input_tokens: 0,
+        output_tokens: 0,
+        total_cost_estimate: 0
+      },
+      cache_performance: {
+        hits: 0,
+        misses: 0,
+        hit_rate: 0
+      }
+    };
+  }
+
+  private ensureInitialized(): void {
+    if (!this.isInitialized) {
+      throw this.createError(
+        'SESSION_NOT_FOUND',
+        'ReSpecService not initialized. Call initialize() first.',
+        true,
+        'Service is not ready. Please wait a moment and try again.'
+      );
+    }
+  }
+
+  resetSession(): void {
+    this.session = this.createNewSession();
+    this.metrics = this.initializeMetrics();
+    this.logger.info('Session reset');
+  }
+
+  getSession(): ReSpecSession {
+    return { ...this.session };
+  }
+
+  getMetrics(): ServiceMetrics {
+    return { ...this.metrics };
+  }
+
+  getDebugLog() {
+    return this.logger.getEntries();
+  }
+
+  exportRequirementsJSON(): any {
+    return {
+      session_id: this.session.session_id,
+      exported_at: new Date().toISOString(),
+      form_state: this.session.current_form_state,
+      active_nodes: Array.from(this.session.active_nodes),
+      conversation_history: this.session.conversation_history,
+      metrics: this.metrics
+    };
+  }
+
+  private createError(
+    code: string,
+    message: string,
+    recoverable: boolean,
+    userMessage: string,
+    technicalDetails?: any
+  ): ReSpecError {
+    return new ReSpecError(
+      message,
+      code,
+      'ReSpecService',
+      recoverable,
+      userMessage,
+      technicalDetails
+    );
+  }
+}

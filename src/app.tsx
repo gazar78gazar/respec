@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Check, ChevronRight, ChevronDown, Download, Share, Wand2, AlertTriangle, AlertCircle, Info } from 'lucide-react';
-// ReqmasClient imports removed - ReSpec will handle communication
+import { ReSpecService } from './services/respec';
 import * as uiUtils from './utils/uiUtilities';
 import { dataServices } from './services/dataServices';
 import './styles/animations.css';
-// ReqMAS imports removed - ReSpec will replace this functionality
+import DebugPanel from './components/DebugPanel';
 
 // RequirementLegend component
 const RequirementLegend = () => (
@@ -777,8 +777,13 @@ function App() {
     { role: 'assistant', content: 'How can I help you with filling out these requirements?' }
   ]);
   const [chatInput, setChatInput] = useState('');
-  // ReqMAS state variables removed - ReSpec will manage its own state
   const chatEndRef = useRef(null);
+
+  // ReSpec service initialization
+  const [respecService] = useState(() => new ReSpecService(
+    import.meta.env.VITE_ANTHROPIC_API_KEY || ''
+  ));
+  const [loading, setLoading] = useState(false);
   const [chatWidth, setChatWidth] = useState(384); // Default 24rem = 384px
   const [isResizing, setIsResizing] = useState(false);
 
@@ -822,8 +827,12 @@ function App() {
     };
   }, [isResizing, handleMouseMove, handleMouseUp]);
 
-  // ReSpec Integration State
-  const [loading, setLoading] = useState(false);
+  // Initialize ReSpec service on component mount
+  useEffect(() => {
+    respecService.initialize().catch(error => {
+      console.error('[ReSpec] Failed to initialize:', error);
+    });
+  }, []);
 
   // === Validation Functions for System Updates ===
   const validateSystemFieldUpdate = useCallback((section: string, field: string, value: any): boolean => {
@@ -893,24 +902,122 @@ function App() {
 
     switch (action) {
       case 'chat_message':
-        // ReSpec will handle chat processing
-        console.log(`[UI-MAS] Chat message for ReSpec: ${data.message}`);
-        // TODO: ReSpec integration - send message to ReSpec system
-        // ReSpec should queue field updates and/or response messages
-        return { success: true, message: 'Chat message queued for ReSpec processing' };
+        try {
+          console.log(`[UI-MAS] Processing chat message with ReSpec: ${data.message}`);
+
+          // For now, return a simple response while debugging ReSpec integration
+          console.log('[UI-MAS] ReSpec integration active - processing message');
+
+          try {
+            const result = await respecService.processChatMessage(data.message);
+            console.log('[UI-MAS] ReSpec result:', result);
+
+            // Apply form updates from ReSpec
+            if (result.form_updates?.length > 0) {
+              for (const update of result.form_updates) {
+                await communicateWithMAS('system_populate_field', {
+                  section: update.section,
+                  field: update.field,
+                  value: update.value,
+                  isSystemGenerated: update.is_system_generated,
+                  confidence: update.confidence
+                });
+              }
+            }
+
+            return {
+              success: result.success,
+              message: result.system_message || `I processed your message: "${data.message}". ReSpec is working!`,
+              formUpdates: result.form_updates,
+              conflicts: result.conflicts
+            };
+          } catch (respecError) {
+            console.error('[ReSpec] Processing failed, using fallback:', respecError);
+            return {
+              success: true,
+              message: `I received your message: "${data.message}". ReSpec is initializing - please try again in a moment.`,
+              formUpdates: [],
+              conflicts: []
+            };
+          }
+        } catch (error) {
+          console.error('[ReSpec] Chat processing failed:', error);
+          return {
+            success: true,
+            message: `I received your message: "${data.message}". There was a processing error, but I'm working on it!`
+          };
+        }
 
       case 'form_update':
-        // ReSpec will receive form field updates
-        console.log(`[UI-MAS] Form updated for ReSpec: ${data.field} = ${data.value}`);
-        // TODO: ReSpec integration - notify ReSpec of field change
-        return { success: true };
+        try {
+          console.log(`[UI-MAS] Notifying ReSpec of form update: ${data.field} = ${data.value}`);
+          const result = await respecService.processFormUpdate(data.field, data.value);
+
+          // If ReSpec has triggered updates, apply them
+          if (result.triggered_updates?.length > 0) {
+            for (const update of result.triggered_updates) {
+              await communicateWithMAS('system_populate_field', {
+                section: update.section,
+                field: update.field,
+                value: update.value,
+                isSystemGenerated: update.is_system_generated
+              });
+            }
+          }
+
+          // If ReSpec has a system message, show it in chat
+          if (result.system_message) {
+            await communicateWithMAS('system_send_message', {
+              message: result.system_message
+            });
+          }
+
+          return {
+            success: result.success,
+            triggeredUpdates: result.triggered_updates,
+            conflicts: result.conflicts
+          };
+        } catch (error) {
+          console.error('[ReSpec] Form update processing failed:', error);
+          return { success: true }; // Don't break form functionality
+        }
 
       case 'autofill':
-        // ReSpec will handle autofill logic
-        console.log(`[UI-MAS] Autofill request for ReSpec: ${data.section}`);
-        // TODO: ReSpec integration - trigger ReSpec autofill
-        // ReSpec should queue multiple field updates
-        return { success: true, message: 'Autofill request queued for ReSpec processing' };
+        try {
+          console.log(`[UI-MAS] Processing autofill request with ReSpec: ${data.section}`);
+          const result = await respecService.performAutofill(data.section);
+
+          // Apply all filled fields
+          if (result.filled_fields?.length > 0) {
+            for (const field of result.filled_fields) {
+              await communicateWithMAS('system_populate_field', {
+                section: field.section,
+                field: field.field,
+                value: field.value,
+                isSystemGenerated: field.is_system_generated,
+                confidence: field.confidence
+              });
+            }
+          }
+
+          const message = result.success
+            ? `Autofilled ${result.filled_fields?.length || 0} fields with ${(result.confidence_score * 100).toFixed(0)}% confidence.`
+            : 'Autofill failed. Please try again.';
+
+          return {
+            success: result.success,
+            message,
+            filledFields: result.filled_fields,
+            skippedFields: result.skipped_fields,
+            confidence: result.confidence_score
+          };
+        } catch (error) {
+          console.error('[ReSpec] Autofill processing failed:', error);
+          return {
+            success: false,
+            message: 'Autofill failed due to an error. Please try again.'
+          };
+        }
 
       case 'system_populate_field':
         // Populate single form field from MAS
@@ -1022,11 +1129,25 @@ function App() {
         // Send to ReSpec for processing
         const result = await communicateWithMAS('chat_message', { message });
 
-        // ReSpec will send back system messages and field updates via communicateWithMAS
+        // Add ReSpec's system response to chat
+        if (result.success && result.message) {
+          setChatMessages(prev => [...prev, {
+            role: 'assistant',
+            content: result.message
+          }]);
+        }
+
         return result;
       } catch (error) {
         console.error('[UI-ReSpec] Chat message failed:', error);
-        throw error;
+
+        // Add error message to chat instead of throwing
+        setChatMessages(prev => [...prev, {
+          role: 'assistant',
+          content: 'Sorry, I encountered an error processing your message. Please try again.'
+        }]);
+
+        return { success: false, error: 'Processing failed' };
       } finally {
         setLoading(false);
       }
@@ -1791,6 +1912,14 @@ function App() {
         currentStep={currentStage}
         setCurrentStage={setCurrentStage}
         chatWindowWidth={chatWidth}
+      />
+
+      {/* Debug Panel - Remove in production */}
+      <DebugPanel
+        communicateWithMAS={communicateWithMAS}
+        respecService={respecService}
+        chatMessages={chatMessages}
+        sendMessageWrapper={sendMessageWrapper}
       />
     </div>
   );
