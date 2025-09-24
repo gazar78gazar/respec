@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Check, ChevronRight, ChevronDown, Download, Share, Wand2, AlertCircle, Info } from 'lucide-react';
+import { Check, ChevronRight, ChevronDown, Download, Share, Wand2, AlertTriangle, AlertCircle, Info } from 'lucide-react';
 import { reqmasClient } from './services/reqmasClient';
 import type { ClarificationRequest } from './services/reqmasClient';
 import * as uiUtils from './utils/uiUtilities';
@@ -7,6 +7,7 @@ import { dataServices } from './services/dataServices';
 import './styles/animations.css';
 import { useReqMAS } from './hooks/useReqMAS';
 import { RequirementArtifact } from './services/reqmas/types';
+import { reqMASService } from './services/reqmas/ReqMASService';
 
 // RequirementLegend component
 const RequirementLegend = () => (
@@ -14,13 +15,13 @@ const RequirementLegend = () => (
     <div className="flex items-center space-x-6 text-sm text-gray-600">
       <div className="flex items-center space-x-2">
         <div className="w-4 h-4 rounded-full bg-blue-200 flex items-center justify-center">
-          <img src="/assets/icons/requirement-icon.png" alt="Requirement" className="w-2.5 h-2.5" />
+          <Check size={10} className="text-blue-700" />
         </div>
         <span>Requirement</span>
       </div>
       <div className="flex items-center space-x-2">
         <div className="w-4 h-4 rounded-full bg-amber-200 flex items-center justify-center">
-          <img src="/assets/icons/assumption-icon.png" alt="Assumption" className="w-2.5 h-2.5" />
+          <AlertTriangle size={10} className="text-amber-700" />
         </div>
         <span>Assumption</span>
       </div>
@@ -825,6 +826,51 @@ function App() {
     };
   }, [isResizing, handleMouseMove, handleMouseUp]);
 
+  // === UI-MAS Communication Hub ===
+  const communicateWithMAS = async (action: string, data: any) => {
+    console.log(`[UI-MAS] ${action}:`, data); // Simple tracing
+
+    switch (action) {
+      case 'chat_message':
+        const chatResult = await sendMessage(data.message);
+        // Sync form with MAS state
+        const masState = reqMASService.getPublicState();
+        if (masState.requirements) {
+          setRequirements(prev => ({ ...prev, ...masState.requirements }));
+        }
+        return chatResult;
+
+      case 'form_update':
+        // Update MAS with form changes
+        reqMASService.updateFormField?.(data.field, data.value);
+        console.log(`[UI-MAS] Form updated: ${data.field} = ${data.value}`);
+        return;
+
+      case 'autofill':
+        const autofillResult = reqMASService.triggerAutofill();
+        // Update form with autofilled data
+        setRequirements(prev => ({ ...prev, ...autofillResult }));
+        console.log('[UI-MAS] Autofill completed:', Object.keys(autofillResult));
+        return autofillResult;
+
+      default:
+        console.warn(`[UI-MAS] Unknown action: ${action}`);
+    }
+  };
+
+  // Modified sendMessage function wrapper
+  const sendMessageWrapper = async (message: string) => {
+    if (!loading) {
+      try {
+        // Use MAS communication
+        return await communicateWithMAS('chat_message', { message });
+      } catch (error) {
+        console.error('[UI-MAS] Chat message failed:', error);
+        throw error;
+      }
+    }
+  };
+
   // reqMAS Integration
   const {
     connected,
@@ -909,6 +955,27 @@ function App() {
       setRequirements(prev => ({ ...prev, ...mappedRequirements }));
     }
   }, [reqMASRequirements]);
+
+  // Simple bi-directional state sync
+  useEffect(() => {
+    const syncInterval = setInterval(() => {
+      const masState = reqMASService.getPublicState();
+      if (masState.requirements && Object.keys(masState.requirements).length > 0) {
+        setRequirements(prev => {
+          const merged = { ...prev };
+          // Only sync if there are actual changes
+          Object.keys(masState.requirements).forEach(section => {
+            if (masState.requirements[section] && Object.keys(masState.requirements[section]).length > 0) {
+              merged[section] = { ...merged[section], ...masState.requirements[section] };
+            }
+          });
+          return merged;
+        });
+      }
+    }, 1000); // Check every second - simple but effective
+
+    return () => clearInterval(syncInterval);
+  }, []);
 
   const toggleGroup = (section, group) => {
     setExpandedGroups(prev => ({
@@ -1030,6 +1097,9 @@ function App() {
         }
       }));
     }
+
+    // Notify MAS of form changes
+    communicateWithMAS('form_update', { field: `${section}.${field}`, value, isAssumption });
   }, []);
   
   // Run cross-field validations when requirements change
@@ -1224,6 +1294,9 @@ function App() {
   };
 
   const autofillSection = (tabName) => {
+    // Use MAS for autofill
+    communicateWithMAS('autofill', { section: tabName });
+
     const sections = SECTION_MAPPING[tabName];
     const updatedRequirements = { ...requirements };
     
@@ -1646,7 +1719,7 @@ function App() {
 
       {/* Chat Panel */}
       <ChatWindow
-        onSendMessage={sendMessage}
+        onSendMessage={sendMessageWrapper}
         messages={reqMASMessages}
         pendingClarification={pendingClarification}
         loading={loading}
@@ -1689,13 +1762,13 @@ function RequirementsForm({ activeTab, requirements, updateField, autofillSectio
           <div className="flex items-center space-x-6 text-sm text-gray-600">
             <div className="flex items-center space-x-2">
               <div className="w-4 h-4 rounded-full bg-blue-200 flex items-center justify-center">
-                <img src="/assets/icons/requirement-icon.png" alt="Requirement" className="w-2.5 h-2.5" />
+                <Check size={10} className="text-blue-700" />
               </div>
               <span>Requirement</span>
             </div>
             <div className="flex items-center space-x-2">
               <div className="w-4 h-4 rounded-full bg-amber-200 flex items-center justify-center">
-                <img src="/assets/icons/assumption-icon.png" alt="Assumption" className="w-2.5 h-2.5" />
+                <AlertTriangle size={10} className="text-amber-700" />
               </div>
               <span>Assumption</span>
             </div>
@@ -1985,11 +2058,11 @@ function FormField({ fieldKey, fieldDef, data, section, onChange, validation }) 
                   : 'left-0.5 bg-blue-500 text-white'
               }`}
             >
-              <img
-                src={localAssumption ? "/assets/icons/assumption-icon.png" : "/assets/icons/requirement-icon.png"}
-                alt={localAssumption ? "Assumption" : "Requirement"}
-                className="w-2.5 h-2.5"
-              />
+              {localAssumption ? (
+                <AlertTriangle size={10} />
+              ) : (
+                <Check size={10} />
+              )}
             </div>
           </div>
           <span className="text-sm text-gray-500 ml-2">
