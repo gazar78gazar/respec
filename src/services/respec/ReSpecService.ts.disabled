@@ -14,8 +14,8 @@ import {
   LLMMessage,
   UCNode
 } from './respec-types';
-import { UCDataService } from './UCDataService';
-import { AnthropicLLMService } from './AnthropicLLMService';
+// import { UCDataService } from './UCDataService'; // COMMENTED OUT - missing dependency
+// import { AnthropicLLMService } from './AnthropicLLMService'; // COMMENTED OUT - missing dependency
 import {
   ReSpecLogger,
   UCNodeProcessor,
@@ -24,8 +24,8 @@ import {
 } from './respec-utils';
 
 export class ReSpecService {
-  private ucDataService: UCDataService;
-  private llmService: AnthropicLLMService;
+  // private ucDataService: UCDataService; // COMMENTED OUT - missing dependency
+  // private llmService: AnthropicLLMService; // COMMENTED OUT - missing dependency
   private logger: ReSpecLogger;
   private nodeProcessor: UCNodeProcessor;
   private formFieldProcessor: FormFieldProcessor;
@@ -36,8 +36,8 @@ export class ReSpecService {
   private metrics: ServiceMetrics;
 
   constructor(apiKey: string) {
-    this.ucDataService = new UCDataService();
-    this.llmService = new AnthropicLLMService(apiKey);
+    // this.ucDataService = new UCDataService(); // COMMENTED OUT - missing dependency
+    // this.llmService = new AnthropicLLMService(apiKey); // COMMENTED OUT - missing dependency
     this.logger = new ReSpecLogger('ReSpecService');
     this.nodeProcessor = new UCNodeProcessor();
     this.formFieldProcessor = new FormFieldProcessor();

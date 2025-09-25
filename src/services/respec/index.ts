@@ -1,9 +1,9 @@
 // ReSpec Service Exports
 // Main entry point for the ReSpec requirement extraction system
 
-export { ReSpecService } from './ReSpecService';
-export { UCDataService } from './UCDataService';
-export { AnthropicLLMService } from './AnthropicLLMService';
+// export { ReSpecService } from './ReSpecService'; // DISABLED - missing dependencies
+// export { UCDataService } from './UCDataService'; // COMMENTED OUT - missing dependency
+// export { AnthropicLLMService } from './AnthropicLLMService'; // COMMENTED OUT - missing dependency
 
 export {
   ReSpecLogger,
@@ -15,4 +15,4 @@ export {
 export * from './respec-types';
 
 // Default export for convenient importing
-export { ReSpecService as default } from './ReSpecService';
+// export { ReSpecService as default } from './ReSpecService'; // DISABLED - missing dependencies

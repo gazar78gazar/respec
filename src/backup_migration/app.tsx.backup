@@ -1,13 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Check, ChevronRight, ChevronDown, Download, Share, Wand2, AlertTriangle, AlertCircle, Info } from 'lucide-react';
-// import { ReSpecService } from './services/respec'; // COMMENTED OUT - using SimplifiedRespecService
-import { SimplifiedRespecService } from './services/respec/SimplifiedRespecService';
-import { v4 as uuidv4 } from 'uuid';
+import { ReSpecService } from './services/respec';
 import * as uiUtils from './utils/uiUtilities';
 import { dataServices } from './services/dataServices';
 import './styles/animations.css';
-// import DebugPanel from './components/DebugPanel'; // Temporarily disabled for testing
-// import { ChatDebugger } from './components/ChatDebugger'; // Removed after fixing chat display issue
+import DebugPanel from './components/DebugPanel';
 
 // RequirementLegend component
 const RequirementLegend = () => (
@@ -768,7 +765,6 @@ const getNextMustField = (requirements) => {
   }
   return null;
 };
-
 function App() {
   const [currentStage, setCurrentStage] = useState(1);
   const [activeTab, setActiveTab] = useState('System');
@@ -784,16 +780,9 @@ function App() {
   const chatEndRef = useRef(null);
 
   // ReSpec service initialization
-  // const [respecService] = useState(() => new ReSpecService(
-  //   import.meta.env.VITE_ANTHROPIC_API_KEY || ''
-  // )); // COMMENTED OUT - using SimplifiedRespecService
-  // NEW: Simplified ReSpec service for browser-only operation
-  const [simplifiedRespecService] = useState(() => new SimplifiedRespecService());
-  const [respecSession, setRespecSession] = useState<string>('');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [processingMessage, setProcessingMessage] = useState('');
-  const [clarificationRequest, setClarificationRequest] = useState<string>('');
-
+  const [respecService] = useState(() => new ReSpecService(
+    import.meta.env.VITE_ANTHROPIC_API_KEY || ''
+  ));
   const [loading, setLoading] = useState(false);
   const [chatWidth, setChatWidth] = useState(384); // Default 24rem = 384px
   const [isResizing, setIsResizing] = useState(false);
@@ -839,12 +828,11 @@ function App() {
   }, [isResizing, handleMouseMove, handleMouseUp]);
 
   // Initialize ReSpec service on component mount
-  // COMMENTED OUT - old ReSpec service initialization
-  // useEffect(() => {
-  //   respecService.initialize().catch(error => {
-  //     console.error('[ReSpec] Failed to initialize:', error);
-  //   });
-  // }, []);
+  useEffect(() => {
+    respecService.initialize().catch(error => {
+      console.error('[ReSpec] Failed to initialize:', error);
+    });
+  }, []);
 
   // === Validation Functions for System Updates ===
   const validateSystemFieldUpdate = useCallback((section: string, field: string, value: any): boolean => {
@@ -908,8 +896,11 @@ function App() {
     }
   }, [chatMessages]);
 
-  // === OLD communicateWithMAS REMOVED - Now using unified communicateWithMAS ===
-  /*  ORPHANED CODE BLOCK COMMENTED OUT
+  // === UI-MAS Communication Hub ===
+  const communicateWithMAS = async (action: string, data: any) => {
+    console.log(`[UI-MAS] ${action}:`, data); // Simple tracing
+
+    switch (action) {
       case 'chat_message':
         try {
           console.log(`[UI-MAS] Processing chat message with ReSpec: ${data.message}`);
@@ -918,17 +909,17 @@ function App() {
           console.log('[UI-MAS] ReSpec integration active - processing message');
 
           try {
-            const result = await simplifiedRespecService.processChatMessage(data.message);
+            const result = await respecService.processChatMessage(data.message);
             console.log('[UI-MAS] ReSpec result:', result);
 
             // Apply form updates from ReSpec
-            if (result.formUpdates?.length > 0) {
-              for (const update of result.formUpdates) {
+            if (result.form_updates?.length > 0) {
+              for (const update of result.form_updates) {
                 await communicateWithMAS('system_populate_field', {
                   section: update.section,
                   field: update.field,
                   value: update.value,
-                  isSystemGenerated: update.isAssumption,
+                  isSystemGenerated: update.is_system_generated,
                   confidence: update.confidence
                 });
               }
@@ -936,8 +927,8 @@ function App() {
 
             return {
               success: result.success,
-              message: result.systemMessage || `I processed your message: "${data.message}". ReSpec is working!`,
-              formUpdates: result.formUpdates,
+              message: result.system_message || `I processed your message: "${data.message}". ReSpec is working!`,
+              formUpdates: result.form_updates,
               conflicts: result.conflicts
             };
           } catch (respecError) {
@@ -960,8 +951,7 @@ function App() {
       case 'form_update':
         try {
           console.log(`[UI-MAS] Notifying ReSpec of form update: ${data.field} = ${data.value}`);
-          const [section, field] = data.field.split('.');
-          const result = await simplifiedRespecService.processFormUpdate(section, field, data.value);
+          const result = await respecService.processFormUpdate(data.field, data.value);
 
           // If ReSpec has triggered updates, apply them
           if (result.triggered_updates?.length > 0) {
@@ -995,16 +985,16 @@ function App() {
       case 'autofill':
         try {
           console.log(`[UI-MAS] Processing autofill request with ReSpec: ${data.section}`);
-          const result = await simplifiedRespecService.triggerAutofill(data.section);
+          const result = await respecService.performAutofill(data.section);
 
           // Apply all filled fields
-          if (result.fields?.length > 0) {
-            for (const field of result.fields) {
+          if (result.filled_fields?.length > 0) {
+            for (const field of result.filled_fields) {
               await communicateWithMAS('system_populate_field', {
                 section: field.section,
                 field: field.field,
                 value: field.value,
-                isSystemGenerated: field.isAssumption,
+                isSystemGenerated: field.is_system_generated,
                 confidence: field.confidence
               });
             }
@@ -1124,7 +1114,6 @@ function App() {
         console.warn(`[UI-MAS] Unknown action: ${action}`);
     }
   };
-  END OF ORPHANED CODE BLOCK */
 
   // Chat message handler for ReSpec
   const sendMessageWrapper = async (message: string) => {
@@ -1137,7 +1126,7 @@ function App() {
           content: message
         }]);
 
-        // Send to NEW ReSpec for processing
+        // Send to ReSpec for processing
         const result = await communicateWithMAS('chat_message', { message });
 
         // Add ReSpec's system response to chat
@@ -1165,231 +1154,42 @@ function App() {
     }
   };
 
-  // === UNIFIED Communication Hub using SimplifiedRespecService ===
-  const communicateWithMAS = async (action: string, data: any) => {
-    console.log(`[UI-RESPEC] ${action}:`, data);
-
-    setIsProcessing(true);
-
-    try {
-      switch (action) {
-        case 'chat_message':
-          setProcessingMessage('Processing your message...');
-          const chatResult = await simplifiedRespecService.processChatMessage(data.message);
-
-          setChatMessages(prev => [...prev, {
-            role: 'assistant',
-            content: chatResult.systemMessage
-          }]);
-
-          if (chatResult.formUpdates && chatResult.formUpdates.length > 0) {
-            chatResult.formUpdates.forEach(update => {
-              setRequirements(prev => ({
-                ...prev,
-                [update.section]: {
-                  ...prev[update.section],
-                  [update.field]: {
-                    ...prev[update.section]?.[update.field],
-                    value: update.value,
-                    isComplete: true,
-                    isAssumption: update.isAssumption || false,
-                    source: 'system',
-                    lastUpdated: new Date().toISOString()
-                  }
-                }
-              }));
-            });
-          }
-
-          if (chatResult.clarificationNeeded) {
-            setClarificationRequest(chatResult.clarificationNeeded);
-          }
-
-          return { success: true };
-
-        case 'form_update':
-          if (data.source === 'user') {
-            setProcessingMessage('Noting selection...');
-            const formResult = await simplifiedRespecService.processFormUpdate(
-              data.section,
-              data.field,
-              data.value
-            );
-
-            if (formResult.acknowledgment) {
-              setChatMessages(prev => [...prev, {
-                role: 'assistant',
-                content: formResult.acknowledgment
-              }]);
-            }
-          }
-          return { success: true };
-
-        case 'trigger_autofill':
-          setProcessingMessage('Generating defaults...');
-          const autofillResult = await simplifiedRespecService.triggerAutofill(data.trigger);
-
-          setChatMessages(prev => [...prev, {
-            role: 'assistant',
-            content: autofillResult.message
-          }]);
-
-          autofillResult.fields.forEach(field => {
-            const currentValue = requirements[field.section]?.[field.field]?.value;
-
-            if (!currentValue || currentValue === '') {
-              setRequirements(prev => ({
-                ...prev,
-                [field.section]: {
-                  ...prev[field.section],
-                  [field.field]: {
-                    ...prev[field.section]?.[field.field],
-                    value: field.value,
-                    isComplete: true,
-                    isAssumption: true,
-                    source: 'system',
-                    lastUpdated: new Date().toISOString()
-                  }
-                }
-              }));
-            }
-          });
-
-          return { success: true };
-
-        case 'autofill':
-          // Map old autofill action to trigger_autofill
-          return await communicateWithMAS('trigger_autofill', { trigger: data.section });
-
-        case 'system_populate_field':
-          // Populate single form field from system
-          try {
-            setProcessingMessage('Updating field...');
-            setRequirements(prev => ({
-              ...prev,
-              [data.section]: {
-                ...prev[data.section],
-                [data.field]: {
-                  ...prev[data.section]?.[data.field],
-                  value: data.value,
-                  isComplete: true,
-                  isAssumption: data.isSystemGenerated || false,
-                  source: 'system',
-                  lastUpdated: new Date().toISOString()
-                }
-              }
-            }));
-            return { success: true };
-          } catch (error) {
-            console.error(`[UI-RESPEC] System field update failed:`, error);
-            return { success: false, error };
-          }
-
-        case 'system_populate_multiple':
-          // Populate multiple form fields from system
-          try {
-            setProcessingMessage('Updating multiple fields...');
-            setRequirements(prev => {
-              const updated = { ...prev };
-              data.updates.forEach(update => {
-                if (!updated[update.section]) updated[update.section] = {};
-                updated[update.section][update.field] = {
-                  ...updated[update.section]?.[update.field],
-                  value: update.value,
-                  isComplete: true,
-                  isAssumption: update.isSystemGenerated || false,
-                  source: 'system',
-                  lastUpdated: new Date().toISOString()
-                };
-              });
-              return updated;
-            });
-            return { success: true };
-          } catch (error) {
-            console.error(`[UI-RESPEC] System multiple update failed:`, error);
-            return { success: false, error };
-          }
-
-        case 'system_send_message':
-          // Add system message to chat
-          try {
-            setChatMessages(prev => [...prev, {
-              role: 'assistant',
-              content: data.message
-            }]);
-            return { success: true };
-          } catch (error) {
-            console.error(`[UI-RESPEC] System message failed:`, error);
-            return { success: false, error };
-          }
-
-        default:
-          console.warn(`[UI-RESPEC] Unknown action: ${action}`);
-          return { success: false };
-      }
-    } catch (error) {
-      console.error(`[UI-RESPEC] Error:`, error);
-      return { success: false, error };
-    } finally {
-      setIsProcessing(false);
-      setProcessingMessage('');
-    }
-  };
-
   // Note: ReSpec will provide MAS capabilities through communicateWithMAS
 
   // ReSpec will handle requirement mapping through communicateWithMAS
 
-  // REPLACE the entire initialization useEffect with:
+  // Initialize requirements and expanded groups
   useEffect(() => {
-    const initializeApp = async () => {
-      const initialRequirements = {};
-      const initialExpanded = {};
-
-      Object.entries(formFieldsData.field_definitions).forEach(([section, fields]) => {
-        initialRequirements[section] = {};
-        initialExpanded[section] = {};
-
-        Object.entries(fields).forEach(([fieldKey, fieldDef]) => {
-          initialRequirements[section][fieldKey] = {
-            value: '',
-            isComplete: false,
-            isAssumption: false,
-            priority: getPriority(fieldKey),
-            source: 'user'
-          };
-        });
+    const initialRequirements = {};
+    const initialExpanded = {};
+    
+    Object.entries(formFieldsData.field_definitions).forEach(([section, fields]) => {
+      initialRequirements[section] = {};
+      initialExpanded[section] = {};
+      
+      // Initialize field values
+      Object.entries(fields).forEach(([fieldKey, fieldDef]) => {
+        initialRequirements[section][fieldKey] = {
+          value: '',
+          isComplete: false,
+          isAssumption: false,
+          priority: getPriority(fieldKey)
+        };
       });
-
+      
       // Initialize group expansion states
-      Object.entries(formFieldsData.field_definitions).forEach(([section, fields]) => {
-        if (formFieldsData.field_groups[section]) {
-          Object.entries(formFieldsData.field_groups[section]).forEach(([groupKey, groupDef]) => {
-            initialExpanded[section][groupKey] = groupDef.defaultOpen || false;
-          });
-        }
-      });
-
-      setRequirements(initialRequirements);
-      setExpandedGroups(initialExpanded);
-
-      // Initialize Simplified Respec service
-      try {
-        setProcessingMessage('Initializing...');
-        setIsProcessing(true);
-        await simplifiedRespecService.initialize();
-        const sessionId = simplifiedRespecService.getSessionId();
-        setRespecSession(sessionId);
-        console.log('[APP] Simplified Respec initialized:', sessionId);
-      } catch (err) {
-        console.error('[APP] Simplified Respec init failed:', err);
-      } finally {
-        setIsProcessing(false);
-        setProcessingMessage('');
+      if (formFieldsData.field_groups[section]) {
+        Object.entries(formFieldsData.field_groups[section]).forEach(([groupKey, groupDef]) => {
+          initialExpanded[section][groupKey] = groupDef.defaultOpen || false;
+        });
       }
-    };
+    });
+    
+    setRequirements(initialRequirements);
+    setExpandedGroups(initialExpanded);
 
-    initializeApp();
+    // ReSpec initialization will happen when ReSpec system is integrated
+    console.log('[UI] Form initialized and ready for ReSpec integration');
   }, []);
 
   // ReSpec requirements synchronization will happen through communicateWithMAS polling
@@ -1450,7 +1250,7 @@ function App() {
     return 'performance_computing'; // default
   };
 
-  const updateField = useCallback((section, field, value, isAssumption = false, source = 'user') => {
+  const updateField = useCallback((section, field, value, isAssumption = false) => {
     // Update the field value
     setRequirements(prev => {
       const updated = {
@@ -1463,7 +1263,7 @@ function App() {
             isComplete: value !== '' && value !== null,
             isAssumption,
             lastUpdated: new Date().toISOString(),
-            source // Use the provided source parameter
+            source: 'user' // Mark as user-entered to prevent system overwrites
           }
         }
       };
@@ -1683,9 +1483,31 @@ function App() {
   };
 
   const autofillAll = async () => {
-    await communicateWithMAS('trigger_autofill', {
-      trigger: 'button_header'
+    // Use ReSpec autofill via communicateWithMAS
+    try {
+      const result = await communicateWithMAS('autofill', { section: 'all' });
+      console.log('ReSpec autofill result:', result);
+    } catch (err) {
+      console.warn('ReSpec autofill failed, using fallback:', err);
+    }
+
+    // Local autofill fallback
+    const updatedRequirements = { ...requirements };
+    
+    Object.entries(formFieldsData.field_definitions).forEach(([section, fields]) => {
+      Object.entries(fields).forEach(([fieldKey, fieldDef]) => {
+        if (!updatedRequirements[section][fieldKey].isComplete && fieldDef.autofill_default) {
+          updatedRequirements[section][fieldKey] = {
+            ...updatedRequirements[section][fieldKey],
+            value: fieldDef.autofill_default,
+            isComplete: true,
+            isAssumption: true
+          };
+        }
+      });
     });
+    
+    setRequirements(updatedRequirements);
   };
 
   const autofillSection = (tabName) => {
@@ -1744,29 +1566,19 @@ function App() {
   const handleChatSubmit = async () => {
     if (!chatInput.trim()) return;
 
-    const message = chatInput.trim();
-
-    setChatMessages(prev => [...prev, {
-      role: 'user',
-      content: message
-    }]);
-
+    // Clear input immediately
+    const message = chatInput;
     setChatInput('');
 
-    // Check for special triggers
-    const lower = message.toLowerCase();
-    if (lower.includes("don't know") || lower.includes("not sure")) {
-      await communicateWithMAS('trigger_autofill', {
-        trigger: 'dont_know'
-      });
-    } else if (lower.includes("autofill") || lower.includes("fill")) {
-      await communicateWithMAS('trigger_autofill', {
-        trigger: 'chat_request'
-      });
-    } else {
-      await communicateWithMAS('chat_message', {
-        message
-      });
+    // Use ReSpec via sendMessageWrapper
+    try {
+      await sendMessageWrapper(message);
+    } catch (err) {
+      console.error('Chat submission failed:', err);
+      setChatMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'I apologize, but I\'m having trouble processing your message. Please try again.'
+      }]);
     }
   };
 
@@ -1880,16 +1692,16 @@ function App() {
           {messages.map((msg, idx) => (
             <div
               key={idx}
-              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               <div
                 className={`max-w-xs p-3 rounded-lg text-sm ${
-                  msg.role === 'user'
+                  msg.sender === 'user'
                     ? 'bg-blue-500 text-white'
                     : 'bg-white border border-gray-200 text-gray-800'
                 }`}
               >
-                {msg.content}
+                {msg.message}
               </div>
             </div>
           ))}
@@ -2102,24 +1914,13 @@ function App() {
         chatWindowWidth={chatWidth}
       />
 
-      {/* Debug Panel - Temporarily disabled for testing
+      {/* Debug Panel - Remove in production */}
       <DebugPanel
         communicateWithMAS={communicateWithMAS}
-        respecService={simplifiedRespecService}
+        respecService={respecService}
         chatMessages={chatMessages}
         sendMessageWrapper={sendMessageWrapper}
       />
-      */}
-
-      {/* Processing Indicator */}
-      {isProcessing && (
-        <div className="fixed bottom-20 right-8 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 z-50">
-          <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
-          <span>{processingMessage || 'Processing...'}</span>
-        </div>
-      )}
-
-      {/* ChatDebugger removed - issue fixed */}
     </div>
   );
 }

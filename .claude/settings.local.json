@@ -38,7 +38,9 @@
       "Read(/C:\\dev\\frontend_new\\src/**)",
       "Read(/C:\\dev\\frontend_new\\src\\services\\reqmas/**)",
       "Read(//g/My Drive/~WORK/Portune/System Development/Plans/sep 22 - align UC, Mapping.json, form_fields.json/**)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(timeout 8s npm run dev)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": [],
