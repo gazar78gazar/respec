@@ -1838,34 +1838,76 @@ function App() {
 
   // ChatWindow Component
   function ChatWindow({ onSendMessage, messages, pendingClarification, loading, width, onMouseDown, isResizing }: any) {
-    const [input, setInput] = useState('');
+    // FIX #2: Use ref to persist input across re-renders
+    const inputRef = useRef<string>('');
+    const [input, setInputState] = useState('');
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    // Dual state management to prevent input loss
+    const setInput = useCallback((value: string) => {
+      inputRef.current = value;
+      setInputState(value);
+    }, []);
+
+    // Restore input from ref when component re-renders
+    useEffect(() => {
+      if (inputRef.current && inputRef.current !== input) {
+        setInputState(inputRef.current);
+      }
+    }, []);
+
+    // FIX #1: Auto-resize textarea based on content
+    useEffect(() => {
+      if (textareaRef.current) {
+        // Reset height to auto to get the correct scrollHeight
+        textareaRef.current.style.height = 'auto';
+        // Set height to scrollHeight but cap at max height (approximately 5 lines)
+        const maxHeight = 120; // ~5 lines
+        const newHeight = Math.min(textareaRef.current.scrollHeight, maxHeight);
+        textareaRef.current.style.height = `${newHeight}px`;
+      }
+    }, [input]);
 
     const handleSend = async () => {
       if (input.trim() && !loading) {
         await onSendMessage(input);
         setInput('');
+        // Reset textarea height after sending
+        if (textareaRef.current) {
+          textareaRef.current.style.height = 'auto';
+        }
+      }
+    };
+
+    const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      // Send on Enter, but allow Shift+Enter for new lines
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleSend();
       }
     };
 
     return (
       <div
-        className="bg-white border-l shadow-lg flex flex-col relative"
+        className="bg-white border-l shadow-lg flex flex-col relative"  // PRESERVED: Dynamic width + relative positioning
         style={{ width: `${width}px` }}
       >
-        {/* Resize Handle */}
-        <div
-          onMouseDown={onMouseDown}
-          className={`absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 transition-colors ${
-            isResizing ? 'bg-blue-500' : 'bg-gray-300'
-          } group`}
-        >
-          {/* Grip indicator */}
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-1 h-8 flex flex-col justify-between opacity-0 group-hover:opacity-100 transition-opacity">
-            <div className="w-1 h-1 bg-gray-600 rounded-full"></div>
-            <div className="w-1 h-1 bg-gray-600 rounded-full"></div>
-            <div className="w-1 h-1 bg-gray-600 rounded-full"></div>
+        {/* PRESERVED: Resize handle with improved styling */}
+        {onMouseDown && (
+          <div
+            className={`absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 transition-colors ${
+              isResizing ? 'bg-blue-500' : 'bg-gray-300'
+            } group`}
+            onMouseDown={onMouseDown}
+          >
+            {/* Grip indicator */}
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-1 h-8 flex flex-col justify-between opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="w-1 h-1 bg-gray-600 rounded-full"></div>
+              <div className="w-1 h-1 bg-gray-600 rounded-full"></div>
+              <div className="w-1 h-1 bg-gray-600 rounded-full"></div>
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="bg-white border-b px-4 py-3">
           <h3 className="text-sm font-semibold text-gray-800">Requirements Assistant</h3>
@@ -1875,25 +1917,25 @@ function App() {
             </div>
           )}
         </div>
-        
+
         <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
           {messages.map((msg, idx) => (
             <div
               key={idx}
-              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}  // PRESERVED: Using msg.role
             >
               <div
                 className={`max-w-xs p-3 rounded-lg text-sm ${
-                  msg.role === 'user'
+                  msg.role === 'user'  // PRESERVED: Using msg.role
                     ? 'bg-blue-500 text-white'
                     : 'bg-white border border-gray-200 text-gray-800'
                 }`}
               >
-                {msg.content}
+                {msg.content}  {/* PRESERVED: Using msg.content */}
               </div>
             </div>
           ))}
-          
+
           {pendingClarification && (
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
               <p className="text-sm font-medium mb-2">{pendingClarification.question}</p>
@@ -1912,25 +1954,31 @@ function App() {
             </div>
           )}
         </div>
-        
+
         <div className="bg-white border-t p-4">
-          <div className="flex space-x-2">
-            <input
-              type="text"
+          <div className="flex items-end space-x-2">
+            {/* CHANGED: input to textarea for auto-resize */}
+            <textarea
+              ref={textareaRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+              onKeyPress={handleKeyPress}
               placeholder="Type your requirement..."
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-none overflow-y-auto"
+              style={{ minHeight: '38px' }}
               disabled={loading}
+              rows={1}
             />
             <button
               onClick={handleSend}
               disabled={loading || !input.trim()}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm disabled:opacity-50"
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm disabled:opacity-50 flex-shrink-0"
             >
-              {loading ? 'Processing...' : 'Send'}
+              {loading ? '...' : 'Send'}
             </button>
+          </div>
+          <div className="mt-1 text-xs text-gray-500">
+            Press Enter to send, Shift+Enter for new line
           </div>
         </div>
       </div>
