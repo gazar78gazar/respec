@@ -35,6 +35,8 @@ export class SimplifiedRespecService {
   private conversationHistory: Array<{ role: 'user' | 'assistant'; content: string; timestamp: Date }> = [];
   private isInitialized = false;
   private anthropicService: AnthropicService;
+  private fieldMappings: Map<string, { section: string; field: string; }> = new Map();
+  private uc1Data: any = null;
 
   // Engineering pattern recognition database
   private patterns = {
@@ -136,8 +138,24 @@ export class SimplifiedRespecService {
 
     console.log(`[SimplifiedRespec] Initializing session: ${this.sessionId}`);
 
-    // Initialize Anthropic service
-    await this.anthropicService.initialize();
+    // Load UC1.json for field mappings
+    try {
+      const response = await fetch('/uc1.json');
+      if (response.ok) {
+        this.uc1Data = await response.json();
+        this.extractFieldMappings();
+        console.log('[SimplifiedRespec] UC1.json loaded, extracted', this.fieldMappings.size, 'field mappings');
+      } else {
+        console.warn('[SimplifiedRespec] Could not load UC1.json, using fallback mappings');
+        this.loadFallbackMappings();
+      }
+    } catch (error) {
+      console.warn('[SimplifiedRespec] Failed to load UC1.json:', error);
+      this.loadFallbackMappings();
+    }
+
+    // Initialize Anthropic service with field mappings
+    await this.anthropicService.initialize(this.getFieldMappingsForPrompt());
 
     // Load any persisted conversation or settings
     try {
@@ -152,6 +170,77 @@ export class SimplifiedRespecService {
 
     this.isInitialized = true;
     console.log('[SimplifiedRespec] Initialization complete');
+  }
+
+  private extractFieldMappings(): void {
+    if (!this.uc1Data || !this.uc1Data.specifications) {
+      return;
+    }
+
+    // Extract field mappings from UC1.json specifications
+    Object.values(this.uc1Data.specifications).forEach((spec: any) => {
+      if (spec.form_mapping && spec.form_mapping.field_name) {
+        const mapping = {
+          section: spec.form_mapping.section,
+          field: spec.form_mapping.field_name
+        };
+
+        // Store by various possible names the user might use
+        const specName = spec.name.toLowerCase().replace(/_/g, ' ');
+        this.fieldMappings.set(specName, mapping);
+
+        // Also store by the actual field name
+        this.fieldMappings.set(spec.form_mapping.field_name, mapping);
+
+        // Store common variations
+        if (spec.form_mapping.field_name === 'digital_io') {
+          this.fieldMappings.set('digital inputs', mapping);
+          this.fieldMappings.set('digital outputs', mapping);
+          this.fieldMappings.set('digital i/o', mapping);
+        }
+        if (spec.form_mapping.field_name === 'analog_io') {
+          this.fieldMappings.set('analog inputs', mapping);
+          this.fieldMappings.set('analog outputs', mapping);
+          this.fieldMappings.set('analog i/o', mapping);
+        }
+      }
+    });
+  }
+
+  private loadFallbackMappings(): void {
+    // Fallback mappings if UC1.json can't be loaded
+    const fallbackMappings = [
+      { name: 'processor', section: 'compute_performance', field: 'processor_type' },
+      { name: 'memory', section: 'compute_performance', field: 'memory_capacity' },
+      { name: 'storage', section: 'compute_performance', field: 'storage_capacity' },
+      { name: 'digital inputs', section: 'io_connectivity', field: 'digital_io' },
+      { name: 'analog inputs', section: 'io_connectivity', field: 'analog_io' },
+      { name: 'ethernet ports', section: 'io_connectivity', field: 'ethernet_ports' },
+      { name: 'temperature', section: 'environment_standards', field: 'operating_temperature' },
+      { name: 'budget per unit', section: 'commercial', field: 'budget_per_unit' },
+      { name: 'quantity', section: 'commercial', field: 'quantity' }
+    ];
+
+    fallbackMappings.forEach(map => {
+      this.fieldMappings.set(map.name, { section: map.section, field: map.field });
+    });
+  }
+
+  private getFieldMappingsForPrompt(): any {
+    // Organize field mappings by section for the Anthropic prompt
+    const mappingsBySection: any = {};
+
+    this.fieldMappings.forEach((mapping, name) => {
+      if (!mappingsBySection[mapping.section]) {
+        mappingsBySection[mapping.section] = [];
+      }
+      // Avoid duplicates
+      if (!mappingsBySection[mapping.section].includes(mapping.field)) {
+        mappingsBySection[mapping.section].push(mapping.field);
+      }
+    });
+
+    return mappingsBySection;
   }
 
   getSessionId(): string {
@@ -275,7 +364,7 @@ export class SimplifiedRespecService {
     const context = this.determineApplicationContext();
 
     // Get appropriate defaults
-    const defaults = this.smartDefaults[context] || this.smartDefaults.generic;
+    const defaults = this.smartDefaults[context as keyof typeof this.smartDefaults] || this.smartDefaults.generic;
 
     // Convert to form updates
     const fields: FormUpdate[] = Object.entries(defaults).map(([path, value]) => {
