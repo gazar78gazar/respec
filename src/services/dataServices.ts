@@ -93,7 +93,7 @@ class ExportService {
       });
       
       return new Blob([doc.output('blob')], { type: 'application/pdf' });
-    } catch (error) {
+    } catch (error: unknown) {
       throw new Error(`PDF export failed: ${error.message}`);
     }
   }
@@ -115,7 +115,7 @@ class ExportService {
       
       const jsonString = JSON.stringify(exportData, null, 2);
       return new Blob([jsonString], { type: 'application/json' });
-    } catch (error) {
+    } catch (error: unknown) {
       throw new Error(`JSON export failed: ${error.message}`);
     }
   }
@@ -143,7 +143,7 @@ class ExportService {
       
       const csvContent = rows.join('\n');
       return new Blob([csvContent], { type: 'text/csv' });
-    } catch (error) {
+    } catch (error: unknown) {
       throw new Error(`CSV export failed: ${error.message}`);
     }
   }
@@ -190,7 +190,7 @@ class ExportService {
       
       const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
       return new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    } catch (error) {
+    } catch (error: unknown) {
       throw new Error(`Excel export failed: ${error.message}`);
     }
   }
@@ -237,7 +237,7 @@ class ShareService {
       
       const baseUrl = window.location.origin;
       return `${baseUrl}/shared/${shareToken}`;
-    } catch (error) {
+    } catch (error: unknown) {
       throw new Error(`Failed to generate shareable link: ${error.message}`);
     }
   }
@@ -251,7 +251,7 @@ class ShareService {
     try {
       await navigator.clipboard.writeText(text);
       return true;
-    } catch (error) {
+    } catch (error: unknown) {
       // Fallback for older browsers
       try {
         const textArea = document.createElement('textarea');
@@ -331,7 +331,7 @@ class ImportService {
           errors: validation.errors
         };
       }
-    } catch (error) {
+    } catch (error: unknown) {
       return {
         success: false,
         errors: [`JSON parsing failed: ${error.message}`]
@@ -386,7 +386,7 @@ class ImportService {
         errors: validation.errors,
         warnings: validation.warnings
       };
-    } catch (error) {
+    } catch (error: unknown) {
       return {
         success: false,
         errors: [`CSV parsing failed: ${error.message}`]
@@ -506,7 +506,7 @@ class ProjectManagement {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(projects));
       
       return true;
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to save project:', error);
       return false;
     }
@@ -529,7 +529,7 @@ class ProjectManagement {
       }
       
       return project || null;
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to load project:', error);
       return null;
     }
@@ -543,7 +543,7 @@ class ProjectManagement {
     try {
       const projects = this.getStoredProjects();
       return Object.values(projects).sort((a, b) => b.timestamp - a.timestamp);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to list projects:', error);
       return [];
     }
@@ -560,7 +560,7 @@ class ProjectManagement {
       delete projects[name];
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(projects));
       return true;
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to delete project:', error);
       return false;
     }
@@ -619,7 +619,7 @@ class ProjectManagement {
     try {
       const stored = localStorage.getItem(this.STORAGE_KEY);
       return stored ? JSON.parse(stored) : {};
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to parse stored projects:', error);
       return {};
     }
@@ -725,7 +725,7 @@ class HelperUtilities {
         // Fallback: just base64 encode without compression
         return btoa(jsonString);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Compression failed:', error);
       return btoa(JSON.stringify(data));
     }
@@ -795,13 +795,4 @@ class DataServices {
 // Singleton export
 export const dataServices = new DataServices();
 
-// Export types for external use
-export type {
-  Requirements,
-  ProjectMetadata,
-  SavedProject,
-  ShareableData,
-  ImportResult,
-  ValidationResult,
-  ExportFormat
-};
+// Types are already exported above, no need to re-export

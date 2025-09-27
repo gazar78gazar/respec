@@ -2,35 +2,27 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Check, ChevronRight, ChevronDown, Download, Share, Wand2, AlertTriangle, AlertCircle, Info } from 'lucide-react';
 // import { ReSpecService } from './services/respec'; // COMMENTED OUT - using SimplifiedRespecService
 import { SimplifiedRespecService } from './services/respec/SimplifiedRespecService';
-import { v4 as uuidv4 } from 'uuid';
 import * as uiUtils from './utils/uiUtilities';
 import { dataServices } from './services/dataServices';
 import './styles/animations.css';
 // import DebugPanel from './components/DebugPanel'; // Temporarily disabled for testing
 // import { ChatDebugger } from './components/ChatDebugger'; // Removed after fixing chat display issue
 
-// RequirementLegend component
-const RequirementLegend = () => (
-  <div className="flex items-center justify-end mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-    <div className="flex items-center space-x-6 text-sm text-gray-600">
-      <div className="flex items-center space-x-2">
-        <div className="w-4 h-4 rounded-full bg-blue-200 flex items-center justify-center">
-          <Check size={10} className="text-blue-700" />
-        </div>
-        <span>Requirement</span>
-      </div>
-      <div className="flex items-center space-x-2">
-        <div className="w-4 h-4 rounded-full bg-amber-200 flex items-center justify-center">
-          <AlertTriangle size={10} className="text-amber-700" />
-        </div>
-        <span>Assumption</span>
-      </div>
-    </div>
-  </div>
-);
+// Import TypeScript types
+import type {
+  Requirements,
+  CrossFieldErrors,
+  ChatMessage,
+  FormUpdateEvent,
+  MASCommunicationResult,
+  StepHeaderProps,
+  FieldData
+} from './types/requirements.types';
+
+// RequirementLegend component - removed as unused
 
 // StepProgressIndicator component
-const StepProgressIndicator = ({ currentStep, setCurrentStage, chatWindowWidth = 384 }) => {
+const StepProgressIndicator = ({ currentStep, setCurrentStage, chatWindowWidth = 384 }: StepHeaderProps & { chatWindowWidth?: number }) => {
   const steps = [
     { id: 1, label: "Requirements", completed: currentStep > 1, current: currentStep === 1 },
     { id: 3, label: "Configure", completed: currentStep > 3, current: currentStep === 3 },
@@ -39,7 +31,7 @@ const StepProgressIndicator = ({ currentStep, setCurrentStage, chatWindowWidth =
 
   const progressPercentage = ((currentStep - 1) / (steps.length - 1)) * 100;
 
-  const handleStepNavigation = (stepId) => {
+  const handleStepNavigation = (stepId: number) => {
     if (stepId === 1) {
       setCurrentStage(1);
     }
@@ -542,8 +534,8 @@ const SECTION_MAPPING = {
 };
 
 // Validation service functions for new standardized specification
-const validateField = (fieldKey, value, fieldDef) => {
-  const errors = [];
+const validateField = (fieldKey: string, value: any, fieldDef: any) => {
+  const errors: string[] = [];
 
   // Handle "Not Required" as valid empty value
   if (value === "Not Required" || (Array.isArray(value) && value.includes("Not Required"))) {
@@ -614,8 +606,8 @@ const validateField = (fieldKey, value, fieldDef) => {
   return errors;
 };
 
-const validateCrossFields = (requirements) => {
-  const crossFieldErrors = {};
+const validateCrossFields = (requirements: Requirements): CrossFieldErrors => {
+  const crossFieldErrors: CrossFieldErrors = {};
 
   // Budget Calculation Validation - updated for new field names
   const commercial = requirements.commercial || {};
@@ -729,7 +721,7 @@ const validateCrossFields = (requirements) => {
   return crossFieldErrors;
 };
 
-const autoCalculateFields = (changedField, newValue, requirements) => {
+const autoCalculateFields = (changedField: string, newValue: any, requirements: Requirements) => {
   const updates = {};
 
   // Budget calculations - updated for new field names
@@ -772,13 +764,13 @@ const getNextMustField = (requirements) => {
 function App() {
   const [currentStage, setCurrentStage] = useState(1);
   const [activeTab, setActiveTab] = useState('System');
-  const [requirements, setRequirements] = useState({});
+  const [requirements, setRequirements] = useState<Requirements>({});
   const [expandedGroups, setExpandedGroups] = useState({});
   const [fieldValidations, setFieldValidations] = useState({});
-  const [crossFieldValidations, setCrossFieldValidations] = useState({});
-  const [projectName, setProjectName] = useState('Untitled Project');
-  const [chatMessages, setChatMessages] = useState([
-    { role: 'assistant', content: 'How can I help you with filling out these requirements?' }
+  const [crossFieldValidations, setCrossFieldValidations] = useState<CrossFieldErrors>({});
+  const [projectName] = useState('Untitled Project');
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
+    { id: 'initial', role: 'assistant', content: 'How can I help you with filling out these requirements?', timestamp: new Date() }
   ]);
   const [chatInput, setChatInput] = useState('');
   const chatEndRef = useRef(null);
@@ -789,10 +781,10 @@ function App() {
   // )); // COMMENTED OUT - using SimplifiedRespecService
   // NEW: Simplified ReSpec service for browser-only operation
   const [simplifiedRespecService] = useState(() => new SimplifiedRespecService());
-  const [respecSession, setRespecSession] = useState<string>('');
+  // Removed unused respecSession state
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingMessage, setProcessingMessage] = useState('');
-  const [clarificationRequest, setClarificationRequest] = useState<string>('');
+  // Removed unused clarificationRequest state
 
   const [loading, setLoading] = useState(false);
   const [chatWidth, setChatWidth] = useState(384); // Default 24rem = 384px
@@ -876,7 +868,7 @@ function App() {
       }
 
       return true;
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(`[UI-MAS] Validation error for ${section}.${field}:`, error);
       return false;
     }
@@ -902,7 +894,7 @@ function App() {
       }
 
       return true;
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('[UI-MAS] Message validation error:', error);
       return false;
     }
@@ -949,7 +941,7 @@ function App() {
               conflicts: []
             };
           }
-        } catch (error) {
+        } catch (error: unknown) {
           console.error('[ReSpec] Chat processing failed:', error);
           return {
             success: true,
@@ -987,7 +979,7 @@ function App() {
             triggeredUpdates: result.triggered_updates,
             conflicts: result.conflicts
           };
-        } catch (error) {
+        } catch (error: unknown) {
           console.error('[ReSpec] Form update processing failed:', error);
           return { success: true }; // Don't break form functionality
         }
@@ -1021,7 +1013,7 @@ function App() {
             skippedFields: result.skipped_fields,
             confidence: result.confidence_score
           };
-        } catch (error) {
+        } catch (error: unknown) {
           console.error('[ReSpec] Autofill processing failed:', error);
           return {
             success: false,
@@ -1055,7 +1047,7 @@ function App() {
           }));
           console.log(`[UI-MAS] System populated: ${section}.${field} = ${value}`);
           return { success: true };
-        } catch (error) {
+        } catch (error: unknown) {
           console.error(`[UI-MAS] System update failed:`, error);
           return { success: false, error: error.message };
         }
@@ -1095,7 +1087,7 @@ function App() {
           });
           console.log(`[UI-MAS] System populated ${updates.length} fields`);
           return { success: true, updatesApplied: updates.length };
-        } catch (error) {
+        } catch (error: unknown) {
           console.error(`[UI-MAS] System multiple update failed:`, error);
           return { success: false, error: error.message };
         }
@@ -1115,7 +1107,7 @@ function App() {
 
           console.log(`[UI-MAS] System message added to chat: ${data.message}`);
           return { success: true };
-        } catch (error) {
+        } catch (error: unknown) {
           console.error(`[UI-MAS] System message failed:`, error);
           return { success: false, error: error.message };
         }
@@ -1149,7 +1141,7 @@ function App() {
         }
 
         return result;
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('[UI-ReSpec] Chat message failed:', error);
 
         // Add error message to chat instead of throwing
@@ -1165,8 +1157,93 @@ function App() {
     }
   };
 
+  // Value mapping function to translate AI outputs to form-compatible values
+  const mapValueToFormField = (section: string, field: string, value: any) => {
+    console.log(`[DEBUG] Mapping value for ${section}.${field}:`, { inputValue: value, inputType: typeof value });
+
+    // Handle boolean values that need to be converted to specific options
+    if (value === true || value === 'true') {
+      switch (field) {
+        case 'wireless_extension':
+        case 'wirelessExtension':
+          return 'WiFi'; // Default WiFi option
+        case 'ethernet_ports':
+        case 'networkPorts':
+          return '2'; // Default 2 ports
+        default:
+          return value;
+      }
+    }
+
+    // Handle AI-returned text that needs mapping to specific dropdown values
+    if (typeof value === 'string') {
+      const lowerValue = value.toLowerCase();
+
+      switch (field) {
+        case 'wireless_extension':
+        case 'wirelessExtension':
+          if (lowerValue.includes('wifi') || lowerValue.includes('wi-fi')) {
+            return 'WiFi';
+          }
+          if (lowerValue.includes('lte')) return 'LTE';
+          if (lowerValue.includes('5g')) return '5G';
+          if (lowerValue.includes('lora')) return 'LoRa';
+          if (lowerValue.includes('none') || lowerValue.includes('not required')) return 'None';
+          return 'WiFi'; // Default fallback
+
+        case 'analog_io':
+        case 'analogIO':
+          // Ensure analog IO values are valid options
+          const validAnalogOptions = ["None", "2", "4", "8", "16", "32", "64"];
+          if (validAnalogOptions.includes(value)) return value;
+          // Try to extract number from string
+          const analogMatch = value.match(/(\d+)/);
+          if (analogMatch) {
+            const num = analogMatch[1];
+            if (validAnalogOptions.includes(num)) return num;
+          }
+          return '4'; // Default fallback
+
+        case 'digital_io':
+        case 'digitalIO':
+          // Similar logic for digital IO
+          const validDigitalOptions = ["None", "2", "4", "8", "16", "32", "64"];
+          if (validDigitalOptions.includes(value)) return value;
+          const digitalMatch = value.match(/(\d+)/);
+          if (digitalMatch) {
+            const num = digitalMatch[1];
+            if (validDigitalOptions.includes(num)) return num;
+          }
+          return '8'; // Default fallback
+
+        case 'ethernet_ports':
+        case 'networkPorts':
+          if (lowerValue.includes('2') || lowerValue.includes('two')) return '2';
+          if (lowerValue.includes('4') || lowerValue.includes('four')) return '4';
+          if (lowerValue.includes('8') || lowerValue.includes('eight')) return '8';
+          return '2'; // Default fallback
+      }
+    }
+
+    // Handle numeric values
+    if (typeof value === 'number') {
+      switch (field) {
+        case 'analog_io':
+        case 'analogIO':
+        case 'digital_io':
+        case 'digitalIO':
+          return value.toString(); // Convert to string for dropdown
+        default:
+          return value;
+      }
+    }
+
+    console.log(`[DEBUG] No mapping found for ${section}.${field}, using original value:`, value);
+    return value;
+  };
+
   // === UNIFIED Communication Hub using SimplifiedRespecService ===
-  const communicateWithMAS = async (action: string, data: any) => {
+  const communicateWithMAS = async (action: string, data: any): Promise<MASCommunicationResult> => {
     console.log(`[UI-RESPEC] ${action}:`, data);
 
     setIsProcessing(true);
@@ -1183,21 +1260,44 @@ function App() {
           }]);
 
           if (chatResult.formUpdates && chatResult.formUpdates.length > 0) {
+            console.log(`[DEBUG] Chat message returned ${chatResult.formUpdates.length} form updates:`, chatResult.formUpdates);
+
             chatResult.formUpdates.forEach(update => {
-              setRequirements(prev => ({
-                ...prev,
-                [update.section]: {
-                  ...prev[update.section],
-                  [update.field]: {
-                    ...prev[update.section]?.[update.field],
-                    value: update.value,
-                    isComplete: true,
-                    isAssumption: update.isAssumption || false,
-                    source: 'system',
-                    lastUpdated: new Date().toISOString()
+              console.log(`[DEBUG] Processing chat update:`, {
+                section: update.section,
+                field: update.field,
+                value: update.value,
+                isAssumption: update.isAssumption
+              });
+
+              // Map the value to a form-compatible value
+              const mappedValue = mapValueToFormField(update.section, update.field, update.value);
+              console.log(`[DEBUG] Value mapped from ${update.value} to ${mappedValue}`);
+
+              setRequirements(prev => {
+                const newReqs = {
+                  ...prev,
+                  [update.section]: {
+                    ...prev[update.section],
+                    [update.field]: {
+                      ...prev[update.section]?.[update.field],
+                      value: mappedValue,
+                      isComplete: true,
+                      isAssumption: update.isAssumption || false,
+                      source: 'system',
+                      lastUpdated: new Date().toISOString()
+                    }
                   }
-                }
-              }));
+                };
+
+                console.log(`[DEBUG] Chat update applied to requirements:`, {
+                  field: `${update.section}.${update.field}`,
+                  oldValue: prev[update.section]?.[update.field],
+                  newValue: newReqs[update.section][update.field]
+                });
+
+                return newReqs;
+              });
             });
           }
 
@@ -1264,23 +1364,45 @@ function App() {
         case 'system_populate_field':
           // Populate single form field from system
           try {
+            console.log(`[DEBUG] system_populate_field called with:`, {
+              section: data.section,
+              field: data.field,
+              value: data.value,
+              isSystemGenerated: data.isSystemGenerated,
+              rawData: data
+            });
+
+            // Map the value to a form-compatible value
+            const mappedValue = mapValueToFormField(data.section, data.field, data.value);
+            console.log(`[DEBUG] System populate value mapped from ${data.value} to ${mappedValue}`);
+
             setProcessingMessage('Updating field...');
-            setRequirements(prev => ({
-              ...prev,
-              [data.section]: {
-                ...prev[data.section],
-                [data.field]: {
-                  ...prev[data.section]?.[data.field],
-                  value: data.value,
-                  isComplete: true,
-                  isAssumption: data.isSystemGenerated || false,
-                  source: 'system',
-                  lastUpdated: new Date().toISOString()
+            setRequirements(prev => {
+              const newValue = {
+                ...prev,
+                [data.section]: {
+                  ...prev[data.section],
+                  [data.field]: {
+                    ...prev[data.section]?.[data.field],
+                    value: mappedValue,
+                    isComplete: true,
+                    isAssumption: data.isSystemGenerated || false,
+                    source: 'system',
+                    lastUpdated: new Date().toISOString()
+                  }
                 }
-              }
-            }));
+              };
+
+              console.log(`[DEBUG] Updated requirements for ${data.section}.${data.field}:`, {
+                oldValue: prev[data.section]?.[data.field],
+                newValue: newValue[data.section][data.field],
+                fullSection: newValue[data.section]
+              });
+
+              return newValue;
+            });
             return { success: true };
-          } catch (error) {
+          } catch (error: unknown) {
             console.error(`[UI-RESPEC] System field update failed:`, error);
             return { success: false, error };
           }
@@ -1305,7 +1427,7 @@ function App() {
               return updated;
             });
             return { success: true };
-          } catch (error) {
+          } catch (error: unknown) {
             console.error(`[UI-RESPEC] System multiple update failed:`, error);
             return { success: false, error };
           }
@@ -1318,7 +1440,7 @@ function App() {
               content: data.message
             }]);
             return { success: true };
-          } catch (error) {
+          } catch (error: unknown) {
             console.error(`[UI-RESPEC] System message failed:`, error);
             return { success: false, error };
           }
@@ -1327,7 +1449,7 @@ function App() {
           console.warn(`[UI-RESPEC] Unknown action: ${action}`);
           return { success: false };
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(`[UI-RESPEC] Error:`, error);
       return { success: false, error };
     } finally {
@@ -1450,7 +1572,7 @@ function App() {
     return 'performance_computing'; // default
   };
 
-  const updateField = useCallback((section, field, value, isAssumption = false, source = 'user') => {
+  const updateField = useCallback((section: string, field: string, value: any, isAssumption = false, source = 'user') => {
     // Update the field value
     setRequirements(prev => {
       const updated = {
@@ -1688,7 +1810,7 @@ function App() {
     });
   };
 
-  const autofillSection = (tabName) => {
+  const autofillSection = (tabName: string) => {
     // Use MAS for autofill
     communicateWithMAS('autofill', { section: tabName });
 
@@ -1735,7 +1857,7 @@ function App() {
       
       const blob = await dataServices.export.exportToPDF(formattedRequirements, metadata);
       dataServices.utils.downloadBlob(blob, dataServices.utils.generateFilename(projectName.replace(/\s+/g, '_'), 'pdf'));
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Export failed:', error);
       alert('Export failed: ' + error.message);
     }
@@ -1806,7 +1928,7 @@ function App() {
                 await dataServices.project.saveProject(projectName, formattedRequirements, metadata);
                 // Show success feedback
                 uiUtils.flashField('project-header', 'success');
-              } catch (error) {
+              } catch (error: unknown) {
                 console.error('Save failed:', error);
               }
             })();

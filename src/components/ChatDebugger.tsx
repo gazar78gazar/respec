@@ -44,7 +44,7 @@ export const ChatDebugger = ({
         passed: true,
         addedMessage: testMsg
       };
-    } catch (error) {
+    } catch (error: unknown) {
       results.stateUpdate = {
         test: 'Can update state',
         passed: false,
@@ -83,7 +83,7 @@ export const ChatDebugger = ({
           passed: true,
           result: result
         };
-      } catch (error) {
+      } catch (error: unknown) {
         results.sendMessageExecution = {
           test: 'sendMessageWrapper executes',
           passed: false,
@@ -111,7 +111,7 @@ export const ChatDebugger = ({
           passed: true,
           result: result
         };
-      } catch (error) {
+      } catch (error: unknown) {
         results.communicateExecution = {
           test: 'communicateWithMAS executes',
           passed: false,
@@ -142,7 +142,7 @@ export const ChatDebugger = ({
         oldLength: initialLength,
         newLength: chatMessages ? chatMessages.length : 0
       };
-    } catch (error) {
+    } catch (error: unknown) {
       results.method1Update = {
         test: 'Direct setChatMessages',
         passed: false,
