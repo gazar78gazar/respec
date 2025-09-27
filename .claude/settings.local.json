@@ -40,7 +40,8 @@
       "Read(//g/My Drive/~WORK/Portune/System Development/Plans/sep 22 - align UC, Mapping.json, form_fields.json/**)",
       "Bash(taskkill:*)",
       "Bash(timeout 8s npm run dev)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(node:*)"
     ],
     "deny": [],
     "ask": [],

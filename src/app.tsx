@@ -782,6 +782,15 @@ function App() {
   const [chatWidth, setChatWidth] = useState(384); // Default 24rem = 384px
   const [isResizing, setIsResizing] = useState(false);
 
+  // Debug trace system for tracking all system operations
+  const [debugTrace, setDebugTrace] = useState<Array<{
+    id: number;
+    timestamp: string;
+    action: string;
+    details: any;
+    status: 'SUCCESS' | 'FAILED' | 'BLOCKED' | 'WARNING';
+  }>>([]);
+
   // Resize handler functions
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -822,6 +831,24 @@ function App() {
     };
   }, [isResizing, handleMouseMove, handleMouseUp]);
 
+  // === Debug Trace Function ===
+  const addTrace = useCallback((
+    action: string,
+    details: any,
+    status: 'SUCCESS' | 'FAILED' | 'BLOCKED' | 'WARNING'
+  ) => {
+    const entry = {
+      timestamp: new Date().toISOString(),
+      action,
+      details,
+      status,
+      id: Date.now()
+    };
+
+    console.log(`[TRACE] ${entry.timestamp} | ${action} | ${status}`, details);
+    setDebugTrace(prev => [...prev.slice(-100), entry]); // Keep last 100 entries
+  }, []);
+
   // === Validation Functions for System Updates ===
   const validateSystemFieldUpdate = useCallback((section: string, field: string, value: any): boolean => {
     try {
@@ -829,6 +856,7 @@ function App() {
       const currentField = requirements[section]?.[field];
       if (currentField?.source === 'user' && currentField?.value !== '' && currentField?.value !== null) {
         console.warn(`[UI-MAS] Blocked system update to user field: ${section}.${field}`);
+        addTrace('field_update_blocked', { section, field, reason: 'user_field_protection' }, 'BLOCKED');
         return false;
       }
 
@@ -836,6 +864,7 @@ function App() {
       const fieldExists = formFieldsData.field_definitions[section]?.[field];
       if (!fieldExists) {
         console.error(`[UI-MAS] Invalid field reference: ${section}.${field}`);
+        addTrace('field_validation_failed', { section, field, reason: 'field_not_exists' }, 'FAILED');
         return false;
       }
 
@@ -856,7 +885,7 @@ function App() {
       console.error(`[UI-MAS] Validation error for ${section}.${field}:`, error);
       return false;
     }
-  }, [requirements]);
+  }, [requirements, addTrace]);
 
   const validateSystemMessage = useCallback((message: string): boolean => {
     try {
@@ -1018,6 +1047,7 @@ function App() {
       switch (action) {
         case 'chat_message':
           setProcessingMessage('Processing your message...');
+          addTrace('chat_message', { message: data.message }, 'SUCCESS');
           const chatResult = await simplifiedRespecService.processChatMessage(data.message);
 
           setChatMessages(prev => [...prev, {
@@ -1027,6 +1057,7 @@ function App() {
 
           if (chatResult.formUpdates && chatResult.formUpdates.length > 0) {
             console.log(`[DEBUG] Chat message returned ${chatResult.formUpdates.length} form updates:`, chatResult.formUpdates);
+            addTrace('chat_form_updates', { count: chatResult.formUpdates.length, updates: chatResult.formUpdates }, 'SUCCESS');
 
             chatResult.formUpdates.forEach(update => {
               console.log(`[DEBUG] Processing chat update:`, {
@@ -1064,6 +1095,35 @@ function App() {
 
                 return newReqs;
               });
+
+              // Post-update verification for chat-triggered field updates
+              setTimeout(() => {
+                setRequirements(currentReqs => {
+                  const actualValue = currentReqs[update.section]?.[update.field]?.value;
+                  const expectedValue = mappedValue;
+
+                  if (actualValue !== expectedValue) {
+                    console.error(`[CHAT VALIDATION FAILED] Field ${update.section}.${update.field}: expected "${expectedValue}", got "${actualValue}"`);
+                    addTrace('chat_field_verification', {
+                      section: update.section,
+                      field: update.field,
+                      expected: expectedValue,
+                      actual: actualValue,
+                      source: 'chat_message'
+                    }, 'FAILED');
+                  } else {
+                    console.log(`[CHAT VALIDATION OK] Field ${update.section}.${update.field} = "${actualValue}"`);
+                    addTrace('chat_field_verification', {
+                      section: update.section,
+                      field: update.field,
+                      value: actualValue,
+                      source: 'chat_message'
+                    }, 'SUCCESS');
+                  }
+
+                  return currentReqs; // Return unchanged state
+                });
+              }, 150); // Slightly longer delay for chat updates
             });
           }
 
@@ -1076,6 +1136,7 @@ function App() {
         case 'form_update':
           if (data.source === 'user') {
             setProcessingMessage('Noting selection...');
+            addTrace('form_update', { section: data.section, field: data.field, value: data.value }, 'SUCCESS');
             const formResult = await simplifiedRespecService.processFormUpdate(
               data.section,
               data.field,
@@ -1093,6 +1154,7 @@ function App() {
 
         case 'trigger_autofill':
           setProcessingMessage('Generating defaults...');
+          addTrace('trigger_autofill', { trigger: data.trigger }, 'SUCCESS');
           const autofillResult = await simplifiedRespecService.triggerAutofill(data.trigger);
 
           setChatMessages(prev => [...prev, {
@@ -1130,6 +1192,7 @@ function App() {
         case 'system_populate_field':
           // Populate single form field from system
           try {
+            addTrace('system_populate_field', { section: data.section, field: data.field, value: data.value }, 'SUCCESS');
             console.log(`[DEBUG] system_populate_field called with:`, {
               section: data.section,
               field: data.field,
@@ -1167,15 +1230,46 @@ function App() {
 
               return newValue;
             });
+
+            // Post-update verification - verify the state was actually updated
+            setTimeout(() => {
+              // Access current requirements state for verification
+              setRequirements(currentReqs => {
+                const actualValue = currentReqs[data.section]?.[data.field]?.value;
+                const expectedValue = mappedValue;
+
+                if (actualValue !== expectedValue) {
+                  console.error(`[VALIDATION FAILED] Field ${data.section}.${data.field}: expected "${expectedValue}", got "${actualValue}"`);
+                  addTrace('system_populate_field_verification', {
+                    section: data.section,
+                    field: data.field,
+                    expected: expectedValue,
+                    actual: actualValue
+                  }, 'FAILED');
+                } else {
+                  console.log(`[VALIDATION OK] Field ${data.section}.${data.field} = "${actualValue}"`);
+                  addTrace('system_populate_field_verification', {
+                    section: data.section,
+                    field: data.field,
+                    value: actualValue
+                  }, 'SUCCESS');
+                }
+
+                return currentReqs; // Return unchanged state
+              });
+            }, 100);
+
             return { success: true };
           } catch (error: unknown) {
             console.error(`[UI-RESPEC] System field update failed:`, error);
+            addTrace('system_populate_field', { section: data.section, field: data.field, error: (error as Error).message }, 'FAILED');
             return { success: false, error };
           }
 
         case 'system_populate_multiple':
           // Populate multiple form fields from system
           try {
+            addTrace('system_populate_multiple', { count: data.updates?.length || 0 }, 'SUCCESS');
             setProcessingMessage('Updating multiple fields...');
             setRequirements(prev => {
               const updated = { ...prev };
@@ -1213,6 +1307,7 @@ function App() {
 
         default:
           console.warn(`[UI-RESPEC] Unknown action: ${action}`);
+          addTrace('unknown_action', { action }, 'WARNING');
           return { success: false };
       }
     } catch (error: unknown) {
@@ -2055,7 +2150,51 @@ function App() {
         </div>
       )}
 
-      {/* ChatDebugger removed - issue fixed */}
+      {/* Debug Trace Panel - NEW */}
+      {debugTrace.length > 0 && (
+        <div style={{
+          position: 'fixed',
+          bottom: 0,
+          right: 0,
+          width: '400px',
+          maxHeight: '300px',
+          overflow: 'auto',
+          background: '#f0f0f0',
+          border: '2px solid red',
+          padding: '10px',
+          zIndex: 9999
+        }}>
+          <h4>Debug Trace (Last 10)</h4>
+          <button
+            onClick={() => setDebugTrace([])}
+            style={{
+              marginLeft: '10px',
+              padding: '2px 8px',
+              background: 'red',
+              color: 'white',
+              border: 'none',
+              borderRadius: '3px',
+              cursor: 'pointer'
+            }}
+          >
+            Clear
+          </button>
+          {debugTrace.slice(-10).reverse().map(entry => (
+            <div key={entry.id} style={{
+              marginBottom: '5px',
+              padding: '3px',
+              fontSize: '12px',
+              background: entry.status === 'FAILED' ? '#ffcccc' :
+                          entry.status === 'BLOCKED' ? '#ffffcc' :
+                          entry.status === 'WARNING' ? '#fff3cd' : '#ccffcc'
+            }}>
+              <div>{entry.timestamp.split('T')[1]}</div>
+              <div><strong>{entry.action}</strong> - {entry.status}</div>
+              <div>{JSON.stringify(entry.details)}</div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
