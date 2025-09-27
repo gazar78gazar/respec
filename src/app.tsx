@@ -1,12 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Check, ChevronRight, ChevronDown, Download, Share, Wand2, AlertTriangle, AlertCircle, Info } from 'lucide-react';
-// import { ReSpecService } from './services/respec'; // COMMENTED OUT - using SimplifiedRespecService
 import { SimplifiedRespecService } from './services/respec/SimplifiedRespecService';
 import * as uiUtils from './utils/uiUtilities';
 import { dataServices } from './services/dataServices';
 import './styles/animations.css';
-// import DebugPanel from './components/DebugPanel'; // Temporarily disabled for testing
-// import { ChatDebugger } from './components/ChatDebugger'; // Removed after fixing chat display issue
 
 // Import TypeScript types
 import type {
@@ -777,14 +774,9 @@ function App() {
 
   // ReSpec service initialization
   // const [respecService] = useState(() => new ReSpecService(
-  //   import.meta.env.VITE_ANTHROPIC_API_KEY || ''
-  // )); // COMMENTED OUT - using SimplifiedRespecService
-  // NEW: Simplified ReSpec service for browser-only operation
   const [simplifiedRespecService] = useState(() => new SimplifiedRespecService());
-  // Removed unused respecSession state
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingMessage, setProcessingMessage] = useState('');
-  // Removed unused clarificationRequest state
 
   const [loading, setLoading] = useState(false);
   const [chatWidth, setChatWidth] = useState(384); // Default 24rem = 384px
@@ -829,14 +821,6 @@ function App() {
       document.body.style.cursor = '';
     };
   }, [isResizing, handleMouseMove, handleMouseUp]);
-
-  // Initialize ReSpec service on component mount
-  // COMMENTED OUT - old ReSpec service initialization
-  // useEffect(() => {
-  //   respecService.initialize().catch(error => {
-  //     console.error('[ReSpec] Failed to initialize:', error);
-  //   });
-  // }, []);
 
   // === Validation Functions for System Updates ===
   const validateSystemFieldUpdate = useCallback((section: string, field: string, value: any): boolean => {
@@ -899,224 +883,6 @@ function App() {
       return false;
     }
   }, [chatMessages]);
-
-  // === OLD communicateWithMAS REMOVED - Now using unified communicateWithMAS ===
-  /*  ORPHANED CODE BLOCK COMMENTED OUT
-      case 'chat_message':
-        try {
-          console.log(`[UI-MAS] Processing chat message with ReSpec: ${data.message}`);
-
-          // For now, return a simple response while debugging ReSpec integration
-          console.log('[UI-MAS] ReSpec integration active - processing message');
-
-          try {
-            const result = await simplifiedRespecService.processChatMessage(data.message);
-            console.log('[UI-MAS] ReSpec result:', result);
-
-            // Apply form updates from ReSpec
-            if (result.formUpdates?.length > 0) {
-              for (const update of result.formUpdates) {
-                await communicateWithMAS('system_populate_field', {
-                  section: update.section,
-                  field: update.field,
-                  value: update.value,
-                  isSystemGenerated: update.isAssumption,
-                  confidence: update.confidence
-                });
-              }
-            }
-
-            return {
-              success: result.success,
-              message: result.systemMessage || `I processed your message: "${data.message}". ReSpec is working!`,
-              formUpdates: result.formUpdates,
-              conflicts: result.conflicts
-            };
-          } catch (respecError) {
-            console.error('[ReSpec] Processing failed, using fallback:', respecError);
-            return {
-              success: true,
-              message: `I received your message: "${data.message}". ReSpec is initializing - please try again in a moment.`,
-              formUpdates: [],
-              conflicts: []
-            };
-          }
-        } catch (error: unknown) {
-          console.error('[ReSpec] Chat processing failed:', error);
-          return {
-            success: true,
-            message: `I received your message: "${data.message}". There was a processing error, but I'm working on it!`
-          };
-        }
-
-      case 'form_update':
-        try {
-          console.log(`[UI-MAS] Notifying ReSpec of form update: ${data.field} = ${data.value}`);
-          const [section, field] = data.field.split('.');
-          const result = await simplifiedRespecService.processFormUpdate(section, field, data.value);
-
-          // If ReSpec has triggered updates, apply them
-          if (result.triggered_updates?.length > 0) {
-            for (const update of result.triggered_updates) {
-              await communicateWithMAS('system_populate_field', {
-                section: update.section,
-                field: update.field,
-                value: update.value,
-                isSystemGenerated: update.is_system_generated
-              });
-            }
-          }
-
-          // If ReSpec has a system message, show it in chat
-          if (result.system_message) {
-            await communicateWithMAS('system_send_message', {
-              message: result.system_message
-            });
-          }
-
-          return {
-            success: result.success,
-            triggeredUpdates: result.triggered_updates,
-            conflicts: result.conflicts
-          };
-        } catch (error: unknown) {
-          console.error('[ReSpec] Form update processing failed:', error);
-          return { success: true }; // Don't break form functionality
-        }
-
-      case 'autofill':
-        try {
-          console.log(`[UI-MAS] Processing autofill request with ReSpec: ${data.section}`);
-          const result = await simplifiedRespecService.triggerAutofill(data.section);
-
-          // Apply all filled fields
-          if (result.fields?.length > 0) {
-            for (const field of result.fields) {
-              await communicateWithMAS('system_populate_field', {
-                section: field.section,
-                field: field.field,
-                value: field.value,
-                isSystemGenerated: field.isAssumption,
-                confidence: field.confidence
-              });
-            }
-          }
-
-          const message = result.success
-            ? `Autofilled ${result.filled_fields?.length || 0} fields with ${(result.confidence_score * 100).toFixed(0)}% confidence.`
-            : 'Autofill failed. Please try again.';
-
-          return {
-            success: result.success,
-            message,
-            filledFields: result.filled_fields,
-            skippedFields: result.skipped_fields,
-            confidence: result.confidence_score
-          };
-        } catch (error: unknown) {
-          console.error('[ReSpec] Autofill processing failed:', error);
-          return {
-            success: false,
-            message: 'Autofill failed due to an error. Please try again.'
-          };
-        }
-
-      case 'system_populate_field':
-        // Populate single form field from MAS
-        const { section, field, value, isSystemGenerated } = data;
-
-        // Validate the field update
-        if (!validateSystemFieldUpdate(section, field, value)) {
-          return { success: false, error: 'Field update validation failed' };
-        }
-
-        try {
-          setRequirements(prev => ({
-            ...prev,
-            [section]: {
-              ...prev[section],
-              [field]: {
-                ...prev[section][field],
-                value,
-                isComplete: value !== '' && value !== null,
-                isAssumption: isSystemGenerated || false,
-                lastUpdated: new Date().toISOString(),
-                source: 'system'
-              }
-            }
-          }));
-          console.log(`[UI-MAS] System populated: ${section}.${field} = ${value}`);
-          return { success: true };
-        } catch (error: unknown) {
-          console.error(`[UI-MAS] System update failed:`, error);
-          return { success: false, error: error.message };
-        }
-
-      case 'system_populate_multiple':
-        // Populate multiple form fields from MAS
-        const updates = data.fieldUpdates; // Array of {section, field, value, isSystemGenerated}
-
-        try {
-          // Validate all updates first
-          const invalidUpdates = updates.filter(update =>
-            !validateSystemFieldUpdate(update.section, update.field, update.value)
-          );
-
-          if (invalidUpdates.length > 0) {
-            console.warn('[UI-MAS] Some field updates failed validation:', invalidUpdates);
-            return { success: false, error: `${invalidUpdates.length} updates failed validation` };
-          }
-
-          setRequirements(prev => {
-            const updated = { ...prev };
-            updates.forEach(update => {
-              const { section, field, value, isSystemGenerated } = update;
-              updated[section] = {
-                ...updated[section],
-                [field]: {
-                  ...updated[section][field],
-                  value,
-                  isComplete: value !== '' && value !== null,
-                  isAssumption: isSystemGenerated || false,
-                  lastUpdated: new Date().toISOString(),
-                  source: 'system'
-                }
-              };
-            });
-            return updated;
-          });
-          console.log(`[UI-MAS] System populated ${updates.length} fields`);
-          return { success: true, updatesApplied: updates.length };
-        } catch (error: unknown) {
-          console.error(`[UI-MAS] System multiple update failed:`, error);
-          return { success: false, error: error.message };
-        }
-
-      case 'system_send_message':
-        // Add system message to chat
-        try {
-          if (!validateSystemMessage(data.message)) {
-            return { success: false, error: 'System message validation failed' };
-          }
-
-          // Add message to chat state
-          setChatMessages(prev => [...prev, {
-            role: 'assistant',
-            content: data.message
-          }]);
-
-          console.log(`[UI-MAS] System message added to chat: ${data.message}`);
-          return { success: true };
-        } catch (error: unknown) {
-          console.error(`[UI-MAS] System message failed:`, error);
-          return { success: false, error: error.message };
-        }
-
-      default:
-        console.warn(`[UI-MAS] Unknown action: ${action}`);
-    }
-  };
-  END OF ORPHANED CODE BLOCK */
 
   // Chat message handler for ReSpec
   const sendMessageWrapper = async (message: string) => {
