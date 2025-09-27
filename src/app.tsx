@@ -760,7 +760,7 @@ const getNextMustField = (requirements) => {
 
 function App() {
   const [currentStage, setCurrentStage] = useState(1);
-  const [activeTab, setActiveTab] = useState('System');
+  const [activeTab, setActiveTab] = useState('Compute Performance');
   const [requirements, setRequirements] = useState<Requirements>({});
   const [expandedGroups, setExpandedGroups] = useState({});
   const [fieldValidations, setFieldValidations] = useState({});
@@ -1096,8 +1096,11 @@ function App() {
                       value: mappedValue,
                       isComplete: true,
                       isAssumption: update.isAssumption || false,
+                      dataSource: (update.isAssumption || false) ? 'assumption' : 'requirement',
+                      priority: prev[update.section]?.[update.field]?.priority || 1,
                       source: 'system',
-                      lastUpdated: new Date().toISOString()
+                      lastUpdated: new Date().toISOString(),
+                      toggleHistory: prev[update.section]?.[update.field]?.toggleHistory || []
                     }
                   }
                 };
@@ -1190,8 +1193,11 @@ function App() {
                     value: field.value,
                     isComplete: true,
                     isAssumption: true,
+                    dataSource: 'assumption',
+                    priority: prev[field.section]?.[field.field]?.priority || 1,
                     source: 'system',
-                    lastUpdated: new Date().toISOString()
+                    lastUpdated: new Date().toISOString(),
+                    toggleHistory: prev[field.section]?.[field.field]?.toggleHistory || []
                   }
                 }
               }));
@@ -1207,6 +1213,12 @@ function App() {
         case 'system_populate_field':
           // Populate single form field from system
           try {
+            // Validate field update with permission checking
+            if (!validateSystemFieldUpdate(data.section, data.field, data.value)) {
+              addTrace('system_populate_field', { section: data.section, field: data.field, value: data.value, reason: 'validation_failed' }, 'FAILED');
+              return { success: false, error: 'Field validation failed' };
+            }
+
             addTrace('system_populate_field', { section: data.section, field: data.field, value: data.value }, 'SUCCESS');
             console.log(`[DEBUG] system_populate_field called with:`, {
               section: data.section,
@@ -1231,8 +1243,11 @@ function App() {
                     value: mappedValue,
                     isComplete: true,
                     isAssumption: data.isSystemGenerated || false,
+                    dataSource: (data.isSystemGenerated || false) ? 'assumption' : 'requirement',
+                    priority: prev[data.section]?.[data.field]?.priority || 1,
                     source: 'system',
-                    lastUpdated: new Date().toISOString()
+                    lastUpdated: new Date().toISOString(),
+                    toggleHistory: prev[data.section]?.[data.field]?.toggleHistory || []
                   }
                 }
               };
@@ -1295,8 +1310,11 @@ function App() {
                   value: update.value,
                   isComplete: true,
                   isAssumption: update.isSystemGenerated || false,
+                  dataSource: (update.isSystemGenerated || false) ? 'assumption' : 'requirement',
+                  priority: updated[update.section]?.[update.field]?.priority || 1,
                   source: 'system',
-                  lastUpdated: new Date().toISOString()
+                  lastUpdated: new Date().toISOString(),
+                  toggleHistory: updated[update.section]?.[update.field]?.toggleHistory || []
                 };
               });
               return updated;
@@ -1442,8 +1460,11 @@ function App() {
             value: '',
             isComplete: false,
             isAssumption: false,
+            dataSource: 'requirement',
             priority: getPriority(fieldKey),
-            source: 'user'
+            source: 'user',
+            lastUpdated: new Date().toISOString(),
+            toggleHistory: []
           };
         });
       });
@@ -1564,7 +1585,12 @@ function App() {
             ...updated[autoSection][autoField],
             value: autoValue,
             isComplete: true,
-            isAssumption: false
+            isAssumption: false,
+            dataSource: 'requirement',
+            priority: updated[autoSection][autoField]?.priority || 1,
+            source: 'system',
+            lastUpdated: new Date().toISOString(),
+            toggleHistory: updated[autoSection][autoField]?.toggleHistory || []
           };
         }
       });
@@ -1789,7 +1815,12 @@ function App() {
             ...updatedRequirements[section][fieldKey],
             value: fieldDef.autofill_default,
             isComplete: true,
-            isAssumption: true
+            isAssumption: true,
+            dataSource: 'assumption',
+            priority: updatedRequirements[section][fieldKey]?.priority || 1,
+            source: 'system',
+            lastUpdated: new Date().toISOString(),
+            toggleHistory: updatedRequirements[section][fieldKey]?.toggleHistory || []
           };
         }
       });
