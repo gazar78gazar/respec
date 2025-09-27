@@ -791,6 +791,13 @@ function App() {
     status: 'SUCCESS' | 'FAILED' | 'BLOCKED' | 'WARNING';
   }>>([]);
 
+  // Field permissions system for user override control
+  const [fieldPermissions, setFieldPermissions] = useState<Record<string, {
+    allowSystemOverride: boolean;
+    grantedAt: string;
+    grantedBy: string;
+  }>>({});
+
   // Resize handler functions
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -850,14 +857,22 @@ function App() {
   }, []);
 
   // === Validation Functions for System Updates ===
-  const validateSystemFieldUpdate = useCallback((section: string, field: string, value: any): boolean => {
+  const validateSystemFieldUpdate = useCallback((section: string, field: string, value: any, allowOverride: boolean = false): boolean => {
     try {
-      // Rule 1: Never overwrite user-entered values without explicit permission
+      // Rule 1: Check user field protection with permission system
       const currentField = requirements[section]?.[field];
       if (currentField?.source === 'user' && currentField?.value !== '' && currentField?.value !== null) {
-        console.warn(`[UI-MAS] Blocked system update to user field: ${section}.${field}`);
-        addTrace('field_update_blocked', { section, field, reason: 'user_field_protection' }, 'BLOCKED');
-        return false;
+        const permissionKey = `${section}.${field}`;
+        const hasPermission = fieldPermissions[permissionKey]?.allowSystemOverride;
+
+        if (!allowOverride || !hasPermission) {
+          console.error(`[BLOCKED] Cannot overwrite user field ${section}.${field} without permission`);
+          addTrace('field_update_blocked', { section, field, reason: 'no_permission' }, 'BLOCKED');
+          return false;
+        }
+
+        console.warn(`[OVERRIDE] Overwriting user field ${section}.${field} with permission`);
+        addTrace('field_override', { section, field, value }, 'WARNING');
       }
 
       // Rule 2: Validate field exists in form definition
@@ -885,7 +900,7 @@ function App() {
       console.error(`[UI-MAS] Validation error for ${section}.${field}:`, error);
       return false;
     }
-  }, [requirements, addTrace]);
+  }, [requirements, addTrace, fieldPermissions]);
 
   const validateSystemMessage = useCallback((message: string): boolean => {
     try {
@@ -1302,6 +1317,95 @@ function App() {
             return { success: true };
           } catch (error: unknown) {
             console.error(`[UI-RESPEC] System message failed:`, error);
+            return { success: false, error };
+          }
+
+        case 'system_toggle_assumption':
+          try {
+            const { section, field, reason } = data;
+            const currentField = requirements[section]?.[field];
+
+            if (!currentField) {
+              console.error(`[TOGGLE FAILED] Field not found: ${section}.${field}`);
+              addTrace('toggle_assumption', { section, field }, 'FAILED');
+              return { success: false };
+            }
+
+            const previousState = currentField.isAssumption ? 'assumption' : 'requirement';
+            const newState = !currentField.isAssumption ? 'assumption' : 'requirement';
+
+            setRequirements(prev => ({
+              ...prev,
+              [section]: {
+                ...prev[section],
+                [field]: {
+                  ...prev[section][field],
+                  isAssumption: !currentField.isAssumption,
+                  dataSource: newState,
+                  toggleHistory: [
+                    ...(currentField.toggleHistory || []),
+                    {
+                      timestamp: new Date().toISOString(),
+                      from: previousState,
+                      to: newState,
+                      triggeredBy: 'system',
+                      reason
+                    }
+                  ]
+                }
+              }
+            }));
+
+            console.log(`[TOGGLE] ${section}.${field}: ${previousState} -> ${newState}`);
+            addTrace('toggle_assumption', { section, field, from: previousState, to: newState }, 'SUCCESS');
+
+            return { success: true, newState };
+          } catch (error: unknown) {
+            console.error(`[TOGGLE ERROR]`, error);
+            addTrace('toggle_assumption', { error: (error as Error).message }, 'FAILED');
+            return { success: false, error };
+          }
+
+        case 'grant_override_permission':
+          try {
+            const permissionKey = `${data.section}.${data.field}`;
+
+            setFieldPermissions(prev => ({
+              ...prev,
+              [permissionKey]: {
+                allowSystemOverride: true,
+                grantedAt: new Date().toISOString(),
+                grantedBy: data.grantedBy || 'user_action'
+              }
+            }));
+
+            console.log(`[PERMISSION GRANTED] ${permissionKey}`);
+            addTrace('permission_granted', { section: data.section, field: data.field }, 'SUCCESS');
+
+            return { success: true };
+          } catch (error: unknown) {
+            console.error(`[PERMISSION ERROR]`, error);
+            addTrace('permission_granted', { error: (error as Error).message }, 'FAILED');
+            return { success: false, error };
+          }
+
+        case 'revoke_override_permission':
+          try {
+            const revokeKey = `${data.section}.${data.field}`;
+
+            setFieldPermissions(prev => {
+              const updated = { ...prev };
+              delete updated[revokeKey];
+              return updated;
+            });
+
+            console.log(`[PERMISSION REVOKED] ${revokeKey}`);
+            addTrace('permission_revoked', { section: data.section, field: data.field }, 'SUCCESS');
+
+            return { success: true };
+          } catch (error: unknown) {
+            console.error(`[PERMISSION ERROR]`, error);
+            addTrace('permission_revoked', { error: (error as Error).message }, 'FAILED');
             return { success: false, error };
           }
 
