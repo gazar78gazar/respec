@@ -50,6 +50,8 @@ export class AnthropicService {
       value: any;
       confidence: number;
       isAssumption: boolean;
+      originalRequest?: string;
+      substitutionNote?: string;
     }>;
     response: string;
     clarificationNeeded?: string;
@@ -214,6 +216,12 @@ Your task is to analyze user messages and extract specific requirements for form
 Available sections and fields:
 ${fieldsDescription}
 
+CRITICAL: Field-Aware Value Selection
+- When the user prompt includes "Available field options", you MUST only select from the provided options
+- For dropdown fields, NEVER suggest values that aren't in the available options list
+- If exact requested value isn't available, select the closest match and explain via substitutionNote explaining the choice
+- Include originalRequest when you make substitutions
+
 Important notes:
 - For "digital_io" and "analog_io" fields, these represent combined I/O counts (not separate input/output)
 - Commercial fields (budget_per_unit, quantity, etc.) can be updated from user input but should NOT be autofilled
@@ -224,23 +232,27 @@ Important notes:
 Instructions:
 1. Extract any mentioned requirements from the user's message
 2. Map them to the correct section and field name
-3. Provide confidence scores (0-1) based on clarity
-4. Mark as assumption if inferred rather than explicitly stated
-5. Generate a helpful, conversational response
-6. Only suggest clarification if critical information is missing
+3. For fields with available options, ONLY select from the provided list
+4. If substitution needed, include originalRequest and substitutionNote
+5. Provide confidence scores (0-1) based on clarity
+6. Mark as assumption if inferred rather than explicitly stated
+7. Generate a helpful, conversational response
+8. Only suggest clarification if critical information is missing
 
 Return JSON format:
 {
   "requirements": [
     {
-      "section": "io_connectivity",
-      "field": "analog_io",
-      "value": "8",
+      "section": "compute_performance",
+      "field": "storage_capacity",
+      "value": "512GB",
       "confidence": 0.9,
-      "isAssumption": false
+      "isAssumption": false,
+      "originalRequest": "500GB",
+      "substitutionNote": "Selected 512GB as it's the closest available option to your requested 500GB"
     }
   ],
-  "response": "I've noted that you need 8 analog I/O channels.",
+  "response": "I've selected 512GB storage, which is the closest available option to your requested 500GB.",
   "clarificationNeeded": null
 }`;
   }

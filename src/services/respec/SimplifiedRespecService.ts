@@ -5,7 +5,7 @@ import { AnthropicService } from './AnthropicService';
 export interface ChatResult {
   success: boolean;
   systemMessage: string;
-  formUpdates?: FormUpdate[];
+  formUpdates?: EnhancedFormUpdate[];
   clarificationNeeded?: string;
   confidence: number;
 }
@@ -16,6 +16,24 @@ export interface FormUpdate {
   value: any;
   isAssumption: boolean;
   confidence: number;
+}
+
+export interface EnhancedFormUpdate extends FormUpdate {
+  originalRequest?: string;    // What user asked for
+  substitutionNote?: string;   // Explanation if different
+}
+
+export interface FieldOptionsMap {
+  [section: string]: {
+    [field: string]: {
+      type: 'dropdown' | 'text' | 'number' | 'multiselect' | 'date';
+      options?: string[];  // For dropdown/multiselect
+      min?: number;        // For number fields
+      max?: number;        // For number fields
+      validation?: string; // Regex pattern for text
+      label?: string;      // Human readable label
+    }
+  }
 }
 
 export interface FormProcessingResult {
@@ -37,6 +55,7 @@ export class SimplifiedRespecService {
   private anthropicService: AnthropicService;
   private fieldMappings: Map<string, { section: string; field: string; }> = new Map();
   private uc1Data: any = null;
+  private fieldOptionsMap: FieldOptionsMap = {};
 
   // Engineering pattern recognition database
   private patterns = {
@@ -130,7 +149,7 @@ export class SimplifiedRespecService {
     this.anthropicService = new AnthropicService();
   }
 
-  async initialize(): Promise<void> {
+  async initialize(fieldDefinitions?: any): Promise<void> {
     if (this.isInitialized) {
       console.log('[SimplifiedRespec] Already initialized');
       return;
@@ -166,6 +185,12 @@ export class SimplifiedRespecService {
       }
     } catch (error) {
       console.warn('[SimplifiedRespec] Could not load saved session:', error);
+    }
+
+    // Build field options map if field definitions provided
+    if (fieldDefinitions) {
+      this.buildFieldOptionsMap(fieldDefinitions);
+      console.log('[SimplifiedRespec] Field options map built with', Object.keys(this.fieldOptionsMap).length, 'sections');
     }
 
     this.isInitialized = true;
@@ -226,6 +251,28 @@ export class SimplifiedRespecService {
     });
   }
 
+  private buildFieldOptionsMap(fieldDefinitions: any): void {
+    // Build field options map from form field definitions
+    Object.entries(fieldDefinitions).forEach(([section, fields]: [string, any]) => {
+      this.fieldOptionsMap[section] = {};
+      Object.entries(fields).forEach(([fieldKey, fieldDef]: [string, any]) => {
+        this.fieldOptionsMap[section][fieldKey] = {
+          type: fieldDef.type,
+          options: fieldDef.options,
+          min: fieldDef.min,
+          max: fieldDef.max,
+          validation: fieldDef.validation,
+          label: fieldDef.label
+        };
+      });
+    });
+
+    console.log('[SimplifiedRespec] Built field options map:', {
+      sections: Object.keys(this.fieldOptionsMap).length,
+      totalFields: Object.values(this.fieldOptionsMap).reduce((sum, section) => sum + Object.keys(section).length, 0)
+    });
+  }
+
   private getFieldMappingsForPrompt(): any {
     // Organize field mappings by section for the Anthropic prompt
     const mappingsBySection: any = {};
@@ -247,6 +294,90 @@ export class SimplifiedRespecService {
     return this.sessionId;
   }
 
+  private identifyRelevantFields(message: string): string[] {
+    const relevantFields: string[] = [];
+    const messageLower = message.toLowerCase();
+
+    // Search through field mappings to find relevant fields
+    this.fieldMappings.forEach((mapping, name) => {
+      if (messageLower.includes(name.toLowerCase())) {
+        const fieldPath = `${mapping.section}.${mapping.field}`;
+        if (!relevantFields.includes(fieldPath)) {
+          relevantFields.push(fieldPath);
+        }
+      }
+    });
+
+    // Also check for common patterns and keywords
+    const commonFieldPatterns = {
+      'storage': ['compute_performance.storage_capacity'],
+      'memory': ['compute_performance.memory_capacity'],
+      'processor': ['compute_performance.processor_type'],
+      'cpu': ['compute_performance.processor_type'],
+      'ethernet': ['io_connectivity.ethernet_ports'],
+      'digital': ['io_connectivity.digital_io'],
+      'analog': ['io_connectivity.analog_io'],
+      'temperature': ['environment_standards.operating_temperature'],
+      'temp': ['environment_standards.operating_temperature'],
+      'budget': ['commercial.budget_per_unit'],
+      'price': ['commercial.budget_per_unit'],
+      'cost': ['commercial.budget_per_unit'],
+      'quantity': ['commercial.quantity'],
+      'qty': ['commercial.quantity']
+    };
+
+    Object.entries(commonFieldPatterns).forEach(([keyword, fields]) => {
+      if (messageLower.includes(keyword)) {
+        fields.forEach(field => {
+          if (!relevantFields.includes(field)) {
+            relevantFields.push(field);
+          }
+        });
+      }
+    });
+
+    return relevantFields;
+  }
+
+  private buildContextPrompt(message: string, identifiedFields: string[]): string {
+    let prompt = `User request: "${message}"\n\n`;
+
+    if (identifiedFields.length > 0) {
+      prompt += `Available field options for this request:\n`;
+
+      identifiedFields.forEach(fieldPath => {
+        const [section, field] = fieldPath.split('.');
+        const fieldOptions = this.fieldOptionsMap[section]?.[field];
+
+        if (fieldOptions) {
+          prompt += `\n${fieldOptions.label || field}:\n`;
+          prompt += `  Type: ${fieldOptions.type}\n`;
+
+          if (fieldOptions.options && fieldOptions.options.length > 0) {
+            prompt += `  Available options: [${fieldOptions.options.join(', ')}]\n`;
+            prompt += `  Instruction: Select the closest matching option from the available list. If substituting, explain why in substitutionNote.\n`;
+          } else if (fieldOptions.type === 'number') {
+            if (fieldOptions.min !== undefined || fieldOptions.max !== undefined) {
+              prompt += `  Range: ${fieldOptions.min || 'no minimum'} to ${fieldOptions.max || 'no maximum'}\n`;
+            }
+          } else if (fieldOptions.validation) {
+            prompt += `  Validation pattern: ${fieldOptions.validation}\n`;
+          }
+        }
+      });
+
+      prompt += `\nResponse format requirements:\n`;
+      prompt += `- If exact requested value is available, use it directly with no substitutionNote\n`;
+      prompt += `- If substitution needed, include originalRequest and substitutionNote explaining the choice\n`;
+      prompt += `- For dropdown fields, ONLY select from available options\n`;
+      prompt += `- For unit conversions (e.g. "half a tera" = 500GB → 512GB), explain the conversion\n`;
+    } else {
+      prompt += `No specific field options identified. Process as normal requirements extraction.\n`;
+    }
+
+    return prompt;
+  }
+
   async processChatMessage(message: string): Promise<ChatResult> {
     if (!this.isInitialized) {
       await this.initialize();
@@ -262,22 +393,32 @@ export class SimplifiedRespecService {
     });
 
     try {
-      // Use Anthropic service for better analysis
+      // Identify relevant fields from the message
+      const identifiedFields = this.identifyRelevantFields(message);
+      console.log(`[SimplifiedRespec] Identified relevant fields:`, identifiedFields);
+
+      // Build context with available options
+      const contextPrompt = this.buildContextPrompt(message, identifiedFields);
+      console.log(`[SimplifiedRespec] Built context prompt with field options`);
+
+      // Use Anthropic service with enhanced context
       const anthropicResult = await this.anthropicService.analyzeRequirements(
-        message,
+        contextPrompt,
         {
           conversationHistory: this.conversationHistory.slice(-5), // Last 5 messages for context
           sessionId: this.sessionId
         }
       );
 
-      // Convert Anthropic requirements to FormUpdate format
-      const formUpdates: FormUpdate[] = anthropicResult.requirements.map(req => ({
+      // Convert Anthropic requirements to EnhancedFormUpdate format
+      const formUpdates: EnhancedFormUpdate[] = anthropicResult.requirements.map(req => ({
         section: req.section,
         field: req.field,
         value: req.value,
         isAssumption: req.isAssumption,
-        confidence: req.confidence
+        confidence: req.confidence,
+        originalRequest: req.originalRequest,
+        substitutionNote: req.substitutionNote
       }));
 
       // Use Anthropic's response

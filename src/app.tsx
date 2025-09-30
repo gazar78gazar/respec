@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Check, ChevronRight, ChevronDown, Download, Share, Wand2, AlertTriangle, AlertCircle, Info } from 'lucide-react';
-import { SimplifiedRespecService } from './services/respec/SimplifiedRespecService';
+import { SimplifiedRespecService, EnhancedFormUpdate } from './services/respec/SimplifiedRespecService';
 import * as uiUtils from './utils/uiUtilities';
 import { dataServices } from './services/dataServices';
 import './styles/animations.css';
@@ -1074,7 +1074,7 @@ function App() {
             console.log(`[DEBUG] Chat message returned ${chatResult.formUpdates.length} form updates:`, chatResult.formUpdates);
             addTrace('chat_form_updates', { count: chatResult.formUpdates.length, updates: chatResult.formUpdates }, 'SUCCESS');
 
-            chatResult.formUpdates.forEach(update => {
+            chatResult.formUpdates.forEach((update: EnhancedFormUpdate) => {
               console.log(`[DEBUG] Processing chat update:`, {
                 section: update.section,
                 field: update.field,
@@ -1142,6 +1142,27 @@ function App() {
                   return currentReqs; // Return unchanged state
                 });
               }, 150); // Slightly longer delay for chat updates
+
+              // Handle substitution notes from enhanced updates
+              if (update.substitutionNote) {
+                setChatMessages(prev => [...prev, {
+                  id: `sub-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                  role: 'system',
+                  content: `📝 ${update.substitutionNote}`,
+                  timestamp: new Date(),
+                  metadata: {
+                    isAssumption: false,
+                    confidence: update.confidence || 0.9
+                  }
+                }]);
+                console.log(`[DEBUG] Added substitution note for ${update.section}.${update.field}:`, update.substitutionNote);
+                addTrace('substitution_note', {
+                  section: update.section,
+                  field: update.field,
+                  originalRequest: update.originalRequest,
+                  substitutionNote: update.substitutionNote
+                }, 'SUCCESS');
+              }
             });
           }
 
@@ -1485,7 +1506,7 @@ function App() {
       try {
         setProcessingMessage('Initializing...');
         setIsProcessing(true);
-        await simplifiedRespecService.initialize();
+        await simplifiedRespecService.initialize(formFieldsData.field_definitions);
         const sessionId = simplifiedRespecService.getSessionId();
         setRespecSession(sessionId);
         console.log('[APP] Simplified Respec initialized:', sessionId);
@@ -2285,51 +2306,6 @@ function App() {
         </div>
       )}
 
-      {/* Debug Trace Panel - NEW */}
-      {debugTrace.length > 0 && (
-        <div style={{
-          position: 'fixed',
-          bottom: 0,
-          right: 0,
-          width: '400px',
-          maxHeight: '300px',
-          overflow: 'auto',
-          background: '#f0f0f0',
-          border: '2px solid red',
-          padding: '10px',
-          zIndex: 9999
-        }}>
-          <h4>Debug Trace (Last 10)</h4>
-          <button
-            onClick={() => setDebugTrace([])}
-            style={{
-              marginLeft: '10px',
-              padding: '2px 8px',
-              background: 'red',
-              color: 'white',
-              border: 'none',
-              borderRadius: '3px',
-              cursor: 'pointer'
-            }}
-          >
-            Clear
-          </button>
-          {debugTrace.slice(-10).reverse().map(entry => (
-            <div key={entry.id} style={{
-              marginBottom: '5px',
-              padding: '3px',
-              fontSize: '12px',
-              background: entry.status === 'FAILED' ? '#ffcccc' :
-                          entry.status === 'BLOCKED' ? '#ffffcc' :
-                          entry.status === 'WARNING' ? '#fff3cd' : '#ccffcc'
-            }}>
-              <div>{entry.timestamp.split('T')[1]}</div>
-              <div><strong>{entry.action}</strong> - {entry.status}</div>
-              <div>{JSON.stringify(entry.details)}</div>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
