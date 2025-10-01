@@ -5,6 +5,17 @@ import * as uiUtils from './utils/uiUtilities';
 import { dataServices } from './services/dataServices';
 import './styles/animations.css';
 
+// Import enhanced chat and conflict detection components
+import EnhancedChatWindow from './components/EnhancedChatWindow';
+import ConflictPanel from './components/ConflictPanel';
+import { FieldConflict } from './services/respec/ConflictDetectionService';
+
+// Import new artifact state management
+import { ArtifactManager } from './services/respec/artifacts/ArtifactManager';
+import { CompatibilityLayer } from './services/respec/artifacts/CompatibilityLayer';
+import { ArtifactState } from './services/respec/artifacts/ArtifactTypes';
+import { uc1ValidationEngine } from './services/respec/UC1ValidationEngine';
+
 // Import TypeScript types
 import type {
   Requirements,
@@ -765,12 +776,21 @@ function App() {
   const [expandedGroups, setExpandedGroups] = useState({});
   const [fieldValidations, setFieldValidations] = useState({});
   const [crossFieldValidations, setCrossFieldValidations] = useState<CrossFieldErrors>({});
+
+  // New artifact state management (additive - preserves existing functionality)
+  const [artifactManager, setArtifactManager] = useState<ArtifactManager | null>(null);
+  const [compatibilityLayer, setCompatibilityLayer] = useState<CompatibilityLayer | null>(null);
+  const [artifactState, setArtifactState] = useState<ArtifactState | null>(null);
   const [projectName] = useState('Untitled Project');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     { id: 'initial', role: 'assistant', content: 'How can I help you with filling out these requirements?', timestamp: new Date() }
   ]);
   const [chatInput, setChatInput] = useState('');
   const chatEndRef = useRef(null);
+
+  // Conflict detection state
+  const [activeConflicts, setActiveConflicts] = useState<FieldConflict[]>([]);
+  const [showConflicts, setShowConflicts] = useState(true);
 
   // ReSpec service initialization
   // const [respecService] = useState(() => new ReSpecService(
@@ -928,6 +948,29 @@ function App() {
     }
   }, [chatMessages]);
 
+  // Conflict resolution handler
+  const handleConflictResolve = async (
+    conflictId: string,
+    action: 'accept' | 'reject' | 'modify',
+    newValue?: string
+  ) => {
+    try {
+      const resolution = await simplifiedRespecService.resolveConflict(conflictId, action, newValue);
+
+      if (resolution.applied && action === 'accept') {
+        // Apply the form update if conflict was accepted
+        const conflict = activeConflicts.find(c => c.id === conflictId);
+        if (conflict) {
+          await updateField(conflict.section, conflict.field.split('.')[1], resolution.newValue || conflict.newValue, false);
+        }
+      }
+
+      console.log(`[APP] Conflict ${conflictId} resolved with action: ${action}`);
+    } catch (error) {
+      console.error('[APP] Failed to resolve conflict:', error);
+    }
+  };
+
   // Chat message handler for ReSpec
   const sendMessageWrapper = async (message: string) => {
     if (!loading) {
@@ -936,18 +979,27 @@ function App() {
         // Add user message to chat immediately
         setChatMessages(prev => [...prev, {
           role: 'user',
-          content: message
+          content: message,
+          timestamp: new Date()
         }]);
 
         // Send to NEW ReSpec for processing
         const result = await communicateWithMAS('chat_message', { message });
 
-        // Add ReSpec's system response to chat
+        // Add ReSpec's system response to chat with semantic metadata
         if (result.success && result.message) {
-          setChatMessages(prev => [...prev, {
+          const chatMessage: any = {
             role: 'assistant',
-            content: result.message
-          }]);
+            content: result.message,
+            timestamp: new Date()
+          };
+
+          // Add semantic metadata if available
+          if ((result as any).semanticMetadata) {
+            chatMessage.semanticMetadata = (result as any).semanticMetadata;
+          }
+
+          setChatMessages(prev => [...prev, chatMessage]);
         }
 
         return result;
@@ -1063,7 +1115,7 @@ function App() {
         case 'chat_message':
           setProcessingMessage('Processing your message...');
           addTrace('chat_message', { message: data.message }, 'SUCCESS');
-          const chatResult = await simplifiedRespecService.processChatMessage(data.message);
+          const chatResult = await simplifiedRespecService.processChatMessage(data.message, requirements);
 
           setChatMessages(prev => [...prev, {
             role: 'assistant',
@@ -1508,13 +1560,58 @@ function App() {
         setIsProcessing(true);
         await simplifiedRespecService.initialize(formFieldsData.field_definitions);
         const sessionId = simplifiedRespecService.getSessionId();
-        setRespecSession(sessionId);
         console.log('[APP] Simplified Respec initialized:', sessionId);
       } catch (err) {
         console.error('[APP] Simplified Respec init failed:', err);
       } finally {
         setIsProcessing(false);
         setProcessingMessage('');
+      }
+
+      // Initialize new artifact state management system (additive)
+      try {
+        console.log('[APP] Initializing artifact state management...');
+
+        // Load UC1 schema
+        await uc1ValidationEngine.loadSchema('/uc1.json');
+
+        // Initialize artifact manager
+        const manager = new ArtifactManager(uc1ValidationEngine);
+        await manager.initialize();
+        setArtifactManager(manager);
+
+        // Initialize compatibility layer
+        const compatibility = new CompatibilityLayer(manager, uc1ValidationEngine);
+        setCompatibilityLayer(compatibility);
+
+        // Initialize semantic matching in SimplifiedRespecService
+        simplifiedRespecService.initializeSemanticMatching(
+          uc1ValidationEngine,
+          manager,
+          compatibility
+        );
+
+        // Set up conflict detection listener
+        const unsubscribeConflicts = simplifiedRespecService.onConflictChange((conflicts) => {
+          setActiveConflicts(conflicts);
+          // Auto-show conflicts panel if there are critical/error conflicts
+          const hasCriticalConflicts = conflicts.some(c => c.severity === 'critical' || c.severity === 'error');
+          if (hasCriticalConflicts) {
+            setShowConflicts(true);
+          }
+        });
+
+        // Store unsubscribe function for cleanup
+        return unsubscribeConflicts;
+
+        // Get initial artifact state
+        const initialArtifactState = manager.getState();
+        setArtifactState(initialArtifactState);
+
+        console.log('[APP] Artifact state management initialized successfully');
+      } catch (err) {
+        console.error('[APP] Artifact state management init failed:', err);
+        // Non-blocking - existing functionality continues to work
       }
     };
 
@@ -1538,6 +1635,50 @@ function App() {
 
     return () => clearInterval(syncInterval);
   }, []);
+
+  // Sync requirements with new artifact state management (additive)
+  useEffect(() => {
+    if (!compatibilityLayer || !artifactManager) return;
+
+    const syncToArtifacts = async () => {
+      try {
+        // Sync current requirements to artifact state (correct direction)
+        const syncResult = compatibilityLayer.syncRequirementsToArtifact(requirements);
+
+        if (syncResult.updated.length > 0) {
+          console.log(`[APP] Synced ${syncResult.updated.length} fields to artifact state:`, syncResult.updated);
+
+          // Update artifact state and trigger conflict detection
+          const updatedArtifactState = artifactManager.getState();
+          setArtifactState(updatedArtifactState);
+
+          // Run conflict detection
+          artifactManager.detectConflicts().then(conflictResult => {
+            if (conflictResult.hasConflict) {
+              console.warn('[APP] CONFLICTS DETECTED:', conflictResult.conflicts);
+              conflictResult.conflicts.forEach(conflict => {
+                console.warn(`🚨 Conflict: ${conflict.description}`);
+                console.warn(`   Resolution: ${conflict.resolution}`);
+              });
+            } else {
+              console.log('[APP] No conflicts detected');
+            }
+          }).catch(error => {
+            console.error('[APP] Conflict detection failed:', error);
+          });
+        }
+
+        if (syncResult.errors.length > 0) {
+          console.warn('[APP] Artifact sync errors:', syncResult.errors);
+        }
+      } catch (error) {
+        console.error('[APP] Artifact sync failed:', error);
+        // Non-blocking - existing functionality continues
+      }
+    };
+
+    syncToArtifacts();
+  }, [requirements, compatibilityLayer, artifactManager]);
 
   const toggleGroup = (section, group) => {
     setExpandedGroups(prev => ({
@@ -1654,6 +1795,18 @@ function App() {
           [fieldDef.group]: true
         }
       }));
+    }
+
+    // Check for conflicts if this is a manual or semantic update
+    if (source !== 'system') {
+      simplifiedRespecService.detectFieldConflicts(
+        `${section}.${field}`,
+        value,
+        requirements,
+        source === 'user' ? 'manual' : 'semantic'
+      ).catch(error => {
+        console.warn('[APP] Conflict detection failed:', error);
+      });
     }
 
     // Notify MAS of form changes
@@ -1975,154 +2128,6 @@ function App() {
   const mustFieldsStatus = getMustFieldsStatus();
   const nextField = getNextMustField(requirements);
 
-  // ChatWindow Component
-  function ChatWindow({ onSendMessage, messages, pendingClarification, loading, width, onMouseDown, isResizing }: any) {
-    // FIX #2: Use ref to persist input across re-renders
-    const inputRef = useRef<string>('');
-    const [input, setInputState] = useState('');
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-    // Dual state management to prevent input loss
-    const setInput = useCallback((value: string) => {
-      inputRef.current = value;
-      setInputState(value);
-    }, []);
-
-    // Restore input from ref when component re-renders
-    useEffect(() => {
-      if (inputRef.current && inputRef.current !== input) {
-        setInputState(inputRef.current);
-      }
-    }, []);
-
-    // FIX #1: Auto-resize textarea based on content
-    useEffect(() => {
-      if (textareaRef.current) {
-        // Reset height to auto to get the correct scrollHeight
-        textareaRef.current.style.height = 'auto';
-        // Set height to scrollHeight but cap at max height (approximately 5 lines)
-        const maxHeight = 120; // ~5 lines
-        const newHeight = Math.min(textareaRef.current.scrollHeight, maxHeight);
-        textareaRef.current.style.height = `${newHeight}px`;
-      }
-    }, [input]);
-
-    const handleSend = async () => {
-      if (input.trim() && !loading) {
-        await onSendMessage(input);
-        setInput('');
-        // Reset textarea height after sending
-        if (textareaRef.current) {
-          textareaRef.current.style.height = 'auto';
-        }
-      }
-    };
-
-    const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      // Send on Enter, but allow Shift+Enter for new lines
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        handleSend();
-      }
-    };
-
-    return (
-      <div
-        className="bg-white border-l shadow-lg flex flex-col relative"  // PRESERVED: Dynamic width + relative positioning
-        style={{ width: `${width}px` }}
-      >
-        {/* PRESERVED: Resize handle with improved styling */}
-        {onMouseDown && (
-          <div
-            className={`absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 transition-colors ${
-              isResizing ? 'bg-blue-500' : 'bg-gray-300'
-            } group`}
-            onMouseDown={onMouseDown}
-          >
-            {/* Grip indicator */}
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-1 h-8 flex flex-col justify-between opacity-0 group-hover:opacity-100 transition-opacity">
-              <div className="w-1 h-1 bg-gray-600 rounded-full"></div>
-              <div className="w-1 h-1 bg-gray-600 rounded-full"></div>
-              <div className="w-1 h-1 bg-gray-600 rounded-full"></div>
-            </div>
-          </div>
-        )}
-
-        <div className="bg-white border-b px-4 py-3">
-          <h3 className="text-sm font-semibold text-gray-800">Requirements Assistant</h3>
-          {pendingClarification && (
-            <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
-              Clarification needed
-            </div>
-          )}
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
-          {messages.map((msg, idx) => (
-            <div
-              key={idx}
-              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}  // PRESERVED: Using msg.role
-            >
-              <div
-                className={`max-w-xs p-3 rounded-lg text-sm ${
-                  msg.role === 'user'  // PRESERVED: Using msg.role
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-white border border-gray-200 text-gray-800'
-                }`}
-              >
-                {msg.content}  {/* PRESERVED: Using msg.content */}
-              </div>
-            </div>
-          ))}
-
-          {pendingClarification && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-              <p className="text-sm font-medium mb-2">{pendingClarification.question}</p>
-              <div className="space-y-2">
-                {pendingClarification.options.map(option => (
-                  <button
-                    key={option.id}
-                    onClick={() => onSendMessage(option.label)}
-                    className="w-full text-left px-3 py-2 bg-white border rounded hover:bg-gray-50 text-sm"
-                    disabled={loading}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="bg-white border-t p-4">
-          <div className="flex items-end space-x-2">
-            {/* CHANGED: input to textarea for auto-resize */}
-            <textarea
-              ref={textareaRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Type your requirement..."
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-none overflow-y-auto"
-              style={{ minHeight: '38px' }}
-              disabled={loading}
-              rows={1}
-            />
-            <button
-              onClick={handleSend}
-              disabled={loading || !input.trim()}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm disabled:opacity-50 flex-shrink-0"
-            >
-              {loading ? '...' : 'Send'}
-            </button>
-          </div>
-          <div className="mt-1 text-xs text-gray-500">
-            Press Enter to send, Shift+Enter for new line
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -2271,8 +2276,8 @@ function App() {
         <div className="h-20"></div>
       </div>
 
-      {/* Chat Panel */}
-      <ChatWindow
+      {/* Enhanced Chat Panel */}
+      <EnhancedChatWindow
         onSendMessage={sendMessageWrapper}
         messages={chatMessages}
         pendingClarification={null}
@@ -2280,7 +2285,38 @@ function App() {
         width={chatWidth}
         onMouseDown={handleMouseDown}
         isResizing={isResizing}
+        onConflictResolve={handleConflictResolve}
+        currentRequirements={requirements}
       />
+
+      {/* Conflict Panel */}
+      {activeConflicts.length > 0 && showConflicts && (
+        <div className="fixed bottom-4 right-4 w-96 max-h-80 z-50">
+          <ConflictPanel
+            conflicts={activeConflicts}
+            onResolveConflict={handleConflictResolve}
+            onDismissConflict={(conflictId) => {
+              // Remove conflict from active list
+              setActiveConflicts(prev => prev.filter(c => c.id !== conflictId));
+            }}
+          />
+        </div>
+      )}
+
+      {/* Conflict Toggle Button */}
+      {activeConflicts.length > 0 && (
+        <button
+          onClick={() => setShowConflicts(!showConflicts)}
+          className={`fixed bottom-4 right-4 w-12 h-12 rounded-full shadow-lg flex items-center justify-center text-white font-semibold z-40 ${
+            activeConflicts.some(c => c.severity === 'critical' || c.severity === 'error')
+              ? 'bg-red-500 hover:bg-red-600'
+              : 'bg-yellow-500 hover:bg-yellow-600'
+          }`}
+          title={`${activeConflicts.length} conflicts detected`}
+        >
+          ⚠️
+        </button>
+      )}
       
       {/* Step Progress Indicator */}
       <StepProgressIndicator

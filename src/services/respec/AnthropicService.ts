@@ -69,9 +69,9 @@ export class AnthropicService {
       const systemPrompt = this.buildSystemPrompt();
 
       const completion = await this.client.messages.create({
-        model: 'claude-3-opus-20240229',
-        max_tokens: 1024,
-        temperature: 0.3,
+        model: import.meta.env.VITE_LLM_MODEL || 'claude-opus-4-1-20250805',
+        max_tokens: parseInt(import.meta.env.VITE_LLM_MAX_TOKENS) || 1024,
+        temperature: parseFloat(import.meta.env.VITE_LLM_TEMPERATURE) || 0.3,
         system: systemPrompt,
         messages: [
           {

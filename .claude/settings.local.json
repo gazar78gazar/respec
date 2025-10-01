@@ -41,7 +41,10 @@
       "Bash(taskkill:*)",
       "Bash(timeout 8s npm run dev)",
       "Bash(cat:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": [],

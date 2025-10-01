@@ -1,5 +1,11 @@
 import { v4 as uuidv4 } from 'uuid';
 import { AnthropicService } from './AnthropicService';
+import { SemanticMatcher, createSemanticMatcher } from './semantic/SemanticMatcher';
+import { SemanticIntegrationService, createSemanticIntegrationService, EnhancedChatResult } from './semantic/SemanticIntegrationService';
+import { UC1ValidationEngine } from './UC1ValidationEngine';
+import { ArtifactManager } from './artifacts/ArtifactManager';
+import { CompatibilityLayer } from './artifacts/CompatibilityLayer';
+import { ConflictDetectionService, createConflictDetectionService, FieldConflict } from './ConflictDetectionService';
 
 // Simplified interfaces for the browser-only service
 export interface ChatResult {
@@ -56,6 +62,14 @@ export class SimplifiedRespecService {
   private fieldMappings: Map<string, { section: string; field: string; }> = new Map();
   private uc1Data: any = null;
   private fieldOptionsMap: FieldOptionsMap = {};
+
+  // New semantic matching system
+  private semanticMatcher: SemanticMatcher | null = null;
+  private semanticIntegration: SemanticIntegrationService | null = null;
+  private useSemanticMatching: boolean = true;
+
+  // Conflict detection system
+  private conflictDetection: ConflictDetectionService | null = null;
 
   // Engineering pattern recognition database
   private patterns = {
@@ -147,6 +161,39 @@ export class SimplifiedRespecService {
   constructor() {
     this.sessionId = uuidv4();
     this.anthropicService = new AnthropicService();
+  }
+
+  // Initialize semantic matching system (called externally with dependencies)
+  initializeSemanticMatching(
+    uc1Engine: UC1ValidationEngine,
+    artifactManager?: ArtifactManager,
+    compatibilityLayer?: CompatibilityLayer
+  ): void {
+    if (!uc1Engine.isReady()) {
+      console.warn('[SimplifiedRespec] UC1ValidationEngine not ready for semantic matching');
+      this.useSemanticMatching = false;
+      return;
+    }
+
+    try {
+      this.semanticMatcher = createSemanticMatcher(this.anthropicService, uc1Engine);
+      this.semanticMatcher.initialize(artifactManager, compatibilityLayer);
+
+      this.semanticIntegration = createSemanticIntegrationService(
+        this.semanticMatcher,
+        compatibilityLayer
+      );
+
+      // Initialize conflict detection
+      this.conflictDetection = createConflictDetectionService(uc1Engine);
+      this.conflictDetection.initialize(compatibilityLayer);
+
+      console.log('[SimplifiedRespec] Semantic matching and conflict detection systems initialized');
+      this.useSemanticMatching = true;
+    } catch (error) {
+      console.error('[SimplifiedRespec] Failed to initialize semantic matching:', error);
+      this.useSemanticMatching = false;
+    }
   }
 
   async initialize(fieldDefinitions?: any): Promise<void> {
@@ -378,7 +425,7 @@ export class SimplifiedRespecService {
     return prompt;
   }
 
-  async processChatMessage(message: string): Promise<ChatResult> {
+  async processChatMessage(message: string, currentRequirements?: any): Promise<ChatResult> {
     if (!this.isInitialized) {
       await this.initialize();
     }
@@ -393,6 +440,34 @@ export class SimplifiedRespecService {
     });
 
     try {
+      // NEW: Try semantic matching first if available
+      if (this.useSemanticMatching && this.semanticIntegration) {
+        console.log(`[SimplifiedRespec] Using semantic matching pipeline`);
+
+        const semanticResult = await this.semanticIntegration.processMessage(
+          message,
+          currentRequirements || {},
+          this.conversationHistory
+        );
+
+        if (semanticResult.success) {
+          // Add assistant response to history
+          this.conversationHistory.push({
+            role: 'assistant',
+            content: semanticResult.systemMessage,
+            timestamp: new Date(),
+          });
+
+          console.log(`[SimplifiedRespec] Semantic processing successful: ${semanticResult.formUpdates?.length || 0} updates`);
+          return semanticResult;
+        } else {
+          console.warn(`[SimplifiedRespec] Semantic processing failed, falling back to legacy method`);
+        }
+      }
+
+      // FALLBACK: Use legacy processing method
+      console.log(`[SimplifiedRespec] Using legacy processing pipeline`);
+
       // Identify relevant fields from the message
       const identifiedFields = this.identifyRelevantFields(message);
       console.log(`[SimplifiedRespec] Identified relevant fields:`, identifiedFields);
@@ -743,5 +818,70 @@ export class SimplifiedRespecService {
       conversationLength: this.conversationHistory.length,
       lastActivity: this.conversationHistory[this.conversationHistory.length - 1]?.timestamp,
     };
+  }
+
+  // ============= CONFLICT DETECTION API =============
+
+  async detectFieldConflicts(
+    field: string,
+    newValue: string,
+    currentRequirements: any,
+    source: 'semantic' | 'manual' | 'autofill' = 'manual',
+    context?: {
+      originalRequest?: string;
+      confidence?: number;
+      uc1Spec?: string;
+    }
+  ): Promise<FieldConflict[]> {
+    if (!this.conflictDetection) {
+      console.warn('[SimplifiedRespec] Conflict detection not initialized');
+      return [];
+    }
+
+    try {
+      return await this.conflictDetection.detectConflicts(
+        field,
+        newValue,
+        currentRequirements,
+        source,
+        context
+      );
+    } catch (error) {
+      console.error('[SimplifiedRespec] Conflict detection failed:', error);
+      return [];
+    }
+  }
+
+  async resolveConflict(conflictId: string, action: 'accept' | 'reject' | 'modify', newValue?: string) {
+    if (!this.conflictDetection) {
+      throw new Error('Conflict detection not initialized');
+    }
+
+    return await this.conflictDetection.resolveConflict(conflictId, action, newValue);
+  }
+
+  getActiveConflicts(): FieldConflict[] {
+    if (!this.conflictDetection) return [];
+    return this.conflictDetection.getActiveConflicts();
+  }
+
+  onConflictChange(listener: (conflicts: FieldConflict[]) => void): () => void {
+    if (!this.conflictDetection) {
+      return () => {}; // No-op unsubscribe
+    }
+    return this.conflictDetection.onConflictChange(listener);
+  }
+
+  getConflictStats() {
+    if (!this.conflictDetection) {
+      return { active: 0, resolved: 0, byType: {}, bySeverity: {} };
+    }
+    return this.conflictDetection.getConflictStats();
+  }
+
+  clearAllConflicts() {
+    if (this.conflictDetection) {
+      this.conflictDetection.clearAllConflicts();
+    }
   }
 }
