@@ -68,17 +68,35 @@ export class AnthropicService {
     try {
       const systemPrompt = this.buildSystemPrompt();
 
+      // Build conversation history for Anthropic API
+      const messages: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+
+      // Add previous conversation turns if available
+      if (context?.conversationHistory && Array.isArray(context.conversationHistory)) {
+        context.conversationHistory.forEach((turn: any) => {
+          if (turn.role === 'user' || turn.role === 'assistant') {
+            messages.push({
+              role: turn.role,
+              content: turn.content || ''
+            });
+          }
+        });
+      }
+
+      // Add current message
+      messages.push({
+        role: 'user',
+        content: `Analyze this requirement: "${message}"\n\nContext: ${JSON.stringify(context || {})}`
+      });
+
+      console.log(`[AnthropicService] 📜 Sending ${messages.length} messages (${messages.length - 1} history + 1 current)`);
+
       const completion = await this.client.messages.create({
         model: import.meta.env.VITE_LLM_MODEL || 'claude-opus-4-1-20250805',
-        max_tokens: parseInt(import.meta.env.VITE_LLM_MAX_TOKENS) || 1024,
-        temperature: parseFloat(import.meta.env.VITE_LLM_TEMPERATURE) || 0.3,
+        max_tokens: parseInt(import.meta.env.VITE_LLM_MAX_TOKENS || '1024'),
+        temperature: parseFloat(import.meta.env.VITE_LLM_TEMPERATURE || '0.3'),
         system: systemPrompt,
-        messages: [
-          {
-            role: 'user',
-            content: `Analyze this requirement: "${message}"\n\nContext: ${JSON.stringify(context || {})}`
-          }
-        ]
+        messages
       });
 
       // Parse the response
@@ -216,27 +234,66 @@ Your task is to analyze user messages and extract specific requirements for form
 Available sections and fields:
 ${fieldsDescription}
 
+Conversational Flow:
+- Start by getting the use case and relevant domains
+- Elicit user to provide inputs by asking guiding questions
+- Maintain user flow - Always know what category you're in and ask relevant questions
+- Ask up to two questions per message
+- Questions should be binary, multichoice, or for a measurement value/range
+- Separate your question messages from other messages
+- Remember full conversational context
+- Handle "I Don't Know": Create assumptions with confidence=0.6, say "Let's assume [X]. You can always change that later."
+- Every 4 extractions or 75% category completion: summarize all extracted requirements and move to next question
+
+Use Case Questions (Ask First):
+- "What is the primary use case for this system?"
+- "Will this system monitor only, control only, or both monitor and control?"
+- "How many devices or sensors will be connected?"
+
+I/O Connectivity Questions:
+- "How many analog inputs do you need?"
+- "How many digital inputs and outputs do you need?"
+- "What type of signals (4-20mA current or 0-10V voltage)?"
+
+Communication Questions:
+- "What communication protocols do you need (Ethernet, RS485, wireless)?"
+- "How many Ethernet ports do you require?"
+
+Performance Questions:
+- "What operating system does your application run on?"
+- "What response times do you need (regular or real-time)?"
+- "How much data storage do you need?"
+
+Environment Questions:
+- "What is the ambient temperature range where the PC will operate?"
+- "Does the system need to be fanless?"
+- "What IP rating do you require for dust and moisture protection?"
+
+Commercial Questions:
+- "What is your budget per unit?"
+- "What is your preferred lead time?"
+
 CRITICAL: Field-Aware Value Selection
 - When the user prompt includes "Available field options", you MUST only select from the provided options
 - For dropdown fields, NEVER suggest values that aren't in the available options list
-- If exact requested value isn't available, select the closest match and explain via substitutionNote explaining the choice
+- If exact requested value isn't available, select the closest match and explain via substitutionNote
 - Include originalRequest when you make substitutions
 
 Important notes:
-- For "digital_io" and "analog_io" fields, these represent combined I/O counts (not separate input/output)
-- Commercial fields (budget_per_unit, quantity, etc.) can be updated from user input but should NOT be autofilled
+- For "digital_io" and "analog_io" fields, these represent combined I/O counts
+- Commercial fields can be updated from user input but should NOT be autofilled
 - When users mention "analog inputs" or "analog outputs", map to "analog_io" field
 - When users mention "digital inputs" or "digital outputs", map to "digital_io" field
-- Values should match the dropdown options where applicable (e.g., "8", "16", "32" for I/O counts)
+- Values should match the dropdown options where applicable
 
 Instructions:
 1. Extract any mentioned requirements from the user's message
 2. Map them to the correct section and field name
 3. For fields with available options, ONLY select from the provided list
 4. If substitution needed, include originalRequest and substitutionNote
-5. Provide confidence scores (0-1) based on clarity
-6. Mark as assumption if inferred rather than explicitly stated
-7. Generate a helpful, conversational response
+5. Provide confidence scores (0-1) based on clarity, use 0.6 for assumptions
+6. Mark as assumption if inferred rather than explicitly stated by user
+7. Generate a helpful, conversational response following the conversation flow above
 8. Only suggest clarification if critical information is missing
 
 Return JSON format:

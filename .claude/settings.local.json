@@ -44,7 +44,10 @@
       "Bash(node:*)",
       "Bash(netstat:*)",
       "Bash(findstr:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Read(//g//**)",
+      "Bash(dir:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": [],

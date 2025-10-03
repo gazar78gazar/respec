@@ -2,6 +2,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { AnthropicService } from './AnthropicService';
 import { SemanticMatcher, createSemanticMatcher } from './semantic/SemanticMatcher';
 import { SemanticIntegrationService, createSemanticIntegrationService, EnhancedChatResult } from './semantic/SemanticIntegrationService';
+import { SemanticMatchingService, createSemanticMatchingService } from './semantic/SemanticMatchingService';
+import { SemanticIntegrationService as SemanticIntegrationServiceNew, createSemanticIntegrationService as createSemanticIntegrationServiceNew } from './semantic/SemanticIntegrationService_NEW';
 import { UC1ValidationEngine } from './UC1ValidationEngine';
 import { ArtifactManager } from './artifacts/ArtifactManager';
 import { CompatibilityLayer } from './artifacts/CompatibilityLayer';
@@ -63,9 +65,11 @@ export class SimplifiedRespecService {
   private uc1Data: any = null;
   private fieldOptionsMap: FieldOptionsMap = {};
 
-  // New semantic matching system
+  // New semantic matching system (Sprint 2)
   private semanticMatcher: SemanticMatcher | null = null;
   private semanticIntegration: SemanticIntegrationService | null = null;
+  private semanticMatchingService: SemanticMatchingService | null = null;
+  private semanticIntegrationNew: SemanticIntegrationServiceNew | null = null;
   private useSemanticMatching: boolean = true;
 
   // Conflict detection system
@@ -164,11 +168,11 @@ export class SimplifiedRespecService {
   }
 
   // Initialize semantic matching system (called externally with dependencies)
-  initializeSemanticMatching(
+  async initializeSemanticMatching(
     uc1Engine: UC1ValidationEngine,
     artifactManager?: ArtifactManager,
     compatibilityLayer?: CompatibilityLayer
-  ): void {
+  ): Promise<void> {
     if (!uc1Engine.isReady()) {
       console.warn('[SimplifiedRespec] UC1ValidationEngine not ready for semantic matching');
       this.useSemanticMatching = false;
@@ -176,6 +180,18 @@ export class SimplifiedRespecService {
     }
 
     try {
+      // Sprint 2: Initialize new SemanticMatchingService
+      this.semanticMatchingService = createSemanticMatchingService(uc1Engine);
+      await this.semanticMatchingService.initialize();
+
+      this.semanticIntegrationNew = createSemanticIntegrationServiceNew(
+        this.semanticMatchingService,
+        uc1Engine,
+        artifactManager,
+        compatibilityLayer
+      );
+
+      // Keep old services for backward compatibility (temporarily)
       this.semanticMatcher = createSemanticMatcher(this.anthropicService, uc1Engine);
       this.semanticMatcher.initialize(artifactManager, compatibilityLayer);
 
@@ -188,7 +204,9 @@ export class SimplifiedRespecService {
       this.conflictDetection = createConflictDetectionService(uc1Engine);
       this.conflictDetection.initialize(compatibilityLayer);
 
-      console.log('[SimplifiedRespec] Semantic matching and conflict detection systems initialized');
+      console.log('[SimplifiedRespec] ✅ Sprint 2 semantic matching initialized');
+      console.log('[SimplifiedRespec] - SemanticMatchingService: ready');
+      console.log('[SimplifiedRespec] - SemanticIntegrationService: ready');
       this.useSemanticMatching = true;
     } catch (error) {
       console.error('[SimplifiedRespec] Failed to initialize semantic matching:', error);
@@ -440,33 +458,8 @@ export class SimplifiedRespecService {
     });
 
     try {
-      // NEW: Try semantic matching first if available
-      if (this.useSemanticMatching && this.semanticIntegration) {
-        console.log(`[SimplifiedRespec] Using semantic matching pipeline`);
-
-        const semanticResult = await this.semanticIntegration.processMessage(
-          message,
-          currentRequirements || {},
-          this.conversationHistory
-        );
-
-        if (semanticResult.success) {
-          // Add assistant response to history
-          this.conversationHistory.push({
-            role: 'assistant',
-            content: semanticResult.systemMessage,
-            timestamp: new Date(),
-          });
-
-          console.log(`[SimplifiedRespec] Semantic processing successful: ${semanticResult.formUpdates?.length || 0} updates`);
-          return semanticResult;
-        } else {
-          console.warn(`[SimplifiedRespec] Semantic processing failed, falling back to legacy method`);
-        }
-      }
-
-      // FALLBACK: Use legacy processing method
-      console.log(`[SimplifiedRespec] Using legacy processing pipeline`);
+      // Sprint 2: New flow with Agent extraction + UC1 matching
+      console.log(`[SimplifiedRespec] 🚀 Starting Sprint 2 flow: Agent → Integration → UC1 Matcher`);
 
       // Identify relevant fields from the message
       const identifiedFields = this.identifyRelevantFields(message);
@@ -476,7 +469,8 @@ export class SimplifiedRespecService {
       const contextPrompt = this.buildContextPrompt(message, identifiedFields);
       console.log(`[SimplifiedRespec] Built context prompt with field options`);
 
-      // Use Anthropic service with enhanced context
+      // Step 1: Agent extracts requirements (with conversational flow)
+      console.log(`[SimplifiedRespec] 📝 Step 1: Agent extracting requirements...`);
       const anthropicResult = await this.anthropicService.analyzeRequirements(
         contextPrompt,
         {
@@ -484,6 +478,34 @@ export class SimplifiedRespecService {
           sessionId: this.sessionId
         }
       );
+      console.log(`[SimplifiedRespec] ✅ Agent extracted:`, anthropicResult.requirements.length, 'requirements');
+
+      // Step 2: Route through new semantic integration (if available and requirements exist)
+      if (this.semanticIntegrationNew && anthropicResult.requirements.length > 0) {
+        console.log(`[SimplifiedRespec] 🔍 Step 2: Routing to SemanticIntegrationService...`);
+
+        const enhancedResult = await this.semanticIntegrationNew.processExtractedRequirements(
+          anthropicResult.requirements,
+          anthropicResult.response
+        );
+
+        console.log(`[SimplifiedRespec] ✅ Sprint 2 processing complete:`, enhancedResult.formUpdates?.length || 0, 'form updates');
+
+        // Add assistant response to history
+        this.conversationHistory.push({
+          role: 'assistant',
+          content: enhancedResult.systemMessage,
+          timestamp: new Date(),
+        });
+
+        // Persist conversation
+        this.saveSession();
+
+        return enhancedResult;
+      }
+
+      // Fallback: Use legacy flow if semantic integration not available or no requirements
+      console.log(`[SimplifiedRespec] ⚠️  No semantic integration or no requirements, using legacy flow`);
 
       // Convert Anthropic requirements to EnhancedFormUpdate format
       const formUpdates: EnhancedFormUpdate[] = anthropicResult.requirements.map(req => ({
@@ -522,33 +544,8 @@ export class SimplifiedRespecService {
       return result;
 
     } catch (error) {
-      console.error('[SimplifiedRespec] Anthropic processing failed, using fallback:', error);
-
-      // Fallback to pattern matching if Anthropic fails
-      const analysisResult = this.analyzeMessage(message);
-      const formUpdates = this.generateFormUpdates(analysisResult);
-      const systemMessage = this.generateResponse(message, analysisResult, formUpdates);
-
-      this.conversationHistory.push({
-        role: 'assistant',
-        content: systemMessage,
-        timestamp: new Date(),
-      });
-
-      this.saveSession();
-
-      const result: ChatResult = {
-        success: true,
-        systemMessage,
-        formUpdates,
-        confidence: analysisResult.confidence,
-      };
-
-      if (analysisResult.confidence < 0.6) {
-        result.clarificationNeeded = this.generateClarificationQuestion(analysisResult);
-      }
-
-      return result;
+      console.error('[SimplifiedRespec] ❌ LLM processing failed:', error);
+      throw error; // Fail fast for MVP (Sprint 2 requirement)
     }
   }
 
@@ -603,6 +600,10 @@ export class SimplifiedRespecService {
     };
   }
 
+  // ============= LEGACY PATTERN MATCHING - DISABLED (Sprint 2) =============
+  // These methods are no longer used - Sprint 2 uses LLM-only approach with fail-fast
+
+  /* DISABLED - Pattern matching fallback removed per Sprint 2 requirements
   private analyzeMessage(message: string): {
     requirements: Array<{ type: string; value: any; confidence: number }>;
     context: string;
@@ -709,6 +710,7 @@ export class SimplifiedRespecService {
 
     return response;
   }
+  END DISABLED */
 
   private generateFormAcknowledgment(section: string, field: string, value: any): string {
     const friendlyName = this.getFriendlyFieldName(section, field);
@@ -741,6 +743,7 @@ export class SimplifiedRespecService {
     return message;
   }
 
+  /* DISABLED
   private generateClarificationQuestion(analysis: any): string {
     if (analysis.requirements.length === 0) {
       return "Could you provide more specific details about your requirements? For example, how many inputs/outputs do you need?";
@@ -755,6 +758,7 @@ export class SimplifiedRespecService {
 
     return questions[Math.floor(Math.random() * questions.length)];
   }
+  END DISABLED */
 
   private getFriendlyFieldName(section: string, field: string): string {
     const friendlyNames: Record<string, Record<string, string>> = {
