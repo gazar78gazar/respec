@@ -47,7 +47,10 @@
       "Bash(curl:*)",
       "Read(//g//**)",
       "Bash(dir:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(git mv:*)",
+      "Bash(chmod:*)",
+      "Bash(timeout 15s npm run dev)"
     ],
     "deny": [],
     "ask": [],

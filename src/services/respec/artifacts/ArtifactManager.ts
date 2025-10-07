@@ -15,25 +15,17 @@ import {
   UnmappedList,
   ConflictList,
   UC1ArtifactSpecification,
-  UC1ArtifactRequirement,
-  UC1ArtifactDomain,
   ActiveConflict,
   Movement,
-  PartialMovement,
   ArtifactValidationResult,
   createEmptyArtifactState,
-  ProcessingPriority,
-  ArtifactType,
-  NodeType
+  ProcessingPriority
 } from './ArtifactTypes';
 
 import {
   UC1ValidationEngine,
   UC1Specification,
-  UC1Requirement,
-  UC1Domain,
-  ConflictResult,
-  ValidationResult
+  ConflictResult
 } from '../UC1ValidationEngine';
 
 // ============= MAIN ARTIFACT MANAGER =============
@@ -189,17 +181,30 @@ export class ArtifactManager {
 
     // Collect all specifications from mapped artifact
     const specifications: Array<{id: string, value: any}> = [];
+    const activeRequirements: string[] = [];
+    const activeDomains: string[] = [];
 
     Object.values(this.state.mapped.domains).forEach(domain => {
+      activeDomains.push(domain.id);
+
       Object.values(domain.requirements).forEach(requirement => {
+        activeRequirements.push(requirement.id);
+
         Object.values(requirement.specifications).forEach(spec => {
           specifications.push({ id: spec.id, value: spec.value });
         });
       });
     });
 
-    // Use UC1ValidationEngine for conflict detection
-    const result = this.uc1Engine.detectConflicts(specifications);
+    // Use UC1ValidationEngine for conflict detection (Sprint 3 Week 1: Enhanced with all types)
+    const result = this.uc1Engine.detectConflicts(specifications, activeRequirements, activeDomains);
+
+    // Sprint 3 Week 1: Check cross-artifact conflicts (mapped vs respec)
+    const crossConflicts = await this.checkCrossArtifactConflicts();
+    if (crossConflicts.hasConflict) {
+      result.hasConflict = true;
+      result.conflicts.push(...crossConflicts.conflicts);
+    }
 
     // Convert to active conflicts if any found
     if (result.hasConflict) {
@@ -225,6 +230,60 @@ export class ArtifactManager {
       this.state.conflicts.metadata.blockingConflicts = result.conflicts.flatMap(c => c.nodes);
     }
 
+    return result;
+  }
+
+  /**
+   * Check for cross-artifact conflicts (mapped vs respec)
+   * Sprint 3 Week 1: Detects user attempts to override existing validated specs
+   */
+  private async checkCrossArtifactConflicts(): Promise<ConflictResult> {
+    const result: ConflictResult = {
+      hasConflict: false,
+      conflicts: []
+    };
+
+    if (!this.state.initialized) return result;
+
+    // Collect all specs from mapped artifact
+    const mappedSpecs = new Map<string, any>();
+    Object.values(this.state.mapped.domains).forEach(domain => {
+      Object.values(domain.requirements).forEach(requirement => {
+        Object.values(requirement.specifications).forEach(spec => {
+          mappedSpecs.set(spec.id, spec);
+        });
+      });
+    });
+
+    // Collect all specs from respec artifact
+    const respecSpecs = new Map<string, any>();
+    Object.values(this.state.respec.domains).forEach(domain => {
+      Object.values(domain.requirements).forEach(requirement => {
+        Object.values(requirement.specifications).forEach(spec => {
+          respecSpecs.set(spec.id, spec);
+        });
+      });
+    });
+
+    // Compare: Check if mapped specs conflict with respec specs
+    mappedSpecs.forEach((mappedSpec, specId) => {
+      const respecSpec = respecSpecs.get(specId);
+
+      if (respecSpec) {
+        // Spec exists in both artifacts - check for value conflict
+        if (mappedSpec.value !== respecSpec.value) {
+          result.hasConflict = true;
+          result.conflicts.push({
+            type: 'cross-artifact',
+            nodes: [specId],
+            description: `Attempting to override existing specification. Current value: "${respecSpec.value}", new value: "${mappedSpec.value}"`,
+            resolution: `Choose: (A) Keep existing value "${respecSpec.value}", or (B) Replace with new value "${mappedSpec.value}"`
+          });
+        }
+      }
+    });
+
+    console.log(`[ArtifactManager] Cross-artifact conflict check: ${result.conflicts.length} conflicts found`);
     return result;
   }
 
@@ -307,13 +366,225 @@ export class ArtifactManager {
     this.emit('conflict_resolved', { conflictId, resolutionId });
   }
 
+  /**
+   * Increment conflict cycle count
+   * Sprint 3 Week 2: Track resolution attempts
+   */
+  incrementConflictCycle(conflictId: string): void {
+    const conflictIndex = this.state.conflicts.active.findIndex(c => c.id === conflictId);
+    if (conflictIndex === -1) {
+      console.warn(`[ArtifactManager] Conflict ${conflictId} not found for cycle increment`);
+      return;
+    }
+
+    const conflict = this.state.conflicts.active[conflictIndex];
+    conflict.cycleCount++;
+    conflict.lastUpdated = new Date();
+
+    console.log(`[ArtifactManager] Conflict ${conflictId} cycle count: ${conflict.cycleCount}`);
+
+    // Check for escalation threshold
+    if (conflict.cycleCount >= 3) {
+      console.warn(`[ArtifactManager] ⚠️  Conflict ${conflictId} reached max cycles (3) - escalating`);
+      this.escalateConflict(conflictId);
+    }
+  }
+
+  /**
+   * Escalate conflict after max cycles
+   * Sprint 3 Week 2: Auto-resolution or skip
+   */
+  private escalateConflict(conflictId: string): void {
+    const conflictIndex = this.state.conflicts.active.findIndex(c => c.id === conflictId);
+    if (conflictIndex === -1) return;
+
+    const conflict = this.state.conflicts.active[conflictIndex];
+
+    // Move to escalated list
+    const escalatedConflict = {
+      ...conflict,
+      escalatedAt: new Date(),
+      escalationReason: 'Max resolution cycles reached (3)'
+    };
+
+    this.state.conflicts.escalated.push(escalatedConflict);
+    this.state.conflicts.active.splice(conflictIndex, 1);
+    this.state.conflicts.metadata.activeCount--;
+    this.state.conflicts.metadata.escalatedCount = (this.state.conflicts.metadata.escalatedCount || 0) + 1;
+
+    console.log(`[ArtifactManager] Conflict ${conflictId} escalated to manual review`);
+
+    // Unblock system if no more active conflicts
+    if (this.state.conflicts.active.length === 0) {
+      this.state.priorityQueue.blocked = false;
+      this.state.priorityQueue.blockReason = undefined;
+      this.state.priorityQueue.currentPriority = 'CLEARING';
+      this.state.conflicts.metadata.systemBlocked = false;
+      this.state.conflicts.metadata.blockingConflicts = [];
+
+      console.log(`[ArtifactManager] ✅ All active conflicts resolved or escalated - system unblocked`);
+    }
+
+    this.emit('conflict_escalated', { conflictId, reason: 'max_cycles' });
+  }
+
+  /**
+   * Apply conflict resolution with surgical precision
+   * Sprint 3 Week 1: Full implementation with safety policies
+   */
   private async applyConflictResolution(conflict: ActiveConflict, resolution: any): Promise<void> {
-    // Implementation depends on resolution type
-    // For MVP, we'll focus on the performance vs power conflict
     console.log(`[ArtifactManager] Applying resolution ${resolution.id} to conflict ${conflict.id}`);
 
-    // This would update the specifications in the mapped artifact
-    // and prepare them for movement to respec artifact
+    // ========== PRE-VALIDATION ==========
+    if (!resolution.targetNodes || resolution.targetNodes.length === 0) {
+      throw new Error(`[Resolution] Resolution ${resolution.id} must specify targetNodes`);
+    }
+
+    // Verify all target nodes exist in mapped artifact
+    for (const nodeId of resolution.targetNodes) {
+      const spec = this.findSpecificationInMapped(nodeId);
+      if (!spec) {
+        throw new Error(
+          `[Resolution] Node ${nodeId} not found in mapped artifact - cannot resolve. ` +
+          `This conflict may have already been resolved or the artifact state is corrupted.`
+        );
+      }
+    }
+
+    // ========== DETERMINE WINNING/LOSING SPECS ==========
+    let losingSpecs: string[] = [];
+    let winningSpecs: string[] = [];
+
+    // Parse resolution action
+    if (resolution.id === 'option-a') {
+      // Option A: Keep first conflicting node, remove others
+      winningSpecs = [conflict.conflictingNodes[0]];
+      losingSpecs = conflict.conflictingNodes.slice(1);
+    } else if (resolution.id === 'option-b') {
+      // Option B: Keep second conflicting node, remove others
+      winningSpecs = [conflict.conflictingNodes[1]];
+      losingSpecs = conflict.conflictingNodes.slice(0, 1).concat(conflict.conflictingNodes.slice(2));
+    } else {
+      throw new Error(`[Resolution] Unknown resolution option: ${resolution.id}`);
+    }
+
+    console.log(`[Resolution] Winning specs: ${winningSpecs.join(', ')}`);
+    console.log(`[Resolution] Losing specs: ${losingSpecs.join(', ')}`);
+
+    // ========== ATOMIC REMOVAL (with rollback capability) ==========
+    const removedSpecs: Array<{id: string, backup: any}> = [];
+
+    try {
+      // Remove losing specifications
+      for (const specId of losingSpecs) {
+        const spec = this.findSpecificationInMapped(specId);
+
+        if (!spec) {
+          console.warn(`[Resolution] ⚠️  Spec ${specId} not found, skipping removal`);
+          continue;
+        }
+
+        // Backup before removal
+        removedSpecs.push({ id: specId, backup: JSON.parse(JSON.stringify(spec)) });
+
+        // Remove from mapped artifact
+        console.log(`[ArtifactManager] Removing spec ${specId} due to conflict resolution ${resolution.id}`);
+        this.removeSpecificationFromMapped(specId);
+      }
+
+      // Log winning specs (no action needed, they stay in mapped)
+      for (const specId of winningSpecs) {
+        console.log(`[ArtifactManager] Keeping spec ${specId} as resolution choice`);
+      }
+
+      // ========== POST-RESOLUTION VERIFICATION ==========
+      for (const specId of losingSpecs) {
+        const stillExists = this.findSpecificationInMapped(specId);
+        if (stillExists) {
+          throw new Error(
+            `[CRITICAL] Failed to remove ${specId} - data integrity compromised. ` +
+            `Rolling back resolution.`
+          );
+        }
+      }
+
+      for (const specId of winningSpecs) {
+        const exists = this.findSpecificationInMapped(specId);
+        if (!exists) {
+          throw new Error(
+            `[CRITICAL] Winning spec ${specId} disappeared during resolution - ` +
+            `data integrity compromised. Rolling back.`
+          );
+        }
+      }
+
+      console.log(`[ArtifactManager] ✅ Resolution applied successfully`);
+
+    } catch (error) {
+      // ========== ROLLBACK ON FAILURE ==========
+      console.error(`[ArtifactManager] ❌ Resolution failed, rolling back...`, error);
+
+      // Restore removed specs
+      for (const { id, backup } of removedSpecs) {
+        console.log(`[Rollback] Restoring spec ${id}`);
+        this.restoreSpecificationToMapped(id, backup);
+      }
+
+      throw error;
+    }
+  }
+
+  /**
+   * Find specification in any artifact (public for user-selection preservation)
+   * Sprint 3 Week 1: Helper for preservation checks
+   */
+  findSpecificationInArtifact(artifactName: 'mapped' | 'respec', specId: string): any | null {
+    const artifact = artifactName === 'mapped' ? this.state.mapped : this.state.respec;
+
+    for (const domain of Object.values(artifact.domains)) {
+      for (const requirement of Object.values(domain.requirements)) {
+        if (requirement.specifications[specId]) {
+          return requirement.specifications[specId];
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Find specification in mapped artifact (internal helper)
+   * Sprint 3 Week 1: Helper for resolution operations
+   */
+  private findSpecificationInMapped(specId: string): any | null {
+    return this.findSpecificationInArtifact('mapped', specId);
+  }
+
+  /**
+   * Restore specification to mapped artifact (for rollback)
+   * Sprint 3 Week 1: Helper for rollback operations
+   */
+  private restoreSpecificationToMapped(specId: string, specBackup: any): void {
+    const hierarchy = this.uc1Engine.getHierarchy(specId);
+    if (!hierarchy) {
+      console.error(`[Rollback] Cannot restore ${specId} - hierarchy not found`);
+      return;
+    }
+
+    const { domain, requirement } = hierarchy;
+
+    if (!this.state.mapped.domains[domain]) {
+      this.state.mapped.domains[domain] = { ...this.uc1Engine.getSchema()!.domains[domain], requirements: {} };
+    }
+
+    if (!this.state.mapped.domains[domain].requirements[requirement]) {
+      this.state.mapped.domains[domain].requirements[requirement] = {
+        ...this.uc1Engine.getSchema()!.requirements[requirement],
+        specifications: {}
+      };
+    }
+
+    this.state.mapped.domains[domain].requirements[requirement].specifications[specId] = specBackup;
+    console.log(`[Rollback] Restored ${specId} to mapped artifact`);
   }
 
   // ============= ARTIFACT MOVEMENT =============
@@ -367,20 +638,6 @@ export class ArtifactManager {
     this.emit('specifications_moved', { movement });
   }
 
-  private findSpecificationInArtifact(artifactType: 'mapped' | 'respec', specId: string): UC1ArtifactSpecification | null {
-    const artifact = artifactType === 'mapped' ? this.state.mapped : this.state.respec;
-
-    for (const domain of Object.values(artifact.domains)) {
-      for (const requirement of Object.values(domain.requirements)) {
-        if (requirement.specifications[specId]) {
-          return requirement.specifications[specId];
-        }
-      }
-    }
-
-    return null;
-  }
-
   private addSpecificationToRespec(spec: UC1ArtifactSpecification): void {
     // Find parent requirement and domain
     const hierarchy = this.uc1Engine.getHierarchy(spec.id);
@@ -427,6 +684,10 @@ export class ArtifactManager {
     this.state.respec.metadata.lastModified = new Date();
   }
 
+  /**
+   * Remove specification from mapped artifact (internal)
+   * Used by resolution system and branch management
+   */
   private removeSpecificationFromMapped(specId: string): void {
     for (const domain of Object.values(this.state.mapped.domains)) {
       for (const requirement of Object.values(domain.requirements)) {
@@ -441,6 +702,7 @@ export class ArtifactManager {
             this.state.mapped.metadata.pendingValidation.splice(pendingIndex, 1);
           }
 
+          console.log(`[ArtifactManager] Removed ${specId} from mapped artifact`);
           return;
         }
       }
@@ -449,7 +711,7 @@ export class ArtifactManager {
 
   // ============= FORM SYNCHRONIZATION =============
 
-  async syncWithFormState(requirements: any): Promise<void> {
+  async syncWithFormState(_requirements: any): Promise<void> {
     // Compatibility layer: sync new artifact state with existing requirements state
     this.state.lastSyncWithForm = new Date();
     this.state.respec.metadata.formSyncStatus = 'synced';
@@ -480,7 +742,7 @@ export class ArtifactManager {
     return result;
   }
 
-  private async validateArtifact(type: ArtifactType): Promise<ArtifactValidationResult> {
+  private async validateArtifact(_type: 'mapped' | 'respec'): Promise<ArtifactValidationResult> {
     // Implementation would validate individual artifacts
     return {
       isValid: true,

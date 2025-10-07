@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FieldConflict, ConflictSuggestion } from '../services/respec/ConflictDetectionService';
+import { FieldConflict, ConflictSuggestion } from '../legacy_isolated/ConflictDetectionService';
 
 interface ConflictPanelProps {
   conflicts: FieldConflict[];

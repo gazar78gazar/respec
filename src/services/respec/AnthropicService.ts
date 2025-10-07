@@ -313,4 +313,253 @@ Return JSON format:
   "clarificationNeeded": null
 }`;
   }
+
+  // ============= SPRINT 3 WEEK 2: CONFLICT RESOLUTION =============
+
+  /**
+   * Parse user response for conflict resolution
+   * Sprint 3 Week 2: Semantic interpretation of A/B choices
+   */
+  async parseConflictResponse(
+    userMessage: string,
+    _activeConflict: any
+  ): Promise<{
+    isResolution: boolean;
+    choice: 'a' | 'b' | null;
+    confidence: number;
+    rawResponse: string;
+    reasoning?: string;
+  }> {
+    if (!this.client) {
+      // Fallback: Simple parsing for non-API mode
+      const message = userMessage.toLowerCase().trim();
+
+      if (message === 'a' || message === 'option a' || message === 'first' || message === 'first one') {
+        return { isResolution: true, choice: 'a', confidence: 1.0, rawResponse: userMessage };
+      }
+      if (message === 'b' || message === 'option b' || message === 'second' || message === 'second one') {
+        return { isResolution: true, choice: 'b', confidence: 1.0, rawResponse: userMessage };
+      }
+
+      return { isResolution: false, choice: null, confidence: 0.0, rawResponse: userMessage };
+    }
+
+    try {
+      const prompt = `
+You are parsing a user response to a binary choice question.
+
+The user was asked to choose between Option A or Option B.
+
+User's response: "${userMessage}"
+
+Determine:
+1. Is this a response to the binary choice? (yes/no)
+2. Which option did they choose? (A, B, or unclear)
+3. How confident are you? (0.0 to 1.0)
+
+Respond ONLY with valid JSON:
+{
+  "isResolution": true/false,
+  "choice": "a" | "b" | null,
+  "confidence": 0.0-1.0,
+  "reasoning": "brief explanation"
+}
+
+Examples:
+- "A" → {"isResolution": true, "choice": "a", "confidence": 1.0, "reasoning": "Direct A choice"}
+- "I'll go with the first one" → {"isResolution": true, "choice": "a", "confidence": 0.9, "reasoning": "First implies A"}
+- "Tell me more about option B" → {"isResolution": false, "choice": null, "confidence": 0.0, "reasoning": "Question, not choice"}
+- "What's the difference?" → {"isResolution": false, "choice": null, "confidence": 0.0, "reasoning": "Asking for info"}
+- "Option B please" → {"isResolution": true, "choice": "b", "confidence": 1.0, "reasoning": "Direct B choice"}
+`;
+
+      const completion = await this.client.messages.create({
+        model: import.meta.env.VITE_LLM_MODEL || 'claude-opus-4-1-20250805',
+        max_tokens: 256,
+        temperature: 0.0,  // Deterministic parsing
+        messages: [{ role: 'user', content: prompt }]
+      });
+
+      const responseText = completion.content[0].type === 'text' ? completion.content[0].text : '{}';
+      const parsed = JSON.parse(responseText);
+
+      console.log('[AnthropicService] Parsed response:', parsed);
+
+      return {
+        isResolution: parsed.isResolution || false,
+        choice: parsed.choice || null,
+        confidence: parsed.confidence || 0.0,
+        rawResponse: userMessage,
+        reasoning: parsed.reasoning
+      };
+
+    } catch (error) {
+      console.error('[AnthropicService] Error parsing conflict response:', error);
+
+      // Fallback to simple parsing
+      const message = userMessage.toLowerCase().trim();
+      if (message.includes('a') && !message.includes('b')) {
+        return { isResolution: true, choice: 'a', confidence: 0.6, rawResponse: userMessage };
+      }
+      if (message.includes('b') && !message.includes('a')) {
+        return { isResolution: true, choice: 'b', confidence: 0.6, rawResponse: userMessage };
+      }
+
+      return { isResolution: false, choice: null, confidence: 0.0, rawResponse: userMessage };
+    }
+  }
+
+  /**
+   * Generate clarification for user questions during conflict resolution
+   * Sprint 3 Week 2: Handles user questions during resolution
+   */
+  private async generateClarification(userMessage: string, conflict: any): Promise<string> {
+    if (!this.client) {
+      return `To help you decide, let me clarify:\n\nOption A: ${conflict.resolutionOptions[0].label}\nOption B: ${conflict.resolutionOptions[1].label}\n\nPlease choose A or B.`;
+    }
+
+    try {
+      const prompt = `
+The user is in a conflict resolution flow. They were asked to choose between:
+
+Option A: ${conflict.resolutionOptions[0].label}
+- Outcome: ${conflict.resolutionOptions[0].outcome}
+
+Option B: ${conflict.resolutionOptions[1].label}
+- Outcome: ${conflict.resolutionOptions[1].outcome}
+
+Instead of choosing, they asked: "${userMessage}"
+
+Provide a helpful clarification that:
+1. Answers their question specifically
+2. Keeps the answer brief (2-3 sentences)
+3. Reminds them of the two options
+4. Asks them to choose A or B
+
+Keep it friendly and conversational.
+`;
+
+      const completion = await this.client.messages.create({
+        model: import.meta.env.VITE_LLM_MODEL || 'claude-opus-4-1-20250805',
+        max_tokens: 512,
+        temperature: 0.7,
+        messages: [{ role: 'user', content: prompt }]
+      });
+
+      const responseText = completion.content[0].type === 'text' ? completion.content[0].text : '';
+      return responseText;
+
+    } catch (error) {
+      console.error('[AnthropicService] Error generating clarification:', error);
+      return `To help you decide:\n\nOption A: ${conflict.resolutionOptions[0].label}\nOption B: ${conflict.resolutionOptions[1].label}\n\nWhich would you prefer? Please respond with A or B.`;
+    }
+  }
+
+  /**
+   * Orchestrate conflict resolution
+   * Sprint 3 Week 2: Complete resolution flow
+   */
+  async handleConflictResolution(
+    userMessage: string,
+    conflictData: any,
+    artifactManager: any
+  ): Promise<{
+    response: string;
+    mode: string;
+    conflictId?: string;
+    chosenOption?: any;
+    cycleCount?: number;
+  }> {
+    console.log('[AnthropicService] Handling conflict resolution');
+
+    // Get the active conflict (one at a time)
+    const conflict = conflictData.conflicts[0];
+
+    // Step 1: Parse user response
+    const parsed = await this.parseConflictResponse(userMessage, conflict);
+
+    console.log('[AnthropicService] Parse result:', {
+      isResolution: parsed.isResolution,
+      choice: parsed.choice,
+      confidence: parsed.confidence
+    });
+
+    // Step 2: Handle non-resolution responses (user asking questions)
+    if (!parsed.isResolution) {
+      const clarification = await this.generateClarification(userMessage, conflict);
+
+      return {
+        response: clarification,
+        mode: 'clarification_provided',
+        conflictId: conflict.id
+      };
+    }
+
+    // Step 3: Handle low-confidence responses
+    if (parsed.confidence < 0.7) {
+      // Increment cycle count
+      if (artifactManager.incrementConflictCycle) {
+        artifactManager.incrementConflictCycle(conflict.id);
+      }
+
+      return {
+        response: `I'm not sure which option you're choosing. Please respond with either "A" or "B".`,
+        mode: 'clarification_needed',
+        conflictId: conflict.id,
+        cycleCount: conflict.cycleCount + 1
+      };
+    }
+
+    // Step 4: Validate choice
+    if (!parsed.choice || !['a', 'b'].includes(parsed.choice)) {
+      // Increment cycle count
+      if (artifactManager.incrementConflictCycle) {
+        artifactManager.incrementConflictCycle(conflict.id);
+      }
+
+      return {
+        response: `Please choose either Option A or Option B.`,
+        mode: 'invalid_choice',
+        conflictId: conflict.id,
+        cycleCount: conflict.cycleCount + 1
+      };
+    }
+
+    // Step 5: Map choice to resolution option
+    const resolutionId = parsed.choice === 'a' ? 'option-a' : 'option-b';
+    const selectedOption = conflict.resolutionOptions.find((opt: any) => opt.id === resolutionId);
+
+    // Step 6: Call ArtifactManager to apply resolution
+    try {
+      await artifactManager.resolveConflict(conflict.id, resolutionId);
+
+      // Step 7: Generate confirmation message
+      const remainingConflicts = conflictData.totalConflicts ? conflictData.totalConflicts - 1 : 0;
+
+      let confirmation = `Got it! I've updated your configuration with ${selectedOption.label}.\n\n${selectedOption.outcome}`;
+
+      if (remainingConflicts > 0) {
+        confirmation += `\n\n📊 ${remainingConflicts} more conflict(s) to resolve.`;
+      } else {
+        confirmation += `\n\nYour system is now conflict-free. What else would you like to configure?`;
+      }
+
+      return {
+        response: confirmation,
+        mode: 'resolution_success',
+        conflictId: conflict.id,
+        chosenOption: selectedOption
+      };
+
+    } catch (error) {
+      console.error('[AnthropicService] Resolution failed:', error);
+
+      // Step 8: Handle resolution failure
+      return {
+        response: `I encountered an issue applying that choice: ${(error as Error).message}\n\nLet me try presenting the options again.`,
+        mode: 'resolution_failed',
+        conflictId: conflict.id
+      };
+    }
+  }
 }

@@ -342,7 +342,35 @@ export class SemanticIntegrationService {
         console.log(`[Route] 📋 Found ${childSpecs.length} specifications for requirement ${reqId}`);
 
         // Add all child specifications to mapped artifact
+        // Sprint 3 Week 1: Check for existing user-selected values before adding
         for (const spec of childSpecs) {
+          // Check if spec already exists with user-selected value
+          const existingInMapped = this.artifactManager.findSpecificationInArtifact('mapped', spec.id);
+          const existingInRespec = this.artifactManager.findSpecificationInArtifact('respec', spec.id);
+
+          if (existingInMapped) {
+            // Check source - preserve user selections
+            if (existingInMapped.source === 'user' || existingInMapped.source === 'direct_extraction') {
+              console.log(
+                `[Route] ⚠️  Skipping ${spec.id} - user-selected value already exists in mapped ` +
+                `(value: "${existingInMapped.value}")`
+              );
+              continue; // Don't overwrite user selection
+            } else {
+              console.log(
+                `[Route] Spec ${spec.id} exists in mapped with system value, will be updated`
+              );
+            }
+          }
+
+          if (existingInRespec) {
+            // Spec already in respec - cross-artifact conflict will be detected
+            console.log(
+              `[Route] ⚠️  Spec ${spec.id} exists in respec - cross-artifact conflict will be detected`
+            );
+            // Continue adding to mapped, conflict detection will handle it
+          }
+
           await this.artifactManager.addSpecificationToMapped(
             spec,
             spec.default_value || null,
@@ -383,10 +411,30 @@ export class SemanticIntegrationService {
         const childRequirements = this.uc1Engine.getRequirementsByDomain(domainId);
 
         // Add all child specifications from all requirements
+        // Sprint 3 Week 1: Check for existing user-selected values before adding
         for (const req of childRequirements) {
           const childSpecs = this.uc1Engine.getSpecificationsByRequirement(req.id);
 
           for (const spec of childSpecs) {
+            // Check if spec already exists with user-selected value
+            const existingInMapped = this.artifactManager.findSpecificationInArtifact('mapped', spec.id);
+            const existingInRespec = this.artifactManager.findSpecificationInArtifact('respec', spec.id);
+
+            if (existingInMapped) {
+              if (existingInMapped.source === 'user' || existingInMapped.source === 'direct_extraction') {
+                console.log(
+                  `[Route] ⚠️  Skipping ${spec.id} - user-selected value already exists in mapped`
+                );
+                continue;
+              }
+            }
+
+            if (existingInRespec) {
+              console.log(
+                `[Route] ⚠️  Spec ${spec.id} exists in respec - cross-artifact conflict will be detected`
+              );
+            }
+
             await this.artifactManager.addSpecificationToMapped(
               spec,
               spec.default_value || null,

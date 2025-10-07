@@ -126,10 +126,16 @@ export interface ConflictResult {
 }
 
 export interface Conflict {
-  type: 'constraint' | 'dependency' | 'logical' | 'cross-artifact';
+  type: 'constraint' | 'dependency' | 'logical' | 'cross-artifact' | 'mutex';
   nodes: string[];
   description: string;
   resolution?: string;
+}
+
+export interface MutexGroup {
+  name: string;
+  activeSpecs: Array<{id: string, value: any}>;
+  options: string[];
 }
 
 export interface HierarchyPath {
@@ -343,13 +349,19 @@ export class UC1ValidationEngine {
    * Detect conflicts between specifications
    * MVP Focus: Performance vs Power consumption conflict
    */
-  detectConflicts(specifications: Array<{id: string, value: any}>): ConflictResult {
+  detectConflicts(
+    specifications: Array<{id: string, value: any}>,
+    activeRequirements: string[] = [],
+    activeDomains: string[] = []
+  ): ConflictResult {
     const result: ConflictResult = {
       hasConflict: false,
       conflicts: []
     };
 
     if (!this.schema) return result;
+
+    console.log(`[UC1Engine] Conflict detection - specs: ${specifications.length}, reqs: ${activeRequirements.length}, domains: ${activeDomains.length}`);
 
     // Extract relevant specifications for conflict detection
     const specMap = new Map<string, any>();
@@ -360,10 +372,10 @@ export class UC1ValidationEngine {
       }
     });
 
+    // ========== LOGICAL CONFLICTS (Existing) ==========
     // PRIMARY CONFLICT: High Performance vs Low Power Consumption
     const processor = specMap.get('processor_type');
     const powerConsumption = specMap.get('max_power_consumption');
-    // Note: powerInput conflicts can be added in future iterations
 
     if (processor && powerConsumption) {
       const highPerformance = this.isHighPerformanceProcessor(processor.value);
@@ -380,9 +392,28 @@ export class UC1ValidationEngine {
       }
     }
 
-    // Additional UC1-based conflicts can be added here as discovered
-    // For MVP, focusing only on the primary conflict as specified
+    // ========== MUTEX CONFLICTS (Sprint 3 Week 1) ==========
+    const mutexConflicts = this.detectMutexConflicts(activeDomains, activeRequirements, specifications);
+    if (mutexConflicts.hasConflict) {
+      result.hasConflict = true;
+      result.conflicts.push(...mutexConflicts.conflicts);
+    }
 
+    // ========== DEPENDENCY CONFLICTS (Sprint 3 Week 1) ==========
+    const depConflicts = this.detectDependencyConflicts(activeRequirements);
+    if (depConflicts.hasConflict) {
+      result.hasConflict = true;
+      result.conflicts.push(...depConflicts.conflicts);
+    }
+
+    // ========== CONSTRAINT CONFLICTS (Sprint 3 Week 1) ==========
+    const constraintConflicts = this.detectConstraintConflicts(specifications);
+    if (constraintConflicts.hasConflict) {
+      result.hasConflict = true;
+      result.conflicts.push(...constraintConflicts.conflicts);
+    }
+
+    console.log(`[UC1Engine] Total conflicts detected: ${result.conflicts.length}`);
     return result;
   }
 
@@ -408,6 +439,155 @@ export class UC1ValidationEngine {
       '10-20W'
     ];
     return lowPowerOptions.includes(powerConsumption);
+  }
+
+  /**
+   * Detect mutex conflicts - multiple mutually exclusive options selected
+   * Sprint 3 Week 1: Handles domains, requirements, and specifications
+   */
+  private detectMutexConflicts(
+    domains: string[],
+    requirements: string[],
+    specifications: Array<{id: string, value: any}>
+  ): ConflictResult {
+    const result: ConflictResult = { hasConflict: false, conflicts: [] };
+
+    // Check specification mutex groups
+    const mutexGroups = this.identifyMutexGroups(specifications);
+    mutexGroups.forEach(group => {
+      if (group.activeSpecs.length > 1) {
+        result.hasConflict = true;
+        result.conflicts.push({
+          type: 'mutex',
+          nodes: group.activeSpecs.map(s => s.id),
+          description: `Multiple mutually exclusive options selected for ${group.name}`,
+          resolution: `Choose one option: ${group.options.join(' OR ')}`
+        });
+      }
+    });
+
+    console.log(`[UC1Engine] Mutex conflict detection: ${result.conflicts.length} conflicts found`);
+    return result;
+  }
+
+  /**
+   * Identify mutex groups in specifications
+   * Sprint 3 Week 1: Expandable for different mutex patterns
+   */
+  private identifyMutexGroups(specifications: Array<{id: string, value: any}>): MutexGroup[] {
+    if (!this.schema) return [];
+
+    const groups: MutexGroup[] = [];
+
+    // Mutex Group 1: Processor Types (only one processor can be selected)
+    const processorSpecs = specifications.filter(s => {
+      const spec = this.schema!.specifications[s.id];
+      return spec && spec.name === 'processor_type' && s.value !== null && s.value !== undefined;
+    });
+
+    if (processorSpecs.length > 1) {
+      groups.push({
+        name: 'Processor Type',
+        activeSpecs: processorSpecs,
+        options: processorSpecs.map(s => s.value)
+      });
+    }
+
+    // Mutex Group 2: Operating Systems (only one OS can be selected)
+    const osSpecs = specifications.filter(s => {
+      const spec = this.schema!.specifications[s.id];
+      return spec && spec.name === 'operating_system' && s.value !== null && s.value !== undefined;
+    });
+
+    if (osSpecs.length > 1) {
+      groups.push({
+        name: 'Operating System',
+        activeSpecs: osSpecs,
+        options: osSpecs.map(s => s.value)
+      });
+    }
+
+    // Mutex Group 3: Form Factors (only one form factor can be selected)
+    const formFactorSpecs = specifications.filter(s => {
+      const spec = this.schema!.specifications[s.id];
+      return spec && spec.name === 'form_factor' && s.value !== null && s.value !== undefined;
+    });
+
+    if (formFactorSpecs.length > 1) {
+      groups.push({
+        name: 'Form Factor',
+        activeSpecs: formFactorSpecs,
+        options: formFactorSpecs.map(s => s.value)
+      });
+    }
+
+    return groups;
+  }
+
+  /**
+   * Detect dependency conflicts - missing required dependencies
+   * Sprint 3 Week 1: Integrates existing checkDependencies logic
+   */
+  private detectDependencyConflicts(activeRequirements: string[]): ConflictResult {
+    const result: ConflictResult = { hasConflict: false, conflicts: [] };
+
+    if (!this.schema) return result;
+
+    activeRequirements.forEach(reqId => {
+      const depResult = this.checkDependencies(reqId, activeRequirements);
+
+      if (!depResult.isValid) {
+        depResult.errors.forEach(error => {
+          if (error.type === 'dependency') {
+            result.hasConflict = true;
+            result.conflicts.push({
+              type: 'dependency',
+              nodes: [reqId, error.details.dependency],
+              description: error.message,
+              resolution: `Add required dependency: ${error.details.dependency}. ${error.details.rationale}`
+            });
+          }
+        });
+      }
+    });
+
+    console.log(`[UC1Engine] Dependency conflict detection: ${result.conflicts.length} conflicts found`);
+    return result;
+  }
+
+  /**
+   * Detect constraint conflicts - schema constraint violations
+   * Sprint 3 Week 1: Integrates existing validateSpecification logic
+   */
+  private detectConstraintConflicts(
+    specifications: Array<{id: string, value: any}>
+  ): ConflictResult {
+    const result: ConflictResult = { hasConflict: false, conflicts: [] };
+
+    if (!this.schema) return result;
+
+    specifications.forEach(spec => {
+      const validation = this.validateSpecification(spec.id, spec.value);
+
+      if (!validation.isValid) {
+        validation.errors.forEach(error => {
+          if (error.type === 'constraint') {
+            result.hasConflict = true;
+            result.conflicts.push({
+              type: 'constraint',
+              nodes: [spec.id],
+              description: error.message,
+              resolution: error.details?.suggestedValue
+                ? `Change to: ${error.details.suggestedValue}`
+                : 'Remove or modify this specification to meet constraints'
+            });
+          }
+        });
+      }
+    });
+
+    console.log(`[UC1Engine] Constraint conflict detection: ${result.conflicts.length} conflicts found`);
+    return result;
   }
 
   /**

@@ -8,7 +8,7 @@ import './styles/animations.css';
 // Import enhanced chat and conflict detection components
 import EnhancedChatWindow from './components/EnhancedChatWindow';
 import ConflictPanel from './components/ConflictPanel';
-import { FieldConflict } from './services/respec/ConflictDetectionService';
+import { FieldConflict } from './legacy_isolated/ConflictDetectionService';
 
 // Import new artifact state management
 import { ArtifactManager } from './services/respec/artifacts/ArtifactManager';

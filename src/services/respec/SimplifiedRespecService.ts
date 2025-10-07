@@ -7,7 +7,7 @@ import { SemanticIntegrationService as SemanticIntegrationServiceNew, createSema
 import { UC1ValidationEngine } from './UC1ValidationEngine';
 import { ArtifactManager } from './artifacts/ArtifactManager';
 import { CompatibilityLayer } from './artifacts/CompatibilityLayer';
-import { ConflictDetectionService, createConflictDetectionService, FieldConflict } from './ConflictDetectionService';
+import { ConflictDetectionService, createConflictDetectionService, FieldConflict } from '../../legacy_isolated/ConflictDetectionService';
 
 // Simplified interfaces for the browser-only service
 export interface ChatResult {
@@ -16,6 +16,7 @@ export interface ChatResult {
   formUpdates?: EnhancedFormUpdate[];
   clarificationNeeded?: string;
   confidence: number;
+  conflictData?: any; // Sprint 3 Week 1: Conflict information for agent
 }
 
 export interface FormUpdate {
@@ -450,6 +451,21 @@ export class SimplifiedRespecService {
 
     console.log(`[SimplifiedRespec] Processing: "${message}"`);
 
+    // Sprint 3 Week 1: Check for active conflicts FIRST
+    const conflictStatus = this.getActiveConflictsForAgent();
+
+    if (conflictStatus.hasConflicts) {
+      console.log(`[SimplifiedRespec] ⚠️  System blocked by ${conflictStatus.count} active conflict(s)`);
+
+      // Return conflict information to agent (agent will generate binary question)
+      return {
+        conversationalResponse: '', // Agent will generate this from conflictData
+        formUpdates: [],
+        systemMessage: 'system_blocked_by_conflicts',
+        conflictData: conflictStatus // Sprint 3 Week 1: NEW FIELD
+      };
+    }
+
     // Add to conversation history
     this.conversationHistory.push({
       role: 'user',
@@ -547,6 +563,89 @@ export class SimplifiedRespecService {
       console.error('[SimplifiedRespec] ❌ LLM processing failed:', error);
       throw error; // Fail fast for MVP (Sprint 2 requirement)
     }
+  }
+
+  /**
+   * Get active conflicts formatted for agent consumption
+   * Sprint 3 Week 1: Returns structured conflict data to agent for binary question generation
+   * Sprint 3 Week 2: Enhanced with priority queue (one conflict at a time)
+   */
+  getActiveConflictsForAgent(): any {
+    if (!this.artifactManager) {
+      return { hasConflicts: false, conflicts: [] };
+    }
+
+    const state = this.artifactManager.getState();
+    let activeConflicts = state.conflicts.active;
+
+    if (activeConflicts.length === 0) {
+      return { hasConflicts: false, conflicts: [] };
+    }
+
+    // Sprint 3 Week 2: Sort by priority
+    const priorityOrder = {
+      'cross-artifact': 1,  // Highest - user changing existing choices
+      'logical': 2,         // High - fundamental incompatibilities
+      'constraint': 3,      // Medium - schema violations
+      'dependency': 3,      // Medium - missing requirements
+      'mutex': 4            // Low - multiple selections
+    };
+
+    activeConflicts = [...activeConflicts].sort((a, b) => {
+      const priorityA = priorityOrder[a.type] || 99;
+      const priorityB = priorityOrder[b.type] || 99;
+      return priorityA - priorityB;
+    });
+
+    // Sprint 3 Week 2: Only return the FIRST (highest priority) conflict
+    const topConflict = activeConflicts[0];
+
+    // Structure conflict for agent consumption
+    const structuredConflict = {
+      id: topConflict.id,
+      type: topConflict.type,
+      description: topConflict.description,
+      conflictingNodes: topConflict.conflictingNodes.map(nodeId => ({
+        id: nodeId,
+        ...this.getNodeDetails(nodeId)
+      })),
+      resolutionOptions: topConflict.resolutionOptions.map(option => ({
+        id: option.id,
+        label: option.description,
+        outcome: option.expectedOutcome
+      })),
+      cycleCount: topConflict.cycleCount,
+      priority: topConflict.type === 'cross-artifact' ? 'critical' : 'high'
+    };
+
+    return {
+      hasConflicts: true,
+      count: activeConflicts.length,          // Total count for transparency
+      currentConflict: 1,                      // Currently handling first one
+      totalConflicts: activeConflicts.length, // For progress indicators
+      systemBlocked: state.conflicts.metadata.systemBlocked,
+      conflicts: [structuredConflict]          // Only ONE conflict at a time
+    };
+  }
+
+  /**
+   * Get node details for conflict display
+   * Sprint 3 Week 1: Helper for structuring conflict data
+   */
+  private getNodeDetails(nodeId: string): any {
+    if (!this.artifactManager) return {};
+
+    const hierarchy = this.uc1Engine.getHierarchy(nodeId);
+    const spec = this.artifactManager.findSpecificationInArtifact('mapped', nodeId);
+
+    return {
+      name: spec?.name || nodeId,
+      value: spec?.value,
+      hierarchy: hierarchy ? {
+        domain: hierarchy.domain,
+        requirement: hierarchy.requirement
+      } : undefined
+    };
   }
 
   async processFormUpdate(section: string, field: string, value: any): Promise<FormProcessingResult> {

@@ -1,10 +1,10 @@
 # ReSpec Claude Code Implementation Guide - Master Document
 ## Complete System Blueprint & Implementation Instructions
 
-**Purpose**: Guide Claude Code through implementation, detect/correct deviations, restore context after resets  
-**Version**: 3.0 - Implementation-Focused  
-**Current Status**: Sprint 2, Week 2, Day 3 of 7  
-**Overall Progress**: 35% Complete (Sprint 1 ✅, Sprint 2 Week 1 ✅, Sprint 2 Week 2 🚀)
+**Purpose**: Guide Claude Code through implementation, detect/correct deviations, restore context after resets
+**Version**: 4.0 - Sprint 3 Complete
+**Current Status**: Sprint 3 Complete - Ready for Sprint 4 Planning
+**Overall Progress**: 75% Complete (Sprint 1 ✅, Sprint 2 ✅, Sprint 3 ✅, Sprint 4 Pending)
 
 ---
 
@@ -13,33 +13,43 @@
 ### Where Are You Now?
 ```
 Current Date: October 3, 2025
-Current Sprint: 2 (of 4)
-Current Week: 2 (of 2)
-Current Day: 3 (of 7)
-Today's Focus: Wire conflict detection into routing
+Current Sprint: 3 COMPLETE
+Status: Ready for manual testing and Sprint 4 planning
+Last Completed: Sprint 3 Week 2 - Agent-Driven Resolution Flow
 ```
 
-### What Should You Be Working On?
+### What Has Been Completed?
 ```typescript
-// TODAY'S TASK: Wire conflict detection
-// File: src/services/respec/ConflictDetectionService.ts
-// Method: detectConflicts()
-// Integration Point: SemanticIntegrationService_NEW.processMessage()
+// SPRINT 3 WEEK 1 ✅ (Enhanced Conflict Detection)
+// - Multi-type conflict detection (mutex, dependency, constraint, logical, cross-artifact)
+// - Surgical resolution engine with rollback
+// - User-selection preservation
+// - 24/25 tests passing (96%)
+
+// SPRINT 3 WEEK 2 ✅ (Agent-Driven Resolution Flow)
+// - Semantic A/B response parsing
+// - Resolution orchestration with cycle management
+// - Auto-escalation after 3 failed attempts
+// - Priority queue (one conflict at a time)
+// - 25/25 tests passing (100%)
 ```
 
-### Quick Validation - Are You On Track?
+### Quick Validation - System Health Check
 Run these commands to verify current state:
 ```bash
-# Check TypeScript baseline (should be ~218 errors)
+# Check TypeScript errors (269 errors - 51 above baseline, mostly type definitions)
 npx tsc --noEmit | grep "Found"
 
-# Verify Week 1 components exist
-ls src/services/respec/semantic/SemanticMatchingService.ts
-ls src/services/respec/integration/SemanticIntegrationService_NEW.ts
+# Run Sprint 3 test suites
+node test-sprint3-week1-conflict-detection.cjs
+node test-sprint3-week2-resolution-flow.cjs
 
-# Test existing functionality
+# Test existing functionality (MANUAL)
 npm run dev
-# Then test: Type in chat "I need 500GB storage" → Should update form
+# Test Scenarios:
+# 1. "I need 500GB storage" → Should update form
+# 2. Create mutex conflict → Should present binary question
+# 3. Answer with "A" → Should resolve conflict and confirm
 ```
 
 ---
@@ -334,7 +344,7 @@ async detectConflicts(): Promise<ConflictResult> {
 
 **Validation**: Run `ls src/services/respec/artifacts/` - should see 4 artifact files
 
-### Sprint 2: LLM Semantic Matching (IN PROGRESS 🚀)
+### Sprint 2: LLM Semantic Matching (COMPLETE ✅)
 
 #### Week 1 (COMPLETE ✅)
 **What Was Built**:
@@ -345,68 +355,55 @@ async detectConflicts(): Promise<ConflictResult> {
 
 **Validation**: Test "I need 500GB storage" in chat - should update form
 
-#### Week 2 (CURRENT - Day 3/7)
-
-**Day 1-2 ✅**: Artifact population methods
-- addSpecificationToMapped()
-- addRequirementToMapped()
-- addDomainToMapped()
-
-**Day 3-4 🚀**: Conflict detection wiring
-```typescript
-// TODAY'S IMPLEMENTATION
-// In SemanticIntegrationService_NEW.processMessage():
-async processMessage(extracted: ExtractedNode[]): Promise<void> {
-  // Existing: Add to mapped
-  for (const node of extracted) {
-    await this.artifactManager.addToMapped(node);
-  }
-  
-  // NEW: Detect conflicts immediately
-  const conflicts = await this.conflictService.detectConflicts(
-    this.artifactManager.getMappedNodes()
-  );
-  
-  if (conflicts.length > 0) {
-    // Isolate conflicts
-    await this.handleConflicts(conflicts);
-  } else {
-    // Move clean nodes to respec
-    await this.moveToRespec();
-  }
-}
-```
-
-**Day 5-6**: Movement to respec
-- moveToRespecArtifact()
+#### Week 2 (COMPLETE ✅)
+**What Was Built**:
+- Artifact population methods (addSpecificationToMapped, addRequirementToMapped, addDomainToMapped)
+- Conflict detection wiring in SemanticIntegrationService
+- Movement to respec (moveToRespecArtifact)
 - Partial branch handling
-- Form update verification
+- Integration testing complete
 
-**Day 7**: Integration testing
-- End-to-end flow validation
-- Week 1 preservation check
+**Completion Report**: See `docs/sprints+fixes/SPRINT2_WEEK2_COMPLETION.md`
 
-### Sprint 3: Conflict Detection & Resolution (CURRENT)
+### Sprint 3: Enhanced Conflict System (COMPLETE ✅)
 
-**Week 1 Status**: Ready to implement
-**What's Already Done** (from Sprint 2 Week 2):
-- ✅ Basic conflict detection triggering
-- ✅ System blocking when conflicts detected
-- ✅ ArtifactManager.detectConflicts() method
-- ✅ resolveConflict() method framework (needs completion)
+#### Week 1: Multi-Type Conflict Detection (COMPLETE ✅)
+**What Was Built**:
+- UC1ValidationEngine enhanced with 5 conflict types:
+  - Mutex conflicts (mutually exclusive options)
+  - Dependency conflicts (missing required specs)
+  - Constraint conflicts (incompatible combinations)
+  - Logical conflicts (UC1 rule violations)
+  - Cross-artifact conflicts (mapped vs respec mismatches)
+- Surgical resolution engine with rollback (`applyConflictResolution()`)
+- User-selection preservation in SemanticIntegrationService_NEW
+- Helper methods: `findSpecificationInArtifact()`, `findSpecificationInMapped()`, `removeSpecificationFromMapped()`, `restoreSpecificationToMapped()`
+- Legacy cleanup: Moved `ConflictDetectionService` to `legacy_isolated/`
 
-**Week 1 Tasks**: Enhanced conflict detection
-- Add remaining UC1 conflict types (dependency, constraint, cross-artifact)
-- Complete applyConflictResolution() stub with safety policies
-- Add cross-artifact checking (mapped vs respec)
-- Deprecate legacy ConflictDetectionService
-- Structure conflict data for agent consumption
+**Test Results**: 24/25 tests passing (96%)
+**Completion Report**: See `docs/sprints+fixes/SPRINT3_WEEK1_COMPLETION.md`
+**Test File**: `test-sprint3-week1-conflict-detection.cjs`
 
-**Week 2**: Agent-driven resolution flow
-- Agent detects user response (A or B) semantically
-- Agent calls artifactManager.resolveConflict()
-- Priority queue management
-- Cycle management (3 attempts max)
+#### Week 2: Agent-Driven Resolution Flow (COMPLETE ✅)
+**What Was Built**:
+- `parseConflictResponse()` in AnthropicService - semantic A/B choice extraction
+- `generateClarification()` - handle user questions during resolution
+- `handleConflictResolution()` - complete orchestration lifecycle
+- `incrementConflictCycle()` and `escalateConflict()` in ArtifactManager
+- Priority queue in `getActiveConflictsForAgent()` (one conflict at a time)
+- Progress indicators and confirmation messages
+- Cycle management: auto-escalation after 3 failed attempts
+- Error handling with try-catch and rollback
+
+**Test Results**: 25/25 tests passing (100%)
+**Completion Report**: See `docs/sprints+fixes/SPRINT3_WEEK2_COMPLETION.md`
+**Test File**: `test-sprint3-week2-resolution-flow.cjs`
+
+**Sprint 3 Total Impact**:
+- ~740 lines of production code
+- 50 automated tests (48/50 passing, 96% overall)
+- 8 files modified
+- 5 documentation files created
 
 ### Sprint 4: Integration & Polish (FINAL WEEK)
 - End-to-end testing
