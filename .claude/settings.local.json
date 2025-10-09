@@ -50,7 +50,9 @@
       "Bash(grep:*)",
       "Bash(git mv:*)",
       "Bash(chmod:*)",
-      "Bash(timeout 15s npm run dev)"
+      "Bash(timeout 15s npm run dev)",
+      "Read(//c/**)",
+      "Bash(powershell:*)"
     ],
     "deny": [],
     "ask": [],

@@ -16,6 +16,9 @@ import { CompatibilityLayer } from './services/respec/artifacts/CompatibilityLay
 import { ArtifactState } from './services/respec/artifacts/ArtifactTypes';
 import { uc1ValidationEngine } from './services/respec/UC1ValidationEngine';
 
+// Sprint 0: Import UC8 Data Layer
+import { ucDataLayer } from './services/data/UCDataLayer';
+
 // Import TypeScript types
 import type {
   Requirements,
@@ -1117,6 +1120,34 @@ function App() {
           addTrace('chat_message', { message: data.message }, 'SUCCESS');
           const chatResult = await simplifiedRespecService.processChatMessage(data.message, requirements);
 
+          // Sprint 2: Check for active conflicts after processing chat
+          const conflictStatus = simplifiedRespecService.getActiveConflictsForAgent();
+
+          if (conflictStatus.hasConflicts) {
+            console.log(`[APP] 🚨 Active conflicts detected, sending conflict data to agent`);
+            console.log(`[APP] Conflict count: ${conflictStatus.count}`);
+            console.log(`[APP] Conflict data:`, conflictStatus.conflicts[0]);
+
+            // Add conflict message to chat for agent to process
+            const conflictMessage: ChatMessage = {
+              id: `conflict-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              role: 'system',
+              content: JSON.stringify({
+                type: 'conflict_detected',
+                ...conflictStatus
+              }),
+              timestamp: new Date(),
+              metadata: {
+                ...conflictStatus,
+                isConflict: true
+              }
+            };
+            setChatMessages(prev => [...prev, conflictMessage]);
+
+            // Return immediately - wait for user to resolve conflict before continuing
+            return { success: true, hasConflict: true, conflictData: conflictStatus };
+          }
+
           setChatMessages(prev => [...prev, {
             role: 'assistant',
             content: chatResult.systemMessage
@@ -1218,9 +1249,10 @@ function App() {
             });
           }
 
-          if (chatResult.clarificationNeeded) {
-            setClarificationRequest(chatResult.clarificationNeeded);
-          }
+          // DISABLED: clarificationRequest state not defined (legacy feature)
+          // if (chatResult.clarificationNeeded) {
+          //   setClarificationRequest(chatResult.clarificationNeeded);
+          // }
 
           return { success: true };
 
@@ -1553,6 +1585,18 @@ function App() {
 
       setRequirements(initialRequirements);
       setExpandedGroups(initialExpanded);
+
+      // Sprint 1 FIX: Load UC8 BEFORE SimplifiedRespecService initialization
+      try {
+        console.log('[APP] Loading UC8 Data Layer...');
+        await ucDataLayer.load();
+        console.log('[APP] ✅ UC8 Data Layer loaded successfully');
+        console.log('[APP] UC8 Version:', ucDataLayer.getVersion());
+        console.log('[APP] UC8 Metadata:', ucDataLayer.getMetadata());
+      } catch (uc8Error) {
+        console.warn('[APP] ⚠️ UC8 Data Layer failed to load (non-blocking):', uc8Error);
+        // Non-blocking - SimplifiedRespecService will fall back to UC1
+      }
 
       // Initialize Simplified Respec service
       try {

@@ -111,13 +111,13 @@ export class SemanticIntegrationService {
 
       console.log('[SemanticIntegration] 🎯', highConfidenceMatches.length, 'matches above threshold');
 
-      // Route matches by node type
+      // Route matches by node type (this adds specs to artifacts, including auto-fulfilled dependencies)
       await this.routeMatchesByType(highConfidenceMatches);
 
-      // Convert to form updates
-      const formUpdates = this.convertMatchesToFormUpdates(highConfidenceMatches);
+      // Generate form updates from respec artifact (includes auto-added dependencies)
+      const formUpdates = this.generateFormUpdatesFromRespec();
 
-      console.log('[SemanticIntegration] 📝', formUpdates.length, 'form updates generated');
+      console.log('[SemanticIntegration] 📝', formUpdates.length, 'form updates generated (includes dependencies)');
 
       // Build result
       const result: EnhancedChatResult = {
@@ -148,7 +148,8 @@ export class SemanticIntegrationService {
     }));
   }
 
-  private convertMatchesToFormUpdates(matches: MatchResult[]): EnhancedFormUpdate[] {
+  // Legacy method - kept for reference, now using generateFormUpdatesFromRespec()
+  private _convertMatchesToFormUpdates(matches: MatchResult[]): EnhancedFormUpdate[] {
     const formUpdates: EnhancedFormUpdate[] = [];
 
     for (const match of matches) {
@@ -208,6 +209,52 @@ export class SemanticIntegrationService {
         substitutionNote
       });
     }
+
+    return formUpdates;
+  }
+
+  /**
+   * Generate form updates from respec artifact
+   * This includes auto-added dependency specs that weren't in the original matches
+   */
+  private generateFormUpdatesFromRespec(): EnhancedFormUpdate[] {
+    const formUpdates: EnhancedFormUpdate[] = [];
+
+    if (!this.artifactManager) {
+      console.warn('[SemanticIntegration] No artifact manager - cannot generate form updates');
+      return formUpdates;
+    }
+
+    // Get the respec artifact which contains all approved specs (including dependencies)
+    const respecArtifact = this.artifactManager.getRespecArtifact();
+
+    // Iterate through all specifications in respec artifact
+    Object.values(respecArtifact.domains).forEach(domain => {
+      Object.values(domain.requirements).forEach(requirement => {
+        Object.values(requirement.specifications).forEach(spec => {
+          // Get form field mapping for this specification
+          const fieldMapping = this.compatibilityLayer?.getFieldFromSpecId(spec.id);
+
+          if (!fieldMapping) {
+            console.log(`[SemanticIntegration] ⏭️  No form mapping for ${spec.id} (may be comment type)`);
+            return;
+          }
+
+          console.log(`[SemanticIntegration] 📋 Generating form update for ${spec.id} = ${spec.value}`);
+
+          // Create form update
+          formUpdates.push({
+            section: fieldMapping.section,
+            field: fieldMapping.field,
+            value: spec.value,
+            confidence: spec.confidence || 1.0,
+            isAssumption: spec.source === 'llm' && (spec.confidence || 1.0) < 0.9,
+            originalRequest: spec.originalRequest,
+            substitutionNote: spec.substitutionNote
+          });
+        });
+      });
+    });
 
     return formUpdates;
   }
@@ -306,13 +353,29 @@ export class SemanticIntegrationService {
         // Step 3: Trigger conflict detection
         const conflictResult = await this.artifactManager.detectConflicts();
 
-        // Step 4: If no conflicts, move to respec artifact
+        // Step 4: Auto-resolve cross-artifact conflicts (user changing their mind)
+        const crossArtifactConflicts = conflictResult.conflicts.filter(c => c.type === 'cross-artifact');
+        if (crossArtifactConflicts.length > 0) {
+          console.log(`[Route] 🔄 Auto-resolving ${crossArtifactConflicts.length} cross-artifact conflict(s)`);
+          const autoResolve = await this.artifactManager.autoResolveCrossArtifactConflicts();
+          console.log(`[Route] ✅ Auto-resolved ${autoResolve.resolved} conflicts: ${autoResolve.specs.join(', ')}`);
+        }
+
+        // Step 5: If no remaining conflicts, move to respec artifact
         if (!conflictResult.hasConflict) {
           console.log(`[Route] ✅ No conflicts - moving non-conflicting specs to respec`);
           await this.artifactManager.moveNonConflictingToRespec();
         } else {
-          console.log(`[Route] ⚠️  ${conflictResult.conflicts.length} conflict(s) detected - holding in mapped`);
-          // Conflicts will be handled by Sprint 3 resolution flow
+          // Check if conflicts remain after auto-resolution
+          const remainingConflicts = conflictResult.conflicts.filter(c => c.type !== 'cross-artifact');
+          if (remainingConflicts.length > 0) {
+            console.log(`[Route] ⚠️  ${remainingConflicts.length} conflict(s) detected - holding in mapped`);
+            // Conflicts will be handled by Sprint 3 resolution flow
+          } else {
+            // All conflicts were auto-resolved, move remaining specs to respec
+            console.log(`[Route] ✅ All conflicts auto-resolved - moving remaining specs to respec`);
+            await this.artifactManager.moveNonConflictingToRespec();
+          }
         }
       } catch (error) {
         console.error(`[Route] ❌ Error handling specification ${specId}:`, error);

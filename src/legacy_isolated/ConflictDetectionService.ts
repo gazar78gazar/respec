@@ -1,12 +1,16 @@
 /**
  * ConflictDetectionService - Advanced conflict detection and resolution system
  *
+ * @deprecated Sprint 1: This service will be replaced by ConflictResolver in Sprint 2
+ * Current status: Still used for form-level conflict detection
+ * Migration plan: Sprint 2 will fully integrate UC8 ConflictResolver
+ *
  * Integrates with semantic matching to provide real-time conflict detection
  * and intelligent resolution suggestions for form field updates.
  */
 
-import { UC1ValidationEngine } from './UC1ValidationEngine';
-import { CompatibilityLayer } from './artifacts/CompatibilityLayer';
+import { UC1ValidationEngine } from '../services/respec/UC1ValidationEngine';
+import { CompatibilityLayer } from '../services/respec/artifacts/CompatibilityLayer';
 
 export interface FieldConflict {
   id: string;
