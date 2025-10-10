@@ -210,8 +210,7 @@ export class SimplifiedRespecService {
       this.semanticIntegrationNew = createSemanticIntegrationServiceNew(
         this.semanticMatchingService,
         uc1Engine,
-        artifactManager,
-        compatibilityLayer
+        artifactManager
       );
 
       // Keep old services for backward compatibility (temporarily)
@@ -524,30 +523,41 @@ export class SimplifiedRespecService {
 
     console.log(`[SimplifiedRespec] Processing: "${message}"`);
 
-    // Sprint 3 Week 1: Check for active conflicts FIRST
+    // Sprint 3: Check for active conflicts FIRST - if yes, route to conflict resolution
     const conflictStatus = this.getActiveConflictsForAgent();
 
-    // TEMPORARILY DISABLED: Conflict blocking mechanism disabled for testing
-    // Will re-enable after UC schema changes and core functionality stabilization
-    if (conflictStatus.hasConflicts) {
-      console.log(`[SimplifiedRespec] ⚠️  ${conflictStatus.count} active conflict(s) detected (blocking disabled for testing)`);
-      // Conflicts are logged but system continues processing
-    }
+    if (conflictStatus.hasConflicts && this.artifactManager) {
+      console.log(`[SimplifiedRespec] 🎯 Conflict resolution mode - routing to agent`);
 
-    /* COMMENTED OUT - Conflict blocking mechanism
-    if (conflictStatus.hasConflicts) {
-      console.log(`[SimplifiedRespec] ⚠️  System blocked by ${conflictStatus.count} active conflict(s)`);
+      // Use AnthropicService to handle conflict resolution (parse A/B, resolve, confirm)
+      const resolutionResult = await this.anthropicService.handleConflictResolution(
+        message,
+        conflictStatus,
+        this.artifactManager
+      );
 
-      // Return conflict information to agent (agent will generate binary question)
+      // Add to conversation history
+      this.conversationHistory.push({
+        role: 'user',
+        content: message,
+        timestamp: new Date(),
+      });
+
+      this.conversationHistory.push({
+        role: 'assistant',
+        content: resolutionResult.response,
+        timestamp: new Date(),
+      });
+
+      this.saveSession();
+
       return {
         success: true,
-        systemMessage: '', // Agent will generate this from conflictData
+        systemMessage: resolutionResult.response,
         formUpdates: [],
-        confidence: 0,
-        conflictData: conflictStatus // Sprint 3 Week 1: NEW FIELD
+        confidence: 1.0
       };
     }
-    */
 
     // Add to conversation history
     this.conversationHistory.push({
@@ -681,34 +691,31 @@ export class SimplifiedRespecService {
       return priorityA - priorityB;
     });
 
-    // Sprint 3 Week 2: Only return the FIRST (highest priority) conflict
-    const topConflict = activeConflicts[0];
-
-    // Structure conflict for agent consumption
-    const structuredConflict = {
-      id: topConflict.id,
-      type: topConflict.type,
-      description: topConflict.description,
-      conflictingNodes: topConflict.conflictingNodes.map(nodeId => ({
+    // SPRINT 3 FIX B: Return ALL conflicts (agent will aggregate into one question)
+    const structuredConflicts = activeConflicts.map(conflict => ({
+      id: conflict.id,
+      type: conflict.type,
+      description: conflict.description,
+      conflictingNodes: conflict.conflictingNodes.map(nodeId => ({
         id: nodeId,
         ...this.getNodeDetails(nodeId)
       })),
-      resolutionOptions: topConflict.resolutionOptions.map(option => ({
+      resolutionOptions: conflict.resolutionOptions.map(option => ({
         id: option.id,
         label: option.description,
         outcome: option.expectedOutcome
       })),
-      cycleCount: topConflict.cycleCount,
-      priority: ((topConflict.type as any) === 'cross-artifact' || (topConflict.type as any) === 'cross_artifact') ? 'critical' : 'high'
-    };
+      cycleCount: conflict.cycleCount,
+      priority: ((conflict.type as any) === 'cross-artifact' || (conflict.type as any) === 'cross_artifact') ? 'critical' : 'high'
+    }));
 
     return {
       hasConflicts: true,
       count: activeConflicts.length,          // Total count for transparency
-      currentConflict: 1,                      // Currently handling first one
+      currentConflict: 1,                      // Currently handling first batch
       totalConflicts: activeConflicts.length, // For progress indicators
       systemBlocked: state.conflicts.metadata.systemBlocked,
-      conflicts: [structuredConflict]          // Only ONE conflict at a time
+      conflicts: structuredConflicts          // ALL conflicts for agent aggregation
     };
   }
 
@@ -1024,6 +1031,13 @@ export class SimplifiedRespecService {
       conversationLength: this.conversationHistory.length,
       lastActivity: this.conversationHistory[this.conversationHistory.length - 1]?.timestamp,
     };
+  }
+
+  /**
+   * Sprint 3: Expose ArtifactManager for event listener setup
+   */
+  getArtifactManager(): ArtifactManager | undefined {
+    return this.artifactManager;
   }
 
   // ============= CONFLICT DETECTION API =============

@@ -311,7 +311,48 @@ Return JSON format:
   ],
   "response": "I've selected 512GB storage, which is the closest available option to your requested 500GB.",
   "clarificationNeeded": null
-}`;
+}
+
+Conflict Resolution Mode:
+When you receive a message with metadata.isConflict = true:
+1. Extract conflict data from the message
+2. Read ALL conflicts in conflicts[] array (may be multiple conflicts from same data node)
+3. If multiple conflicts exist, analyze their common theme and generate ONE aggregated binary question
+4. Generate a conversational binary question:
+
+Format for SINGLE conflict:
+"I detected a conflict: {conflict.description}
+
+Which would you prefer?
+A) {resolutionOptions[0].label}
+   Outcome: {resolutionOptions[0].outcome}
+
+B) {resolutionOptions[1].label}
+   Outcome: {resolutionOptions[1].outcome}
+
+Please respond with A or B."
+
+Format for MULTIPLE conflicts (AGGREGATE INTO ONE QUESTION):
+Example: User adds "<10W power" which conflicts with BOTH i9 processor AND Xe Graphics
+- Identify common theme: Both i9 and Xe Graphics are high-performance, <10W is low-power
+- Generate aggregated question: "Do you prefer high performance processing or low power consumption?"
+- Options:
+  A) High performance processing (keep i9 and Xe Graphics, remove <10W constraint)
+  B) Low power consumption (keep <10W, remove i9 and Xe Graphics)
+
+When user responds (next message):
+1. Parse their choice (A, B, "first", "second", etc.)
+2. Map to option-a or option-b
+3. The conflict resolution will be handled automatically
+4. Confirm to user what was changed
+
+CRITICAL:
+- Only present 2 options (A and B)
+- If conflicts[] has multiple items, create ONE question that addresses ALL conflicts thematically
+- Wait for user choice before resolving
+- Never auto-resolve conflicts
+- Be conversational and friendly in presenting options
+`;
   }
 
   // ============= SPRINT 3 WEEK 2: CONFLICT RESOLUTION =============

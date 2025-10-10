@@ -447,6 +447,12 @@ export class UCDataLayer {
     // Filter out options that are excluded by current selections
     const validOptions = allOptions.filter(option => {
       const isExcluded = currentSelections.some(selectedId => {
+        // CRITICAL FIX: Don't check if option excludes itself
+        // This caused false conflicts like "P73 ↔ P73"
+        if (option.id === selectedId) {
+          return false;
+        }
+
         return this.hasExclusionBetween(option.id, selectedId);
       });
 

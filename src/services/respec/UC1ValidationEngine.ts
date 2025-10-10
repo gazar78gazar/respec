@@ -154,8 +154,9 @@ export class UC1ValidationEngine {
 
   /**
    * Load and parse UC1 schema from JSON file
+   * SPRINT 3 FIX: Now loads UC8 dataset (uc_8.0_2.1.json) to align IDs with conflict detection
    */
-  async loadSchema(schemaPath: string = '/uc1.json'): Promise<void> {
+  async loadSchema(schemaPath: string = '/uc_8.0_2.1.json'): Promise<void> {
     try {
       // In browser environment, fetch from public folder
       const response = await fetch(schemaPath);
@@ -168,7 +169,8 @@ export class UC1ValidationEngine {
       this.isInitialized = true;
 
       console.log('[UC1ValidationEngine] Schema loaded successfully:', {
-        version: this.schema?.metadata.version,
+        version: this.schema?.metadata.schema_version || this.schema?.metadata.version,
+        dataset_version: this.schema?.metadata.dataset_version,
         domains: Object.keys(this.schema?.domains || {}).length,
         requirements: Object.keys(this.schema?.requirements || {}).length,
         specifications: Object.keys(this.schema?.specifications || {}).length

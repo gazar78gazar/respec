@@ -12,6 +12,7 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { UC1ValidationEngine } from '../UC1ValidationEngine';
+import { ucDataLayer } from '../../data/UCDataLayer';
 
 // ============= TYPES =============
 
@@ -38,18 +39,18 @@ export interface UC1Match {
 }
 
 export interface UC1SchemaContext {
-  domains: Array<{ id: string; name: string; description: string }>;
-  requirements: Array<{ id: string; name: string; description: string; parent: string[] }>;
+  scenarios: Array<{ id: string; name: string; description: string }>;
+  requirements: Array<{ id: string; name: string; description: string; parent_scenarios?: string[] }>;
   specifications: Array<{
     id: string;
     name: string;
     description: string;
-    parent: string[];
+    parent_requirements?: string[];
     options?: string[];
     form_mapping?: {
       section: string;
       field_name: string;
-      ui_type: string;
+      ui_type?: string;
     };
   }>;
 }
@@ -90,11 +91,12 @@ export class SemanticMatchingService {
       throw new Error('[SemanticMatching] ❌ Client not initialized. Call initialize() first.');
     }
 
-    if (!this.uc1Engine.isReady()) {
-      throw new Error('[SemanticMatching] ❌ UC1ValidationEngine not ready');
+    // SPRINT 3 FIX: Check UCDataLayer instead of UC1ValidationEngine
+    if (!ucDataLayer.isLoaded()) {
+      throw new Error('[SemanticMatching] ❌ UCDataLayer not loaded - ensure ucDataLayer.load() is called at startup');
     }
 
-    console.log('[SemanticMatching] 🔍 Matching', extractedNodes.length, 'nodes to UC1');
+    console.log('[SemanticMatching] 🔍 Matching', extractedNodes.length, 'nodes to UC8 (P## IDs)');
 
     // Prepare condensed UC1 schema (full schema would be too large)
     const uc1Context = this.prepareUC1Context();
@@ -143,114 +145,125 @@ export class SemanticMatchingService {
   // ============= PROMPT BUILDING =============
 
   private buildSystemPrompt(): string {
-    return `You are a semantic matching engine for UC1 (Power Substation Management) schema.
+    return `You are a semantic matching engine for UC8 (Power Substation Management) dataset.
 
 Your task:
 1. Receive extracted technical requirements from user input
-2. Match each extraction to the best UC1 node (domain, requirement, or specification)
+2. Match each extraction to the best UC8 node (scenario, requirement, or specification)
 3. Provide confidence score and match rationale
+
+IMPORTANT: Return specification IDs in P## format (e.g., P01, P82, P27) - NOT spc### format.
 
 Matching rules:
 - Use semantic similarity, not just exact text match
-- "budget friendly" should match to budget-related requirements (req013, req014)
-- "fast response" should match to response time specifications (spc005)
-- "outdoor" should match to environmental requirements (req003)
-- "high performance processor" should match to processor specifications (spc001)
-- "thermal imaging" should match to thermal monitoring requirements (req001)
+- "budget friendly" should match to budget-related requirements
+- "fast response" should match to response time specifications
+- "outdoor" should match to environmental requirements
+- "high performance processor" should match to processor specifications (e.g., P82 for Core i9)
+- "low power" or "<10W" should match to power consumption specifications (e.g., P27)
+- "thermal imaging" should match to thermal monitoring requirements
 
-Classification hints (optional, for faster parsing):
-- Specifications have specific values and map to form fields
-- Requirements are functional needs that group specifications
-- Domains are high-level areas (Monitoring, Protection, Deployment)
+Classification hints:
+- Specifications have specific values and map to form fields (IDs start with P)
+- Requirements are functional needs that group specifications (IDs start with R)
+- Scenarios are high-level use cases (IDs start with S)
 
 Confidence scoring:
-- 1.0 = Exact match (user said "Intel Core i7", UC1 has that option)
+- 1.0 = Exact match (user said "Intel Core i9", dataset has that option)
 - 0.9 = High confidence semantic match
 - 0.8 = Good semantic match with some interpretation
 - 0.7 = Acceptable match but ambiguous
 - <0.7 = Low confidence, should ask for clarification
 
-Return ONLY valid JSON, no additional text.`;
+Return ONLY valid JSON with P## IDs, no additional text.`;
   }
 
   private buildMatchingPrompt(
     extractedNodes: ExtractedNode[],
     uc1Context: UC1SchemaContext
   ): string {
-    return `Match these extracted nodes to UC1 schema:
+    return `Match these extracted nodes to UC8 schema:
 
 EXTRACTED NODES:
 ${JSON.stringify(extractedNodes, null, 2)}
 
-UC1 SCHEMA CONTEXT:
+UC8 SCHEMA CONTEXT:
 ${JSON.stringify(uc1Context, null, 2)}
 
-Return JSON array of matches:
+Return JSON array of matches using P## IDs:
 {
   "matches": [
     {
       "extractedText": "original extracted text",
       "uc1Match": {
-        "id": "spc001",
+        "id": "P82",
         "name": "processor_type",
         "type": "specification",
         "confidence": 0.95,
         "matchType": "semantic",
-        "rationale": "User mentioned high performance processor, semantically matches to processor_type specification"
+        "rationale": "User mentioned high performance processor, semantically matches to Intel Core i9 processor specification"
       },
-      "value": "Intel Core i7"
+      "value": "Intel Core i9"
     }
   ]
 }
 
+CRITICAL: Use P## format IDs (P82, P27, etc.) NOT spc### format.
 Match ALL provided nodes. If no good match exists, use confidence < 0.5.`;
   }
 
-  // ============= UC1 CONTEXT PREPARATION =============
+  // ============= UC8 CONTEXT PREPARATION =============
+  // SPRINT 3 FIX: Now uses UCDataLayer to get P## IDs instead of UC1ValidationEngine spc### IDs
 
   private prepareUC1Context(): UC1SchemaContext {
-    const domains = this.uc1Engine.getDomains();
     const context: UC1SchemaContext = {
-      domains: [],
+      scenarios: [],
       requirements: [],
       specifications: []
     };
 
-    // Add domains
-    domains.forEach(domain => {
-      context.domains.push({
-        id: domain.id,
-        name: domain.name,
-        description: '' // UC1Domain doesn't have description field
-      });
+    // Check if UCDataLayer is loaded
+    if (!ucDataLayer.isLoaded()) {
+      console.error('[SemanticMatching] ❌ UCDataLayer not loaded');
+      return context;
+    }
 
-      // Add requirements for this domain
-      const requirements = this.uc1Engine.getRequirementsByDomain(domain.id);
-      requirements.forEach(req => {
-        context.requirements.push({
-          id: req.id,
-          name: req.name,
-          description: req.description || '',
-          parent: req.parent || []
-        });
-
-        // Add specifications for this requirement
-        const specs = this.uc1Engine.getSpecificationsByRequirement(req.id);
-        specs.forEach(spec => {
-          context.specifications.push({
-            id: spec.id,
-            name: spec.name,
-            description: spec.description || '',
-            parent: spec.parent || [],
-            options: spec.options,
-            form_mapping: spec.form_mapping
-          });
-        });
+    // Add scenarios (UC8 equivalent of domains)
+    const scenarios = ucDataLayer.getAllScenarios();
+    scenarios.forEach(scenario => {
+      context.scenarios.push({
+        id: scenario.id,
+        name: scenario.name,
+        description: scenario.description || ''
       });
     });
 
-    console.log('[SemanticMatching] 📦 UC1 Context:',
-      context.domains.length, 'domains,',
+    // Add requirements
+    const requirements = ucDataLayer.getAllRequirements();
+    requirements.forEach(req => {
+      context.requirements.push({
+        id: req.id,
+        name: req.name,
+        description: req.description || '',
+        parent_scenarios: req.parent_scenarios || []
+      });
+    });
+
+    // Add specifications (with P## IDs)
+    const specifications = ucDataLayer.getAllSpecifications();
+    specifications.forEach(spec => {
+      context.specifications.push({
+        id: spec.id, // P## format from UC8
+        name: spec.name,
+        description: spec.description || '',
+        parent_requirements: spec.parent_requirements || [],
+        options: spec.options,
+        form_mapping: spec.form_mapping
+      });
+    });
+
+    console.log('[SemanticMatching] 📦 UC8 Context (P## IDs):',
+      context.scenarios.length, 'scenarios,',
       context.requirements.length, 'requirements,',
       context.specifications.length, 'specifications'
     );

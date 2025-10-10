@@ -1118,34 +1118,37 @@ function App() {
         case 'chat_message':
           setProcessingMessage('Processing your message...');
           addTrace('chat_message', { message: data.message }, 'SUCCESS');
+
+          // Sprint 3: Pass message to agent (agent handles conflict resolution if in conflict mode)
           const chatResult = await simplifiedRespecService.processChatMessage(data.message, requirements);
 
-          // Sprint 2: Check for active conflicts after processing chat
+          // Sprint 3: Check for NEW conflicts after processing chat
           const conflictStatus = simplifiedRespecService.getActiveConflictsForAgent();
 
           if (conflictStatus.hasConflicts) {
-            console.log(`[APP] 🚨 Active conflicts detected, sending conflict data to agent`);
-            console.log(`[APP] Conflict count: ${conflictStatus.count}`);
-            console.log(`[APP] Conflict data:`, conflictStatus.conflicts[0]);
+            console.log(`[APP] 🚨 Conflicts detected - presenting to user`);
 
-            // Add conflict message to chat for agent to process
-            const conflictMessage: ChatMessage = {
-              id: `conflict-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-              role: 'system',
-              content: JSON.stringify({
-                type: 'conflict_detected',
-                ...conflictStatus
-              }),
-              timestamp: new Date(),
-              metadata: {
-                ...conflictStatus,
-                isConflict: true
-              }
-            };
-            setChatMessages(prev => [...prev, conflictMessage]);
+            // Sprint 3: Generate binary question from conflict data
+            const conflict = conflictStatus.conflicts[0];
+            const binaryQuestion = `I detected a conflict: ${conflict.description}
 
-            // Return immediately - wait for user to resolve conflict before continuing
-            return { success: true, hasConflict: true, conflictData: conflictStatus };
+Which would you prefer?
+A) ${conflict.resolutionOptions[0].label}
+   Outcome: ${conflict.resolutionOptions[0].outcome}
+
+B) ${conflict.resolutionOptions[1].label}
+   Outcome: ${conflict.resolutionOptions[1].outcome}
+
+Please respond with A or B.`;
+
+            setChatMessages(prev => [...prev, {
+              id: `conflict-question-${Date.now()}`,
+              role: 'assistant',
+              content: binaryQuestion,
+              timestamp: new Date()
+            }]);
+
+            return { success: true, hasConflict: true };
           }
 
           setChatMessages(prev => [...prev, {
@@ -1723,6 +1726,42 @@ function App() {
 
     syncToArtifacts();
   }, [requirements, compatibilityLayer, artifactManager]);
+
+  // Sprint 3: Listen for form updates from RESPEC artifact (after conflict resolution)
+  useEffect(() => {
+    if (!artifactManager) return;
+
+    artifactManager.on('form_updates_from_respec', (data) => {
+      console.log('[APP] 📝 Form updates from conflict resolution:', data.updates);
+
+      data.updates.forEach((update: any) => {
+        setRequirements(prev => ({
+          ...prev,
+          [update.section]: {
+            ...prev[update.section],
+            [update.field]: {
+              value: update.value,
+              isComplete: true,
+              source: 'conflict_resolution',
+              lastUpdated: new Date().toISOString()
+            }
+          }
+        }));
+      });
+
+      // Add to conversation history for agent context
+      setChatMessages(prev => [...prev, {
+        id: `form-update-${Date.now()}`,
+        role: 'system',
+        content: `Form updated: ${data.updates.length} field(s) changed`,
+        timestamp: new Date(),
+        metadata: {
+          isFormUpdate: true,
+          updates: data.updates
+        }
+      }]);
+    });
+  }, [artifactManager]);
 
   const toggleGroup = (section, group) => {
     setExpandedGroups(prev => ({

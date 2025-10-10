@@ -99,7 +99,8 @@ export class ArtifactManager {
     spec: UC1Specification,
     value: any,
     originalRequest?: string,
-    substitutionNote?: string
+    substitutionNote?: string,
+    source?: 'user_request' | 'conflict_resolution' | 'dependency'
   ): Promise<void> {
     if (!this.state.initialized) {
       throw new Error('ArtifactManager not initialized');
@@ -125,43 +126,52 @@ export class ArtifactManager {
       timestamp: new Date()
     };
 
-    // Find or create requirement structure
-    const reqId = spec.parent[0];
-    const requirement = this.uc1Engine.getHierarchy(reqId);
-
-    if (!requirement || !requirement.domain || !requirement.requirement) {
-      throw new Error(`Cannot find domain/requirement structure for ${spec.id}`);
+    // SPRINT 3 FIX: Use UCDataLayer for hierarchy instead of UC1ValidationEngine
+    // Get parent requirements for this specification (UC8: P## → R##)
+    const parentReqs = ucDataLayer.getParentRequirements(spec.id);
+    if (parentReqs.length === 0) {
+      throw new Error(`Cannot find parent requirements for ${spec.id}`);
     }
 
-    const domainId = requirement.domain;
+    const reqId = parentReqs[0].id; // R## format
+
+    // Get parent scenarios for the requirement (UC8: R## → S##)
+    // In artifact structure, scenarios map to "domains" (just terminology)
+    const parentScenarios = ucDataLayer.getParentScenarios(reqId);
+    if (parentScenarios.length === 0) {
+      throw new Error(`Cannot find parent scenario for requirement ${reqId}`);
+    }
+
+    const domainId = parentScenarios[0].id; // S## format (stored as "domain" in artifact)
 
     // Ensure domain exists in mapped artifact
+    // SPRINT 3 FIX: Get scenario from UCDataLayer instead of domain from UC1Engine
     if (!this.state.mapped.domains[domainId]) {
-      const uc1Domain = this.uc1Engine.getDomains().find(d => d.id === domainId);
-      if (!uc1Domain) {
-        throw new Error(`UC1 domain ${domainId} not found`);
+      const uc8Scenario = ucDataLayer.getScenario(domainId);
+      if (!uc8Scenario) {
+        throw new Error(`UC8 scenario ${domainId} not found`);
       }
 
       this.state.mapped.domains[domainId] = {
         id: domainId,
-        name: uc1Domain.name,
-        uc1Source: uc1Domain,
+        name: uc8Scenario.name,
+        uc1Source: uc8Scenario as any, // UC8 scenario stored as "domain" in artifact
         requirements: {}
       };
     }
 
     // Ensure requirement exists in domain
+    // SPRINT 3 FIX: Get requirement from UCDataLayer
     if (!this.state.mapped.domains[domainId].requirements[reqId]) {
-      const uc1Requirements = this.uc1Engine.getRequirementsByDomain(domainId);
-      const uc1Requirement = uc1Requirements.find(r => r.id === reqId);
-      if (!uc1Requirement) {
-        throw new Error(`UC1 requirement ${reqId} not found`);
+      const uc8Requirement = ucDataLayer.getRequirement(reqId);
+      if (!uc8Requirement) {
+        throw new Error(`UC8 requirement ${reqId} not found`);
       }
 
       this.state.mapped.domains[domainId].requirements[reqId] = {
         id: reqId,
-        name: uc1Requirement.name,
-        uc1Source: uc1Requirement,
+        name: uc8Requirement.name,
+        uc1Source: uc8Requirement as any, // UC8 requirement stored in artifact
         specifications: {}
       };
     }
@@ -174,8 +184,14 @@ export class ArtifactManager {
     this.state.mapped.metadata.lastModified = new Date();
     this.state.mapped.metadata.pendingValidation.push(spec.id);
 
-    console.log(`[ArtifactManager] Added specification ${spec.id} to mapped artifact`);
-    this.emit('specification_added', { artifactType: 'mapped', specId: spec.id, value });
+    console.log(`[ArtifactManager] Added specification ${spec.id} to mapped artifact (source: ${source || 'user_request'})`);
+    this.emit('specification_added', { artifactType: 'mapped', specId: spec.id, value, source });
+
+    // SPRINT 3 FIX: Skip conflict detection and dependency fulfillment if this is from conflict resolution
+    if (source === 'conflict_resolution') {
+      console.log(`[ArtifactManager] ⚠️  Skipping conflict detection for ${spec.id} (source: conflict_resolution)`);
+      return; // Don't re-detect conflicts or fulfill dependencies
+    }
 
     // SPRINT 3 FIX: Auto-fulfill dependencies (only for top-level calls, not recursive)
     // Note: Currently supports 1-level dependencies. Multi-level dependency chains
@@ -374,12 +390,13 @@ export class ArtifactManager {
       result = this.uc1Engine.detectConflicts(specifications, activeRequirements, activeDomains);
     }
 
-    // Sprint 3 Week 1: Check cross-artifact conflicts (mapped vs respec)
-    const crossConflicts = await this.checkCrossArtifactConflicts();
-    if (crossConflicts.hasConflict) {
-      result.hasConflict = true;
-      result.conflicts.push(...crossConflicts.conflicts);
-    }
+    // Sprint 3 Week 1: DISABLED - Cross-artifact conflicts (user changing mind is allowed)
+    // When user provides new value for existing spec, auto-resolve in SemanticIntegrationService
+    // const crossConflicts = await this.checkCrossArtifactConflicts();
+    // if (crossConflicts.hasConflict) {
+    //   result.hasConflict = true;
+    //   result.conflicts.push(...crossConflicts.conflicts);
+    // }
 
     // Convert to active conflicts if any found
     if (result.hasConflict) {
@@ -656,6 +673,11 @@ export class ArtifactManager {
     }
 
     console.log(`[ArtifactManager] Resolved conflict: ${conflictId}`);
+
+    // Sprint 3: After conflict resolved, move non-conflicting specs from MAPPED to RESPEC
+    // This triggers the normal flow: MAPPED → RESPEC → Form heals from RESPEC
+    await this.moveNonConflictingToRespec();
+
     this.emit('conflict_resolved', { conflictId, resolutionId });
   }
 
@@ -857,32 +879,51 @@ export class ArtifactManager {
    * Sprint 3 Week 1: Helper for rollback operations
    */
   private restoreSpecificationToMapped(specId: string, specBackup: any): void {
-    const hierarchy = this.uc1Engine.getHierarchy(specId);
-    if (!hierarchy || !hierarchy.domain || !hierarchy.requirement) {
-      console.error(`[Rollback] Cannot restore ${specId} - hierarchy not found or incomplete`);
+    // SPRINT 3 FIX: Use UCDataLayer for hierarchy instead of UC1ValidationEngine
+    const parentReqs = ucDataLayer.getParentRequirements(specId);
+    if (parentReqs.length === 0) {
+      console.error(`[Rollback] Cannot restore ${specId} - no parent requirements found`);
       return;
     }
 
-    const { domain, requirement } = hierarchy;
+    const reqId = parentReqs[0].id;
+    const parentScenarios = ucDataLayer.getParentScenarios(reqId);
+    if (parentScenarios.length === 0) {
+      console.error(`[Rollback] Cannot restore ${specId} - no parent scenario found`);
+      return;
+    }
+
+    const domain = parentScenarios[0].id; // Scenario ID (S##)
+    const requirement = reqId; // Requirement ID (R##)
 
     // Ensure domain structure exists
+    // SPRINT 3 FIX: Get scenario from UCDataLayer instead of UC1Engine
     if (!this.state.mapped.domains[domain]) {
-      const uc1Spec = this.uc1Engine.getSpecification(specId);
-      const domainName = uc1Spec?.parent?.[0] || domain;
+      const uc8Scenario = ucDataLayer.getScenario(domain);
+      if (!uc8Scenario) {
+        console.error(`[Rollback] UC8 scenario ${domain} not found`);
+        return;
+      }
       this.state.mapped.domains[domain] = {
         id: domain,
-        name: domainName as any,
-        uc1Source: domain as any,
+        name: uc8Scenario.name,
+        uc1Source: uc8Scenario as any,
         requirements: {}
       };
     }
 
     // Ensure requirement structure exists
+    // SPRINT 3 FIX: Get requirement from UCDataLayer
     if (!this.state.mapped.domains[domain].requirements[requirement]) {
+      const uc8Requirement = ucDataLayer.getRequirement(requirement);
+      if (!uc8Requirement) {
+        console.error(`[Rollback] UC8 requirement ${requirement} not found`);
+        return;
+      }
       this.state.mapped.domains[domain].requirements[requirement] = {
         id: requirement,
-        name: requirement as any,
-        uc1Source: requirement as any,
+        name: uc8Requirement.name,
+        uc1Source: uc8Requirement as any,
         specifications: {}
       };
     }
@@ -943,14 +984,21 @@ export class ArtifactManager {
   }
 
   private addSpecificationToRespec(spec: UC1ArtifactSpecification): void {
-    // Find parent requirement and domain
-    const hierarchy = this.uc1Engine.getHierarchy(spec.id);
-    if (!hierarchy || !hierarchy.domain || !hierarchy.requirement) {
+    // SPRINT 3 FIX: Use UCDataLayer for hierarchy instead of UC1ValidationEngine
+    const parentReqs = ucDataLayer.getParentRequirements(spec.id);
+    if (parentReqs.length === 0) {
+      console.warn(`[ArtifactManager] Cannot add ${spec.id} to respec - no parent requirements found`);
       return;
     }
 
-    const domainId = hierarchy.domain;
-    const reqId = hierarchy.requirement;
+    const reqId = parentReqs[0].id;
+    const parentScenarios = ucDataLayer.getParentScenarios(reqId);
+    if (parentScenarios.length === 0) {
+      console.warn(`[ArtifactManager] Cannot add ${spec.id} to respec - no parent scenario found`);
+      return;
+    }
+
+    const domainId = parentScenarios[0].id; // Scenario ID (S##)
 
     // Ensure structure exists in respec
     if (!this.state.respec.domains[domainId]) {

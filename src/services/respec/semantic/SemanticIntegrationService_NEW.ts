@@ -15,9 +15,9 @@
 
 import { SemanticMatchingService, ExtractedNode, MatchResult } from './SemanticMatchingService';
 import { EnhancedFormUpdate, ChatResult } from '../SimplifiedRespecService';
-import { CompatibilityLayer } from '../artifacts/CompatibilityLayer';
-import { UC1ValidationEngine } from '../UC1ValidationEngine';
+import { UC1ValidationEngine, UC1Specification } from '../UC1ValidationEngine';
 import { ArtifactManager } from '../artifacts/ArtifactManager';
+import { ucDataLayer } from '../../data/UCDataLayer';
 
 // ============= INTEGRATION TYPES =============
 
@@ -39,19 +39,16 @@ export class SemanticIntegrationService {
   private semanticMatchingService: SemanticMatchingService;
   private uc1Engine: UC1ValidationEngine;
   private artifactManager: ArtifactManager | null = null;
-  private compatibilityLayer: CompatibilityLayer | null = null;
   private processingOptions: SemanticProcessingOptions;
 
   constructor(
     semanticMatchingService: SemanticMatchingService,
     uc1Engine: UC1ValidationEngine,
-    artifactManager?: ArtifactManager,
-    compatibilityLayer?: CompatibilityLayer
+    artifactManager?: ArtifactManager
   ) {
     this.semanticMatchingService = semanticMatchingService;
     this.uc1Engine = uc1Engine;
     this.artifactManager = artifactManager || null;
-    this.compatibilityLayer = compatibilityLayer || null;
 
     // Default processing options
     this.processingOptions = {
@@ -159,13 +156,19 @@ export class SemanticIntegrationService {
         continue;
       }
 
-      // Get form field mapping
-      const fieldMapping = this.compatibilityLayer?.getFieldFromSpecId(match.uc1Match.id);
+      // Get form field mapping from UC8 specification (UC8 specs have form_mapping built-in)
+      const uc8Spec = ucDataLayer.getSpecification(match.uc1Match.id);
 
-      if (!fieldMapping) {
+      if (!uc8Spec?.form_mapping) {
         console.warn(`[SemanticIntegration] ⚠️  No form mapping for ${match.uc1Match.id}`);
         continue;
       }
+
+      const fieldMapping = {
+        section: uc8Spec.form_mapping.section,
+        field: uc8Spec.form_mapping.field_name,
+        category: uc8Spec.form_mapping.category || uc8Spec.form_mapping.section
+      };
 
       // Get UC1 specification to retrieve proper value from options
       const uc1Spec = this.uc1Engine.getSpecification(match.uc1Match.id);
@@ -232,13 +235,19 @@ export class SemanticIntegrationService {
     Object.values(respecArtifact.domains).forEach(domain => {
       Object.values(domain.requirements).forEach(requirement => {
         Object.values(requirement.specifications).forEach(spec => {
-          // Get form field mapping for this specification
-          const fieldMapping = this.compatibilityLayer?.getFieldFromSpecId(spec.id);
+          // Get form field mapping from UC8 specification (UC8 specs have form_mapping built-in)
+          const uc8SpecForMapping = ucDataLayer.getSpecification(spec.id);
 
-          if (!fieldMapping) {
+          if (!uc8SpecForMapping?.form_mapping) {
             console.log(`[SemanticIntegration] ⏭️  No form mapping for ${spec.id} (may be comment type)`);
             return;
           }
+
+          const fieldMapping = {
+            section: uc8SpecForMapping.form_mapping.section,
+            field: uc8SpecForMapping.form_mapping.field_name,
+            category: uc8SpecForMapping.form_mapping.category || uc8SpecForMapping.form_mapping.section
+          };
 
           console.log(`[SemanticIntegration] 📋 Generating form update for ${spec.id} = ${spec.value}`);
 
@@ -335,12 +344,28 @@ export class SemanticIntegrationService {
     // If artifact manager available, use full Week 2 flow
     if (this.artifactManager) {
       try {
-        // Step 1: Get UC1 specification
-        const uc1Spec = this.uc1Engine.getSpecification(specId);
-        if (!uc1Spec) {
-          console.warn(`[Route] ⚠️  Specification ${specId} not found in UC1 schema`);
+        // SPRINT 3 FIX: Get specification from UCDataLayer (P## IDs) instead of UC1Engine (spc### IDs)
+        const uc8Spec = ucDataLayer.getSpecification(specId);
+        if (!uc8Spec) {
+          console.warn(`[Route] ⚠️  Specification ${specId} not found in UC8 dataset`);
           return;
         }
+
+        // UC8 spec needs to be converted to UC1 format for compatibility with ArtifactManager
+        // TODO: Refactor ArtifactManager to use UC8 types directly
+        const uc1Spec: UC1Specification = {
+          id: uc8Spec.id,
+          type: 'specification',
+          name: uc8Spec.name,
+          form_mapping: uc8Spec.form_mapping,
+          category: uc8Spec.form_mapping?.category || uc8Spec.form_mapping?.section || 'unknown',
+          parent: uc8Spec.parent_requirements || [],
+          options: uc8Spec.options,
+          description: uc8Spec.description,
+          dependencies: [] // UC8 uses 'requires' field differently
+        };
+
+        console.log(`[Route] ✅ Found UC8 spec: ${uc8Spec.name} (${specId})`);
 
         // Step 2: Add to mapped artifact
         await this.artifactManager.addSpecificationToMapped(
@@ -353,29 +378,15 @@ export class SemanticIntegrationService {
         // Step 3: Trigger conflict detection
         const conflictResult = await this.artifactManager.detectConflicts();
 
-        // Step 4: Auto-resolve cross-artifact conflicts (user changing their mind)
-        const crossArtifactConflicts = conflictResult.conflicts.filter(c => c.type === 'cross-artifact');
-        if (crossArtifactConflicts.length > 0) {
-          console.log(`[Route] 🔄 Auto-resolving ${crossArtifactConflicts.length} cross-artifact conflict(s)`);
-          const autoResolve = await this.artifactManager.autoResolveCrossArtifactConflicts();
-          console.log(`[Route] ✅ Auto-resolved ${autoResolve.resolved} conflicts: ${autoResolve.specs.join(', ')}`);
-        }
-
-        // Step 5: If no remaining conflicts, move to respec artifact
-        if (!conflictResult.hasConflict) {
+        // Step 4: Sprint 3 - NO auto-resolution, ALL conflicts go to agent for binary question
+        if (conflictResult.hasConflict) {
+          console.log(`[Route] 🚨 ${conflictResult.conflicts.length} conflict(s) detected - BLOCKING for user resolution`);
+          console.log(`[Route] Conflict types: ${conflictResult.conflicts.map(c => c.type).join(', ')}`);
+          // Do NOT move to respec - specs stay in mapped until user resolves via agent
+          // Agent will receive conflict data via getActiveConflictsForAgent() in app.tsx
+        } else {
           console.log(`[Route] ✅ No conflicts - moving non-conflicting specs to respec`);
           await this.artifactManager.moveNonConflictingToRespec();
-        } else {
-          // Check if conflicts remain after auto-resolution
-          const remainingConflicts = conflictResult.conflicts.filter(c => c.type !== 'cross-artifact');
-          if (remainingConflicts.length > 0) {
-            console.log(`[Route] ⚠️  ${remainingConflicts.length} conflict(s) detected - holding in mapped`);
-            // Conflicts will be handled by Sprint 3 resolution flow
-          } else {
-            // All conflicts were auto-resolved, move remaining specs to respec
-            console.log(`[Route] ✅ All conflicts auto-resolved - moving remaining specs to respec`);
-            await this.artifactManager.moveNonConflictingToRespec();
-          }
         }
       } catch (error) {
         console.error(`[Route] ❌ Error handling specification ${specId}:`, error);
@@ -551,8 +562,7 @@ export class SemanticIntegrationService {
 export function createSemanticIntegrationService(
   semanticMatchingService: SemanticMatchingService,
   uc1Engine: UC1ValidationEngine,
-  artifactManager?: ArtifactManager,
-  compatibilityLayer?: CompatibilityLayer
+  artifactManager?: ArtifactManager
 ): SemanticIntegrationService {
-  return new SemanticIntegrationService(semanticMatchingService, uc1Engine, artifactManager, compatibilityLayer);
+  return new SemanticIntegrationService(semanticMatchingService, uc1Engine, artifactManager);
 }
