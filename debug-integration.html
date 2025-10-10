@@ -112,9 +112,9 @@
             document.getElementById(`${section}-results`).innerHTML = '';
 
             try {
-                logResult(section, 'UC Data Fetch', 'info', 'Attempting to fetch /uc1.json...');
+                logResult(section, 'UC Data Fetch', 'info', 'Attempting to fetch UC data...');
 
-                const response = await fetch('/uc1.json');
+                const response = await fetch('/uc_8.0_2.1.json');
 
                 if (!response.ok) {
                     logResult(section, 'UC Data Fetch', 'fail',
@@ -127,7 +127,7 @@
                 logResult(section, 'UC Data Fetch', 'pass', 'UC data loaded successfully');
 
                 // Validate structure
-                const requiredFields = ['metadata', 'domains', 'requirements', 'specifications'];
+                const requiredFields = ['metadata', 'scenarios', 'requirements', 'specifications'];
                 requiredFields.forEach(field => {
                     logResult(section, `UC Structure - ${field}`,
                         ucData[field] ? 'pass' : 'fail',
@@ -281,11 +281,11 @@
 
                 // Test 2: Fetch UC data and validate structure
                 try {
-                    const ucResponse = await fetch('/uc1.json');
+                    const ucResponse = await fetch('/uc_8.0_2.1.json');
                     const ucData = await ucResponse.json();
 
                     const hasCorrectStructure = ucData.specifications &&
-                                              ucData.domains &&
+                                              ucData.scenarios &&
                                               ucData.requirements;
 
                     logResult(section, 'UC Data Structure', hasCorrectStructure ? 'pass' : 'fail',

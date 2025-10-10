@@ -112,8 +112,7 @@ export interface UCDataset {
 // ============= CONFLICT TYPES (EXTENDED) =============
 
 export enum ConflictType {
-  FIELD_OVERWRITE = 'field_overwrite',     // Need to change existing value
-  EXCLUSION = 'exclusion',                 // Direct exclusion between specs
+  EXCLUSION = 'exclusion',                 // Mutual exclusion (explicit or implicit via field)
   CASCADE = 'cascade',                      // Dependencies cause overwrites
   FIELD_CONSTRAINT = 'field_constraint'     // Field has zero valid options
 }

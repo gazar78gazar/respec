@@ -76,7 +76,7 @@ const DEBUG = {
         console.log('\n2️⃣ Testing UC Data Loading...');
 
         try {
-            const response = await fetch('/uc1.json');
+            const response = await fetch('/uc_8.0_2.1.json');
 
             if (!response.ok) {
                 this.log('UC Data Fetch', 'fail', `HTTP ${response.status}`);
@@ -87,7 +87,7 @@ const DEBUG = {
             this.log('UC Data Fetch', 'pass', 'UC data loaded successfully');
 
             // Validate new structure
-            const requiredFields = ['metadata', 'domains', 'requirements', 'specifications'];
+            const requiredFields = ['metadata', 'scenarios', 'requirements', 'specifications'];
             requiredFields.forEach(field => {
                 this.log(`UC Field: ${field}`, ucData[field] ? 'pass' : 'fail',
                     ucData[field] ? `${field} present` : `${field} missing`);

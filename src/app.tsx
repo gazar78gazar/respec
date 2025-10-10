@@ -5,16 +5,14 @@ import * as uiUtils from './utils/uiUtilities';
 import { dataServices } from './services/dataServices';
 import './styles/animations.css';
 
-// Import enhanced chat and conflict detection components
+// Import enhanced chat component
 import EnhancedChatWindow from './components/EnhancedChatWindow';
-import ConflictPanel from './components/ConflictPanel';
-import { FieldConflict } from './legacy_isolated/ConflictDetectionService';
 
 // Import new artifact state management
 import { ArtifactManager } from './services/respec/artifacts/ArtifactManager';
 import { CompatibilityLayer } from './services/respec/artifacts/CompatibilityLayer';
 import { ArtifactState } from './services/respec/artifacts/ArtifactTypes';
-import { uc1ValidationEngine } from './services/respec/UC1ValidationEngine';
+// UC1ValidationEngine removed - using UCDataLayer instead
 
 // Sprint 0: Import UC8 Data Layer
 import { ucDataLayer } from './services/data/UCDataLayer';
@@ -791,12 +789,7 @@ function App() {
   const [chatInput, setChatInput] = useState('');
   const chatEndRef = useRef(null);
 
-  // Conflict detection state
-  const [activeConflicts, setActiveConflicts] = useState<FieldConflict[]>([]);
-  const [showConflicts, setShowConflicts] = useState(true);
-
   // ReSpec service initialization
-  // const [respecService] = useState(() => new ReSpecService(
   const [simplifiedRespecService] = useState(() => new SimplifiedRespecService());
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingMessage, setProcessingMessage] = useState('');
@@ -925,54 +918,8 @@ function App() {
     }
   }, [requirements, addTrace, fieldPermissions]);
 
-  const validateSystemMessage = useCallback((message: string): boolean => {
-    try {
-      // Rule 1: Prevent infinite message loops
-      const recentSystemMessages = chatMessages
-        .slice(-5)
-        .filter(msg => msg.role === 'assistant')
-        .length;
-
-      if (recentSystemMessages >= 3) {
-        console.warn('[UI-MAS] System message rate limit exceeded');
-        return false;
-      }
-
-      // Rule 2: Validate message content
-      if (!message || typeof message !== 'string' || message.trim().length === 0) {
-        console.warn('[UI-MAS] Invalid message content');
-        return false;
-      }
-
-      return true;
-    } catch (error: unknown) {
-      console.error('[UI-MAS] Message validation error:', error);
-      return false;
-    }
-  }, [chatMessages]);
-
-  // Conflict resolution handler
-  const handleConflictResolve = async (
-    conflictId: string,
-    action: 'accept' | 'reject' | 'modify',
-    newValue?: string
-  ) => {
-    try {
-      const resolution = await simplifiedRespecService.resolveConflict(conflictId, action, newValue);
-
-      if (resolution.applied && action === 'accept') {
-        // Apply the form update if conflict was accepted
-        const conflict = activeConflicts.find(c => c.id === conflictId);
-        if (conflict) {
-          await updateField(conflict.section, conflict.field.split('.')[1], resolution.newValue || conflict.newValue, false);
-        }
-      }
-
-      console.log(`[APP] Conflict ${conflictId} resolved with action: ${action}`);
-    } catch (error) {
-      console.error('[APP] Failed to resolve conflict:', error);
-    }
-  };
+  // Sprint 3: Conflicts now handled through agent conversation flow via ArtifactManager
+  // Legacy conflict handler removed - conflicts are resolved through chat interface
 
   // Chat message handler for ReSpec
   const sendMessageWrapper = async (message: string) => {
@@ -1118,34 +1065,37 @@ function App() {
         case 'chat_message':
           setProcessingMessage('Processing your message...');
           addTrace('chat_message', { message: data.message }, 'SUCCESS');
+
+          // Sprint 3: Pass message to agent (agent handles conflict resolution if in conflict mode)
           const chatResult = await simplifiedRespecService.processChatMessage(data.message, requirements);
 
-          // Sprint 2: Check for active conflicts after processing chat
+          // Sprint 3: Check for NEW conflicts after processing chat
           const conflictStatus = simplifiedRespecService.getActiveConflictsForAgent();
 
           if (conflictStatus.hasConflicts) {
-            console.log(`[APP] 🚨 Active conflicts detected, sending conflict data to agent`);
-            console.log(`[APP] Conflict count: ${conflictStatus.count}`);
-            console.log(`[APP] Conflict data:`, conflictStatus.conflicts[0]);
+            console.log(`[APP] 🚨 Conflicts detected - presenting to user`);
 
-            // Add conflict message to chat for agent to process
-            const conflictMessage: ChatMessage = {
-              id: `conflict-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-              role: 'system',
-              content: JSON.stringify({
-                type: 'conflict_detected',
-                ...conflictStatus
-              }),
-              timestamp: new Date(),
-              metadata: {
-                ...conflictStatus,
-                isConflict: true
-              }
-            };
-            setChatMessages(prev => [...prev, conflictMessage]);
+            // Sprint 3: Generate binary question from conflict data
+            const conflict = conflictStatus.conflicts[0];
+            const binaryQuestion = `I detected a conflict: ${conflict.description}
 
-            // Return immediately - wait for user to resolve conflict before continuing
-            return { success: true, hasConflict: true, conflictData: conflictStatus };
+Which would you prefer?
+A) ${conflict.resolutionOptions[0].label}
+   Outcome: ${conflict.resolutionOptions[0].outcome}
+
+B) ${conflict.resolutionOptions[1].label}
+   Outcome: ${conflict.resolutionOptions[1].outcome}
+
+Please respond with A or B.`;
+
+            setChatMessages(prev => [...prev, {
+              id: `conflict-question-${Date.now()}`,
+              role: 'assistant',
+              content: binaryQuestion,
+              timestamp: new Date()
+            }]);
+
+            return { success: true, hasConflict: true };
           }
 
           setChatMessages(prev => [...prev, {
@@ -1248,11 +1198,6 @@ function App() {
               }
             });
           }
-
-          // DISABLED: clarificationRequest state not defined (legacy feature)
-          // if (chatResult.clarificationNeeded) {
-          //   setClarificationRequest(chatResult.clarificationNeeded);
-          // }
 
           return { success: true };
 
@@ -1595,7 +1540,7 @@ function App() {
         console.log('[APP] UC8 Metadata:', ucDataLayer.getMetadata());
       } catch (uc8Error) {
         console.warn('[APP] ⚠️ UC8 Data Layer failed to load (non-blocking):', uc8Error);
-        // Non-blocking - SimplifiedRespecService will fall back to UC1
+        // Non-blocking - SimplifiedRespecService will fall back to UC8
       }
 
       // Initialize Simplified Respec service
@@ -1616,21 +1561,16 @@ function App() {
       try {
         console.log('[APP] Initializing artifact state management...');
 
-        // Load UC1 schema
-        await uc1ValidationEngine.loadSchema('/uc1.json');
+        // UC8 schema loaded via UCDataLayer - UC1ValidationEngine removed
 
-        // Initialize artifact manager
-        const manager = new ArtifactManager(uc1ValidationEngine);
+        // Initialize artifact manager (UC8-only, no engine required)
+        const manager = new ArtifactManager();
         await manager.initialize();
         setArtifactManager(manager);
 
-        // Initialize compatibility layer
-        const compatibility = new CompatibilityLayer(manager, uc1ValidationEngine);
-        setCompatibilityLayer(compatibility);
-
         // Initialize semantic matching in SimplifiedRespecService
         simplifiedRespecService.initializeSemanticMatching(
-          uc1ValidationEngine,
+          ucDataLayer as any, // Using UCDataLayer instead of UC1ValidationEngine
           manager,
           compatibility
         );
@@ -1723,6 +1663,42 @@ function App() {
 
     syncToArtifacts();
   }, [requirements, compatibilityLayer, artifactManager]);
+
+  // Sprint 3: Listen for form updates from RESPEC artifact (after conflict resolution)
+  useEffect(() => {
+    if (!artifactManager) return;
+
+    artifactManager.on('form_updates_from_respec', (data) => {
+      console.log('[APP] 📝 Form updates from conflict resolution:', data.updates);
+
+      data.updates.forEach((update: any) => {
+        setRequirements(prev => ({
+          ...prev,
+          [update.section]: {
+            ...prev[update.section],
+            [update.field]: {
+              value: update.value,
+              isComplete: true,
+              source: 'conflict_resolution',
+              lastUpdated: new Date().toISOString()
+            }
+          }
+        }));
+      });
+
+      // Add to conversation history for agent context
+      setChatMessages(prev => [...prev, {
+        id: `form-update-${Date.now()}`,
+        role: 'system',
+        content: `Form updated: ${data.updates.length} field(s) changed`,
+        timestamp: new Date(),
+        metadata: {
+          isFormUpdate: true,
+          updates: data.updates
+        }
+      }]);
+    });
+  }, [artifactManager]);
 
   const toggleGroup = (section, group) => {
     setExpandedGroups(prev => ({
@@ -1841,17 +1817,7 @@ function App() {
       }));
     }
 
-    // Check for conflicts if this is a manual or semantic update
-    if (source !== 'system') {
-      simplifiedRespecService.detectFieldConflicts(
-        `${section}.${field}`,
-        value,
-        requirements,
-        source === 'user' ? 'manual' : 'semantic'
-      ).catch(error => {
-        console.warn('[APP] Conflict detection failed:', error);
-      });
-    }
+    // Sprint 3: Conflict detection now handled by ArtifactManager during spec addition
 
     // Notify MAS of form changes
     communicateWithMAS('form_update', { field: `${section}.${field}`, value, isAssumption });
@@ -2329,38 +2295,10 @@ function App() {
         width={chatWidth}
         onMouseDown={handleMouseDown}
         isResizing={isResizing}
-        onConflictResolve={handleConflictResolve}
         currentRequirements={requirements}
       />
 
-      {/* Conflict Panel */}
-      {activeConflicts.length > 0 && showConflicts && (
-        <div className="fixed bottom-4 right-4 w-96 max-h-80 z-50">
-          <ConflictPanel
-            conflicts={activeConflicts}
-            onResolveConflict={handleConflictResolve}
-            onDismissConflict={(conflictId) => {
-              // Remove conflict from active list
-              setActiveConflicts(prev => prev.filter(c => c.id !== conflictId));
-            }}
-          />
-        </div>
-      )}
-
-      {/* Conflict Toggle Button */}
-      {activeConflicts.length > 0 && (
-        <button
-          onClick={() => setShowConflicts(!showConflicts)}
-          className={`fixed bottom-4 right-4 w-12 h-12 rounded-full shadow-lg flex items-center justify-center text-white font-semibold z-40 ${
-            activeConflicts.some(c => c.severity === 'critical' || c.severity === 'error')
-              ? 'bg-red-500 hover:bg-red-600'
-              : 'bg-yellow-500 hover:bg-yellow-600'
-          }`}
-          title={`${activeConflicts.length} conflicts detected`}
-        >
-          ⚠️
-        </button>
-      )}
+      {/* Sprint 3: Conflicts now handled through agent conversation - ConflictPanel removed */}
       
       {/* Step Progress Indicator */}
       <StepProgressIndicator
@@ -2368,15 +2306,6 @@ function App() {
         setCurrentStage={setCurrentStage}
         chatWindowWidth={chatWidth}
       />
-
-      {/* Debug Panel - Temporarily disabled for testing
-      <DebugPanel
-        communicateWithMAS={communicateWithMAS}
-        respecService={simplifiedRespecService}
-        chatMessages={chatMessages}
-        sendMessageWrapper={sendMessageWrapper}
-      />
-      */}
 
       {/* Processing Indicator */}
       {isProcessing && (

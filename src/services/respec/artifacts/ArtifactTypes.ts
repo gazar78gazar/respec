@@ -8,7 +8,7 @@
  * 4. Conflict List: Isolated conflicting nodes
  */
 
-import { UC1Specification, UC1Requirement, UC1Domain } from '../UC1ValidationEngine';
+import { UCSpecification, UCRequirement, UCScenario } from '../../data/UCDataTypes';
 
 // ============= BASE INTERFACES =============
 
@@ -26,37 +26,37 @@ export interface ArtifactMetadata {
   validationStatus: 'valid' | 'pending' | 'invalid' | 'conflicts';
 }
 
-// ============= UC1 COMPLIANT STRUCTURE =============
+// ============= UC8 COMPLIANT STRUCTURE =============
 
-export interface UC1CompliantStructure {
-  domains: {
-    [domainId: string]: UC1ArtifactDomain;
+export interface UC8CompliantStructure {
+  scenarios: {
+    [scenarioId: string]: UC8ArtifactScenario;
   };
 }
 
-export interface UC1ArtifactDomain {
+export interface UC8ArtifactScenario {
   id: string;
   name: string;
-  uc1Source: UC1Domain;
+  uc8Source: UCScenario;
   requirements: {
-    [reqId: string]: UC1ArtifactRequirement;
+    [reqId: string]: UC8ArtifactRequirement;
   };
 }
 
-export interface UC1ArtifactRequirement {
+export interface UC8ArtifactRequirement {
   id: string;
   name: string;
-  uc1Source: UC1Requirement;
+  uc8Source: UCRequirement;
   specifications: {
-    [specId: string]: UC1ArtifactSpecification;
+    [specId: string]: UC8ArtifactSpecification;
   };
 }
 
-export interface UC1ArtifactSpecification {
+export interface UC8ArtifactSpecification {
   id: string;
   name: string;
   value: any;
-  uc1Source: UC1Specification;
+  uc8Source: UCSpecification;
   attribution: 'requirement' | 'assumption';
   confidence: number;
   source: 'user' | 'llm' | 'system';
@@ -67,7 +67,7 @@ export interface UC1ArtifactSpecification {
 
 // ============= RESPEC ARTIFACT =============
 
-export interface RespecArtifact extends BaseArtifact, UC1CompliantStructure {
+export interface RespecArtifact extends BaseArtifact, UC8CompliantStructure {
   type: 'respec';
   metadata: RespecMetadata;
 }
@@ -82,7 +82,7 @@ export interface RespecMetadata extends ArtifactMetadata {
 
 // ============= MAPPED ARTIFACT =============
 
-export interface MappedArtifact extends BaseArtifact, UC1CompliantStructure {
+export interface MappedArtifact extends BaseArtifact, UC8CompliantStructure {
   type: 'mapped';
   metadata: MappedMetadata;
 }
@@ -139,7 +139,7 @@ export interface ActiveConflict {
   conflictingNodes: string[]; // Individual nodes, not full branches
   type: 'constraint' | 'dependency' | 'logical' | 'cross_artifact';
   description: string;
-  resolutionOptions: ConflictResolution[];
+  resolution?: string; // UC8 question_template - agent generates A/B from this
   cycleCount: number;
   firstDetected: Date;
   lastUpdated: Date;
@@ -181,7 +181,7 @@ export interface BranchManagement {
 }
 
 export interface HierarchyMap {
-  domains: Map<string, Set<string>>; // domainId -> requirementIds
+  scenarios: Map<string, Set<string>>; // scenarioId -> requirementIds
   requirements: Map<string, Set<string>>; // reqId -> specIds
   nodeParents: Map<string, string>; // nodeId -> parentId
   nodeChildren: Map<string, string[]>; // nodeId -> childIds
@@ -280,7 +280,7 @@ export interface ArtifactValidationWarning {
 // ============= HELPER TYPES =============
 
 export type ArtifactType = 'respec' | 'mapped' | 'unmapped' | 'conflicts';
-export type NodeType = 'domain' | 'requirement' | 'specification';
+export type NodeType = 'scenario' | 'requirement' | 'specification';
 export type MovementTrigger = 'validation_passed' | 'conflict_resolved' | 'timeout' | 'user_action';
 export type ConflictType = 'constraint' | 'dependency' | 'logical' | 'cross_artifact';
 export type ProcessingPriority = 'CONFLICTS' | 'CLEARING' | 'PROCESSING';
@@ -293,7 +293,7 @@ export function createEmptyRespecArtifact(): RespecArtifact {
     type: 'respec',
     timestamp: new Date(),
     version: '1.0.0',
-    domains: {},
+    scenarios: {},
     metadata: {
       totalNodes: 0,
       lastModified: new Date(),
@@ -313,7 +313,7 @@ export function createEmptyMappedArtifact(): MappedArtifact {
     type: 'mapped',
     timestamp: new Date(),
     version: '1.0.0',
-    domains: {},
+    scenarios: {},
     metadata: {
       totalNodes: 0,
       lastModified: new Date(),
@@ -371,7 +371,7 @@ export function createEmptyConflictList(): ConflictList {
 export function createEmptyBranchManagement(): BranchManagement {
   return {
     hierarchy: {
-      domains: new Map(),
+      scenarios: new Map(),
       requirements: new Map(),
       nodeParents: new Map(),
       nodeChildren: new Map()

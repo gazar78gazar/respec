@@ -1668,7 +1668,109 @@
         "processor_tier": ["P03", "P04"],
         "memory_capacity": ["P06", "P07"]
       }
-    }
+    },
+	"P79": {
+  "id": "P79",
+  "type": "specification",
+  "name": "Intel Xe Graphics",
+  "parent_requirements": ["R02"],
+  "form_mapping": {
+    "section": "compute_performance",
+    "category": "gpu_acceleration",
+    "field_name": "gpuAcceleration",
+    "ui_type": "dropdown"
+  },
+  "selection_type": "single_choice",
+  "options": ["None", "Intel Xe Graphics", "Dedicated GPU Required", "AI Accelerator (NPU/TPU)"],
+  "selected_value": "Intel Xe Graphics",
+  "description": "Integrated Intel Xe graphics for basic GPU acceleration"
+},
+
+"P80": {
+  "id": "P80",
+  "type": "specification",
+  "name": "Dedicated GPU Required",
+  "parent_requirements": ["R03"],
+  "form_mapping": {
+    "section": "compute_performance",
+    "category": "gpu_acceleration",
+    "field_name": "gpuAcceleration",
+    "ui_type": "dropdown"
+  },
+  "selection_type": "single_choice",
+  "options": ["None", "Intel Xe Graphics", "Dedicated GPU Required", "AI Accelerator (NPU/TPU)"],
+  "selected_value": "Dedicated GPU Required",
+  "description": "Discrete GPU for high-performance computing",
+  "requires": {
+    "power_consumption": ["P13"],
+    "cooling_method": ["P58"]
+  }
+},
+
+"P81": {
+  "id": "P81",
+  "type": "specification",
+  "name": "AI Accelerator (NPU/TPU)",
+  "parent_requirements": ["R03"],
+  "form_mapping": {
+    "section": "compute_performance",
+    "category": "gpu_acceleration",
+    "field_name": "gpuAcceleration",
+    "ui_type": "dropdown"
+  },
+  "selection_type": "single_choice",
+  "options": ["None", "Intel Xe Graphics", "Dedicated GPU Required", "AI Accelerator (NPU/TPU)"],
+  "selected_value": "AI Accelerator (NPU/TPU)",
+  "description": "Specialized AI acceleration hardware",
+  "requires": {
+    "processor_tier": ["P03", "P04", "P82"],
+    "cooling_method": ["P58"]
+  }
+},
+
+"P82": {
+  "id": "P82",
+  "type": "specification",
+  "name": "Intel Core i9 Processor",
+  "parent_requirements": ["R03"],
+  "form_mapping": {
+    "section": "compute_performance",
+    "category": "processing",
+    "field_name": "processorTier",
+    "ui_type": "dropdown"
+  },
+  "selection_type": "single_choice",
+  "options": ["Entry (Intel Atom)", "Standard (Intel Core i3)", "Performance (Intel Core i5)", "Premium (Intel Core i7)", "Extreme (Intel Core i9)"],
+  "selected_value": "Extreme (Intel Core i9)",
+  "description": "Extreme performance processor",
+  "requires": {
+    "memory_capacity": ["P07"],
+    "storage_capacity": ["P10"],
+    "cooling_method": ["P58"],
+    "power_consumption": ["P13"]
+  }
+},
+
+"P83": {
+  "id": "P83",
+  "type": "specification",
+  "name": "Ultra Low Power (<10W)",
+  "parent_requirements": ["R04"],
+  "form_mapping": {
+    "section": "form_factor",
+    "category": "power_requirements",
+    "field_name": "powerConsumption",
+    "ui_type": "dropdown"
+  },
+  "selection_type": "single_choice",
+  "options": ["< 10W (Ultra Low)", "10-20W (Low)", "20-35W (Standard)", "35-65W (High)", "> 65W (Very High)", "No Restriction"],
+  "selected_value": "< 10W (Ultra Low)",
+  "description": "Ultra low power consumption for battery/solar operation",
+  "requires": {
+    "processor_tier": ["P01"],
+    "cooling_method": ["P57"]
+  }
+}
   },
 
   "comments": {
@@ -2216,6 +2318,105 @@
       "resolution_priority": 4,
       "question_template": "Choose between PROFINET or Ethernet/IP?"
     },
+	"E_PP_051": {
+  "id": "E_PP_051",
+  "nodes": ["P79", "P83"],
+  "type": "hard_incompatible",
+  "category": "spec_spec",
+  "reason": "Intel Xe Graphics requires more than 10W power",
+  "resolution_priority": 1,
+  "question_template": "Choose between Intel Xe Graphics or ultra-low power (<10W)?"
+},
+
+"E_PP_052": {
+  "id": "E_PP_052",
+  "nodes": ["P79", "P12"],
+  "type": "hard_incompatible",
+  "category": "spec_spec",
+  "reason": "Intel Xe Graphics requires more than 20W power",
+  "resolution_priority": 1,
+  "question_template": "Choose between Intel Xe Graphics or low power (10-20W)?"
+},
+
+"E_PP_053": {
+  "id": "E_PP_053",
+  "nodes": ["P80", "P83"],
+  "type": "hard_incompatible",
+  "category": "spec_spec",
+  "reason": "Dedicated GPU requires significantly more than 10W power",
+  "resolution_priority": 1,
+  "question_template": "Choose between dedicated GPU or ultra-low power (<10W)?"
+},
+
+"E_PP_054": {
+  "id": "E_PP_054",
+  "nodes": ["P80", "P12"],
+  "type": "hard_incompatible",
+  "category": "spec_spec",
+  "reason": "Dedicated GPU requires significantly more than 20W power",
+  "resolution_priority": 1,
+  "question_template": "Choose between dedicated GPU or low power (10-20W)?"
+},
+
+"E_PP_055": {
+  "id": "E_PP_055",
+  "nodes": ["P81", "P83"],
+  "type": "hard_incompatible",
+  "category": "spec_spec",
+  "reason": "AI accelerator requires more than 10W power",
+  "resolution_priority": 1,
+  "question_template": "Choose between AI accelerator or ultra-low power (<10W)?"
+},
+
+"E_PP_056": {
+  "id": "E_PP_056",
+  "nodes": ["P81", "P12"],
+  "type": "hard_incompatible",
+  "category": "spec_spec",
+  "reason": "AI accelerator requires more than 20W power",
+  "resolution_priority": 1,
+  "question_template": "Choose between AI accelerator or low power (10-20W)?"
+},
+
+"E_PP_057": {
+  "id": "E_PP_057",
+  "nodes": ["P82", "P83"],
+  "type": "hard_incompatible",
+  "category": "spec_spec",
+  "reason": "Core i9 processor requires significantly more than 10W power",
+  "resolution_priority": 1,
+  "question_template": "Choose between Core i9 processor or ultra-low power (<10W)?"
+},
+
+"E_PP_058": {
+  "id": "E_PP_058",
+  "nodes": ["P82", "P12"],
+  "type": "hard_incompatible",
+  "category": "spec_spec",
+  "reason": "Core i9 processor requires significantly more than 20W power",
+  "resolution_priority": 1,
+  "question_template": "Choose between Core i9 processor or low power (10-20W)?"
+},
+
+"E_PP_059": {
+  "id": "E_PP_059",
+  "nodes": ["P82", "P57"],
+  "type": "performance_warning",
+  "category": "spec_spec",
+  "reason": "Fanless cooling severely throttles Core i9 performance",
+  "resolution_priority": 2,
+  "question_template": "Choose between Core i9 full performance or passive cooling?"
+},
+
+"E_PP_060": {
+  "id": "E_PP_060",
+  "nodes": ["P80", "P57"],
+  "type": "hard_incompatible",
+  "category": "spec_spec",
+  "reason": "Dedicated GPU cannot operate with passive cooling",
+  "resolution_priority": 1,
+  "question_template": "Choose between dedicated GPU or fanless cooling?"
+},
     "E_RR_001": {
       "id": "E_RR_001",
       "nodes": ["R04", "R03"],
@@ -2732,15 +2933,15 @@
   },
 
   "validation": {
-    "total_scenarios": 13,
-    "total_requirements": 32,
-    "total_specifications": 59,
-    "total_comments": 8,
-    "total_exclusions": 172,
-    "skipped_specification_ids": 19,
-    "coverage_percentage": "100%",
-    "uno_compatibility": true,
-    "form_fields_mapped": 35,
+      "total_scenarios": 13,
+  "total_requirements": 32,
+  "total_specifications": 64,  
+  "total_comments": 8,
+  "total_exclusions": 182,  
+  "skipped_specification_ids": 19,
+  "coverage_percentage": "100%",
+  "uno_compatibility": true,
+  "form_fields_mapped": 36,  
     "id_system": "coded",
     "exclusion_categories": {
       "hard_incompatible": "Components that cannot work together",

@@ -4,11 +4,8 @@ import { SemanticMatcher, createSemanticMatcher } from './semantic/SemanticMatch
 import { SemanticIntegrationService, createSemanticIntegrationService, EnhancedChatResult } from './semantic/SemanticIntegrationService';
 import { SemanticMatchingService, createSemanticMatchingService } from './semantic/SemanticMatchingService';
 import { SemanticIntegrationService as SemanticIntegrationServiceNew, createSemanticIntegrationService as createSemanticIntegrationServiceNew } from './semantic/SemanticIntegrationService_NEW';
-import { UC1ValidationEngine } from './UC1ValidationEngine';
 import { ArtifactManager } from './artifacts/ArtifactManager';
 import { CompatibilityLayer } from './artifacts/CompatibilityLayer';
-import { ConflictDetectionService, createConflictDetectionService, FieldConflict } from '../../legacy_isolated/ConflictDetectionService';
-
 // Sprint 1: Import UC8 Data Layer
 import { ucDataLayer } from '../data/UCDataLayer';
 
@@ -66,7 +63,7 @@ export class SimplifiedRespecService {
   private isInitialized = false;
   private anthropicService: AnthropicService;
   private fieldMappings: Map<string, { section: string; field: string; }> = new Map();
-  private uc1Data: any = null;
+  private uc8Data: any = null; // Legacy fallback data
   private fieldOptionsMap: FieldOptionsMap = {};
 
   // New semantic matching system (Sprint 2)
@@ -77,11 +74,8 @@ export class SimplifiedRespecService {
   private useSemanticMatching: boolean = true;
 
   // Sprint 3 Week 1: Core services for conflict detection and resolution
-  private uc1Engine?: UC1ValidationEngine;
+  private uc8Engine?: any;
   private artifactManager?: ArtifactManager;
-
-  // Conflict detection system
-  private conflictDetection: ConflictDetectionService | null = null;
 
   // Sprint 3: Pending form updates from RESPEC artifact changes
   private pendingFormUpdates: EnhancedFormUpdate[] = [];
@@ -180,19 +174,19 @@ export class SimplifiedRespecService {
 
   // Initialize semantic matching system (called externally with dependencies)
   async initializeSemanticMatching(
-    uc1Engine: UC1ValidationEngine,
+    uc8Engine: any,
     artifactManager?: ArtifactManager,
     compatibilityLayer?: CompatibilityLayer
   ): Promise<void> {
-    if (!uc1Engine.isReady()) {
-      console.warn('[SimplifiedRespec] UC1ValidationEngine not ready for semantic matching');
+    if (!uc8Engine.isLoaded || !uc8Engine.isLoaded()) {
+      console.warn('[SimplifiedRespec] UC8 DataLayer not ready for semantic matching');
       this.useSemanticMatching = false;
       return;
     }
 
     try {
       // Sprint 3 Week 1: Store core services for conflict detection
-      this.uc1Engine = uc1Engine;
+      this.uc8Engine = uc8Engine;
       this.artifactManager = artifactManager;
 
       // SPRINT 3 FIX: Listen for respec artifact changes to update form (respec = source of truth)
@@ -204,28 +198,23 @@ export class SimplifiedRespecService {
       }
 
       // Sprint 2: Initialize new SemanticMatchingService
-      this.semanticMatchingService = createSemanticMatchingService(uc1Engine);
+      this.semanticMatchingService = createSemanticMatchingService(uc8Engine);
       await this.semanticMatchingService.initialize();
 
       this.semanticIntegrationNew = createSemanticIntegrationServiceNew(
         this.semanticMatchingService,
-        uc1Engine,
-        artifactManager,
-        compatibilityLayer
+        uc8Engine,
+        artifactManager
       );
 
       // Keep old services for backward compatibility (temporarily)
-      this.semanticMatcher = createSemanticMatcher(this.anthropicService, uc1Engine);
+      this.semanticMatcher = createSemanticMatcher(this.anthropicService, uc8Engine);
       this.semanticMatcher.initialize(artifactManager, compatibilityLayer);
 
       this.semanticIntegration = createSemanticIntegrationService(
         this.semanticMatcher,
         compatibilityLayer
       );
-
-      // Initialize conflict detection
-      this.conflictDetection = createConflictDetectionService(uc1Engine);
-      this.conflictDetection.initialize(compatibilityLayer);
 
       console.log('[SimplifiedRespec] ✅ Sprint 2 semantic matching initialized');
       console.log('[SimplifiedRespec] - SemanticMatchingService: ready');
@@ -252,15 +241,15 @@ export class SimplifiedRespecService {
         this.extractFieldMappingsFromDataLayer();
         console.log('[SimplifiedRespec] UC8 field mappings extracted:', this.fieldMappings.size, 'mappings');
       } else {
-        // Fallback to UC1.json if UC8 not loaded
-        console.warn('[SimplifiedRespec] UC8 not loaded, falling back to UC1.json');
-        const response = await fetch('/uc1.json');
+        // Fallback to uc8.json if UC8 DataLayer not loaded
+        console.warn('[SimplifiedRespec] UC8 DataLayer not loaded, falling back to uc8.json file');
+        const response = await fetch('/uc_8.0_2.1.json');
         if (response.ok) {
-          this.uc1Data = await response.json();
+          this.uc8Data = await response.json();
           this.extractFieldMappings();
-          console.log('[SimplifiedRespec] UC1.json loaded, extracted', this.fieldMappings.size, 'field mappings');
+          console.log('[SimplifiedRespec] UC8 JSON loaded, extracted', this.fieldMappings.size, 'field mappings');
         } else {
-          console.warn('[SimplifiedRespec] Could not load UC1.json, using fallback mappings');
+          console.warn('[SimplifiedRespec] Could not load UC8 JSON, using fallback mappings');
           this.loadFallbackMappings();
         }
       }
@@ -334,15 +323,15 @@ export class SimplifiedRespecService {
   }
 
   /**
-   * Legacy: Extract field mappings from UC1.json (fallback)
+   * Legacy: Extract field mappings from UC8 JSON file (fallback)
    */
   private extractFieldMappings(): void {
-    if (!this.uc1Data || !this.uc1Data.specifications) {
+    if (!this.uc8Data || !this.uc8Data.specifications) {
       return;
     }
 
-    // Extract field mappings from UC1.json specifications
-    Object.values(this.uc1Data.specifications).forEach((spec: any) => {
+    // Extract field mappings from UC8 JSON specifications
+    Object.values(this.uc8Data.specifications).forEach((spec: any) => {
       if (spec.form_mapping && spec.form_mapping.field_name) {
         const mapping = {
           section: spec.form_mapping.section,
@@ -372,7 +361,7 @@ export class SimplifiedRespecService {
   }
 
   private loadFallbackMappings(): void {
-    // Fallback mappings if UC1.json can't be loaded
+    // Fallback mappings if UC8 JSON can't be loaded
     const fallbackMappings = [
       { name: 'processor', section: 'compute_performance', field: 'processor_type' },
       { name: 'memory', section: 'compute_performance', field: 'memory_capacity' },
@@ -524,30 +513,41 @@ export class SimplifiedRespecService {
 
     console.log(`[SimplifiedRespec] Processing: "${message}"`);
 
-    // Sprint 3 Week 1: Check for active conflicts FIRST
+    // Sprint 3: Check for active conflicts FIRST - if yes, route to conflict resolution
     const conflictStatus = this.getActiveConflictsForAgent();
 
-    // TEMPORARILY DISABLED: Conflict blocking mechanism disabled for testing
-    // Will re-enable after UC schema changes and core functionality stabilization
-    if (conflictStatus.hasConflicts) {
-      console.log(`[SimplifiedRespec] ⚠️  ${conflictStatus.count} active conflict(s) detected (blocking disabled for testing)`);
-      // Conflicts are logged but system continues processing
-    }
+    if (conflictStatus.hasConflicts && this.artifactManager) {
+      console.log(`[SimplifiedRespec] 🎯 Conflict resolution mode - routing to agent`);
 
-    /* COMMENTED OUT - Conflict blocking mechanism
-    if (conflictStatus.hasConflicts) {
-      console.log(`[SimplifiedRespec] ⚠️  System blocked by ${conflictStatus.count} active conflict(s)`);
+      // Use AnthropicService to handle conflict resolution (parse A/B, resolve, confirm)
+      const resolutionResult = await this.anthropicService.handleConflictResolution(
+        message,
+        conflictStatus,
+        this.artifactManager
+      );
 
-      // Return conflict information to agent (agent will generate binary question)
+      // Add to conversation history
+      this.conversationHistory.push({
+        role: 'user',
+        content: message,
+        timestamp: new Date(),
+      });
+
+      this.conversationHistory.push({
+        role: 'assistant',
+        content: resolutionResult.response,
+        timestamp: new Date(),
+      });
+
+      this.saveSession();
+
       return {
         success: true,
-        systemMessage: '', // Agent will generate this from conflictData
+        systemMessage: resolutionResult.response,
         formUpdates: [],
-        confidence: 0,
-        conflictData: conflictStatus // Sprint 3 Week 1: NEW FIELD
+        confidence: 1.0
       };
     }
-    */
 
     // Add to conversation history
     this.conversationHistory.push({
@@ -557,8 +557,8 @@ export class SimplifiedRespecService {
     });
 
     try {
-      // Sprint 2: New flow with Agent extraction + UC1 matching
-      console.log(`[SimplifiedRespec] 🚀 Starting Sprint 2 flow: Agent → Integration → UC1 Matcher`);
+      // Sprint 2: New flow with Agent extraction + UC8 matching
+      console.log(`[SimplifiedRespec] 🚀 Starting Sprint 2 flow: Agent → Integration → UC8 Matcher`);
 
       // Identify relevant fields from the message
       const identifiedFields = this.identifyRelevantFields(message);
@@ -681,34 +681,31 @@ export class SimplifiedRespecService {
       return priorityA - priorityB;
     });
 
-    // Sprint 3 Week 2: Only return the FIRST (highest priority) conflict
-    const topConflict = activeConflicts[0];
-
-    // Structure conflict for agent consumption
-    const structuredConflict = {
-      id: topConflict.id,
-      type: topConflict.type,
-      description: topConflict.description,
-      conflictingNodes: topConflict.conflictingNodes.map(nodeId => ({
+    // SPRINT 3 FIX B: Return ALL conflicts (agent will aggregate into one question)
+    const structuredConflicts = activeConflicts.map(conflict => ({
+      id: conflict.id,
+      type: conflict.type,
+      description: conflict.description,
+      conflictingNodes: conflict.conflictingNodes.map(nodeId => ({
         id: nodeId,
         ...this.getNodeDetails(nodeId)
       })),
-      resolutionOptions: topConflict.resolutionOptions.map(option => ({
+      resolutionOptions: conflict.resolutionOptions.map(option => ({
         id: option.id,
         label: option.description,
         outcome: option.expectedOutcome
       })),
-      cycleCount: topConflict.cycleCount,
-      priority: ((topConflict.type as any) === 'cross-artifact' || (topConflict.type as any) === 'cross_artifact') ? 'critical' : 'high'
-    };
+      cycleCount: conflict.cycleCount,
+      priority: ((conflict.type as any) === 'cross-artifact' || (conflict.type as any) === 'cross_artifact') ? 'critical' : 'high'
+    }));
 
     return {
       hasConflicts: true,
       count: activeConflicts.length,          // Total count for transparency
-      currentConflict: 1,                      // Currently handling first one
+      currentConflict: 1,                      // Currently handling first batch
       totalConflicts: activeConflicts.length, // For progress indicators
       systemBlocked: state.conflicts.metadata.systemBlocked,
-      conflicts: [structuredConflict]          // Only ONE conflict at a time
+      conflicts: structuredConflicts          // ALL conflicts for agent aggregation
     };
   }
 
@@ -717,9 +714,9 @@ export class SimplifiedRespecService {
    * Sprint 3 Week 1: Helper for structuring conflict data
    */
   private getNodeDetails(nodeId: string): any {
-    if (!this.artifactManager || !this.uc1Engine) return {};
+    if (!this.artifactManager || !this.uc8Engine) return {};
 
-    const hierarchy = this.uc1Engine.getHierarchy(nodeId);
+    const hierarchy = this.uc8Engine.getHierarchy ? this.uc8Engine.getHierarchy(nodeId) : null;
     const spec = this.artifactManager.findSpecificationInArtifact('mapped', nodeId);
 
     if (!hierarchy) return { name: nodeId };
@@ -728,7 +725,7 @@ export class SimplifiedRespecService {
       name: spec?.name || nodeId,
       value: spec?.value,
       hierarchy: hierarchy ? {
-        domain: hierarchy.domain,
+        scenario: hierarchy.scenario,
         requirement: hierarchy.requirement
       } : undefined
     };
@@ -763,13 +760,45 @@ export class SimplifiedRespecService {
   private handleRespecUpdate(data: any): void {
     console.log('[SimplifiedRespec] 🔔 Respec artifact updated:', data);
 
-    // TODO: For now, this logs the update. In async conflict resolution scenarios,
-    // we'll need to generate form updates and push them to the UI through a callback
-    // or event mechanism. For the current flow (same-request updates), the form
-    // updates are already generated from respec in SemanticIntegrationService.
+    if (!data.movement || !data.movement.nodes) {
+      console.warn('[SimplifiedRespec] No movement data in respec update');
+      return;
+    }
 
-    // Future enhancement: Store pending form updates and return them on next poll
-    // or emit events that app.tsx listens to for real-time updates
+    const formUpdates: EnhancedFormUpdate[] = [];
+
+    // Generate form updates from moved specifications
+    data.movement.nodes.forEach((specId: string) => {
+      // Get spec from RESPEC artifact (source of truth)
+      const spec = this.artifactManager?.findSpecificationInArtifact('respec', specId);
+
+      if (!spec) {
+        console.warn(`[SimplifiedRespec] Spec ${specId} not found in respec artifact`);
+        return;
+      }
+
+      // Get form mapping from UC8
+      const uc8Spec = ucDataLayer.getSpecification(specId);
+      if (!uc8Spec?.form_mapping) {
+        console.log(`[SimplifiedRespec] No form mapping for ${specId} (may be non-form spec)`);
+        return;
+      }
+
+      formUpdates.push({
+        section: uc8Spec.form_mapping.section,
+        field: uc8Spec.form_mapping.field_name,
+        value: spec.value,
+        isAssumption: spec.source === 'llm' && (spec.confidence || 1.0) < 0.9,
+        confidence: spec.confidence || 1.0,
+        originalRequest: spec.originalRequest,
+        substitutionNote: spec.substitutionNote
+      });
+    });
+
+    // Store pending updates for next UI poll or event emission
+    this.pendingFormUpdates.push(...formUpdates);
+
+    console.log(`[SimplifiedRespec] Generated ${formUpdates.length} form updates from respec movement`);
   }
 
   async triggerAutofill(trigger: string): Promise<AutofillResult> {
@@ -1026,68 +1055,10 @@ export class SimplifiedRespecService {
     };
   }
 
-  // ============= CONFLICT DETECTION API =============
-
-  async detectFieldConflicts(
-    field: string,
-    newValue: string,
-    currentRequirements: any,
-    source: 'semantic' | 'manual' | 'autofill' = 'manual',
-    context?: {
-      originalRequest?: string;
-      confidence?: number;
-      uc1Spec?: string;
-    }
-  ): Promise<FieldConflict[]> {
-    if (!this.conflictDetection) {
-      console.warn('[SimplifiedRespec] Conflict detection not initialized');
-      return [];
-    }
-
-    try {
-      return await this.conflictDetection.detectConflicts(
-        field,
-        newValue,
-        currentRequirements,
-        source,
-        context
-      );
-    } catch (error) {
-      console.error('[SimplifiedRespec] Conflict detection failed:', error);
-      return [];
-    }
-  }
-
-  async resolveConflict(conflictId: string, action: 'accept' | 'reject' | 'modify', newValue?: string) {
-    if (!this.conflictDetection) {
-      throw new Error('Conflict detection not initialized');
-    }
-
-    return await this.conflictDetection.resolveConflict(conflictId, action, newValue);
-  }
-
-  getActiveConflicts(): FieldConflict[] {
-    if (!this.conflictDetection) return [];
-    return this.conflictDetection.getActiveConflicts();
-  }
-
-  onConflictChange(listener: (conflicts: FieldConflict[]) => void): () => void {
-    if (!this.conflictDetection) {
-      return () => {}; // No-op unsubscribe
-    }
-    return this.conflictDetection.onConflictChange(listener);
-  }
-
-  getConflictStats() {
-    if (!this.conflictDetection) {
-      return { active: 0, resolved: 0, byType: {}, bySeverity: {} };
-    }
-    return this.conflictDetection.getConflictStats();
-  }
-
-  clearAllConflicts() {
-    if (this.conflictDetection) {
-      this.conflictDetection.clearAllConflicts();
-    }
+  /**
+   * Sprint 3: Expose ArtifactManager for event listener setup
+   */
+  getArtifactManager(): ArtifactManager | undefined {
+    return this.artifactManager;
   }
 }

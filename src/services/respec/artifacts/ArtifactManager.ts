@@ -14,7 +14,7 @@ import {
   MappedArtifact,
   UnmappedList,
   ConflictList,
-  UC1ArtifactSpecification,
+  UC8ArtifactSpecification,
   ActiveConflict,
   Movement,
   ArtifactValidationResult,
@@ -22,41 +22,42 @@ import {
   ProcessingPriority
 } from './ArtifactTypes';
 
-import {
-  UC1ValidationEngine,
-  UC1Specification,
-  ConflictResult
-} from '../UC1ValidationEngine';
-
-// Sprint 1: Import UC8 Data Layer (full integration in Sprint 2)
+import { UCSpecification } from '../../data/UCDataTypes';
 import { ucDataLayer } from '../../data/UCDataLayer';
 import { conflictResolver } from '../../data/ConflictResolver';
+
+// Temporary type for conflict detection result
+export interface ConflictResult {
+  hasConflict: boolean;
+  conflicts: Array<{
+    type: string;
+    nodes: string[];
+    description: string;
+    resolution?: string;
+  }>;
+}
 
 // ============= MAIN ARTIFACT MANAGER =============
 
 export class ArtifactManager {
   private state: ArtifactState;
-  private uc1Engine: UC1ValidationEngine;
   private listeners: Map<string, Function> = new Map();
-  // Sprint 2: Store UC8 conflict data for resolution options
-  private uc8ConflictData: Map<string, any> = new Map();
 
-  constructor(uc1Engine: UC1ValidationEngine) {
+  constructor() {
     this.state = createEmptyArtifactState();
-    this.uc1Engine = uc1Engine;
   }
 
   // ============= INITIALIZATION =============
 
   async initialize(): Promise<void> {
-    if (!this.uc1Engine.isReady()) {
-      throw new Error('UC1ValidationEngine must be initialized before ArtifactManager');
+    if (!ucDataLayer.isLoaded()) {
+      throw new Error('UC8 dataset must be loaded before ArtifactManager initialization');
     }
 
     this.state.initialized = true;
     this.state.lastSyncWithForm = new Date();
 
-    console.log('[ArtifactManager] Initialized with UC1 engine');
+    console.log('[ArtifactManager] Initialized with UC8 dataset');
     this.emit('initialized', { state: this.getState() });
   }
 
@@ -96,27 +97,22 @@ export class ArtifactManager {
   // ============= SPECIFICATION OPERATIONS =============
 
   async addSpecificationToMapped(
-    spec: UC1Specification,
+    spec: UCSpecification,
     value: any,
     originalRequest?: string,
-    substitutionNote?: string
+    substitutionNote?: string,
+    source?: 'user_request' | 'conflict_resolution' | 'dependency'
   ): Promise<void> {
     if (!this.state.initialized) {
       throw new Error('ArtifactManager not initialized');
     }
 
-    // Validate specification value against UC1 constraints
-    const validation = this.uc1Engine.validateSpecification(spec.id, value);
-    if (!validation.isValid) {
-      console.warn(`[ArtifactManager] Validation warnings for ${spec.id}:`, validation.errors);
-    }
-
     // Create artifact specification
-    const artifactSpec: UC1ArtifactSpecification = {
+    const artifactSpec: UC8ArtifactSpecification = {
       id: spec.id,
       name: spec.name,
       value,
-      uc1Source: spec,
+      uc8Source: spec,
       attribution: 'requirement',
       confidence: 1.0,
       source: 'llm',
@@ -125,171 +121,74 @@ export class ArtifactManager {
       timestamp: new Date()
     };
 
-    // Find or create requirement structure
-    const reqId = spec.parent[0];
-    const requirement = this.uc1Engine.getHierarchy(reqId);
-
-    if (!requirement || !requirement.domain || !requirement.requirement) {
-      throw new Error(`Cannot find domain/requirement structure for ${spec.id}`);
+    // Use UCDataLayer for hierarchy
+    // Get parent requirements for this specification (UC8: P## → R##)
+    const parentReqs = ucDataLayer.getParentRequirements(spec.id);
+    if (parentReqs.length === 0) {
+      throw new Error(`Cannot find parent requirements for ${spec.id}`);
     }
 
-    const domainId = requirement.domain;
+    const reqId = parentReqs[0].id; // R## format
 
-    // Ensure domain exists in mapped artifact
-    if (!this.state.mapped.domains[domainId]) {
-      const uc1Domain = this.uc1Engine.getDomains().find(d => d.id === domainId);
-      if (!uc1Domain) {
-        throw new Error(`UC1 domain ${domainId} not found`);
+    // Get parent scenarios for the requirement (UC8: R## → S##)
+    const parentScenarios = ucDataLayer.getParentScenarios(reqId);
+    if (parentScenarios.length === 0) {
+      throw new Error(`Cannot find parent scenario for requirement ${reqId}`);
+    }
+
+    const scenarioId = parentScenarios[0].id; // S## format
+
+    // Ensure scenario exists in mapped artifact
+    // Get scenario from UCDataLayer
+    if (!this.state.mapped.scenarios[scenarioId]) {
+      const uc8Scenario = ucDataLayer.getScenario(scenarioId);
+      if (!uc8Scenario) {
+        throw new Error(`UC8 scenario ${scenarioId} not found`);
       }
 
-      this.state.mapped.domains[domainId] = {
-        id: domainId,
-        name: uc1Domain.name,
-        uc1Source: uc1Domain,
+      this.state.mapped.scenarios[scenarioId] = {
+        id: scenarioId,
+        name: uc8Scenario.name,
+        uc8Source: uc8Scenario,
         requirements: {}
       };
     }
 
-    // Ensure requirement exists in domain
-    if (!this.state.mapped.domains[domainId].requirements[reqId]) {
-      const uc1Requirements = this.uc1Engine.getRequirementsByDomain(domainId);
-      const uc1Requirement = uc1Requirements.find(r => r.id === reqId);
-      if (!uc1Requirement) {
-        throw new Error(`UC1 requirement ${reqId} not found`);
+    // Ensure requirement exists in scenario
+    // SPRINT 3 FIX: Get requirement from UCDataLayer
+    if (!this.state.mapped.scenarios[scenarioId].requirements[reqId]) {
+      const uc8Requirement = ucDataLayer.getRequirement(reqId);
+      if (!uc8Requirement) {
+        throw new Error(`UC8 requirement ${reqId} not found`);
       }
 
-      this.state.mapped.domains[domainId].requirements[reqId] = {
+      this.state.mapped.scenarios[scenarioId].requirements[reqId] = {
         id: reqId,
-        name: uc1Requirement.name,
-        uc1Source: uc1Requirement,
+        name: uc8Requirement.name,
+        uc8Source: uc8Requirement as any, // UC8 requirement stored in artifact
         specifications: {}
       };
     }
 
     // Add specification to requirement
-    this.state.mapped.domains[domainId].requirements[reqId].specifications[spec.id] = artifactSpec;
+    this.state.mapped.scenarios[scenarioId].requirements[reqId].specifications[spec.id] = artifactSpec;
 
     // Update metadata
     this.state.mapped.metadata.totalNodes++;
     this.state.mapped.metadata.lastModified = new Date();
     this.state.mapped.metadata.pendingValidation.push(spec.id);
 
-    console.log(`[ArtifactManager] Added specification ${spec.id} to mapped artifact`);
-    this.emit('specification_added', { artifactType: 'mapped', specId: spec.id, value });
+    console.log(`[ArtifactManager] Added specification ${spec.id} to mapped artifact (source: ${source || 'user_request'})`);
+    this.emit('specification_added', { artifactType: 'mapped', specId: spec.id, value, source });
 
-    // SPRINT 3 FIX: Auto-fulfill dependencies (only for top-level calls, not recursive)
-    // Note: Currently supports 1-level dependencies. Multi-level dependency chains
-    // will require the new UC schema with updated dependency definitions.
-    if (!originalRequest || !originalRequest.includes('Auto-added as dependency')) {
-      await this.autoFulfillDependencies(reqId, new Set(), 0);
-    }
-  }
-
-  /**
-   * Auto-fulfill requirement dependencies by adding default specifications
-   * SPRINT 3 FIX: Dependencies should be auto-added, not treated as conflicts
-   * @param requirementId - The requirement to check dependencies for
-   * @param visited - Set of already processed requirements (prevents circular dependencies)
-   * @param depth - Current recursion depth (max 5 levels)
-   */
-  private async autoFulfillDependencies(
-    requirementId: string,
-    visited: Set<string> = new Set(),
-    depth: number = 0
-  ): Promise<void> {
-    // Guard against circular dependencies and excessive recursion
-    if (depth > 5 || visited.has(requirementId)) {
-      console.warn(`[ArtifactManager] Skipping dependency fulfillment for ${requirementId} (depth=${depth}, visited=${visited.has(requirementId)})`);
+    // SPRINT 3: Skip conflict detection if this is from conflict resolution
+    if (source === 'conflict_resolution') {
+      console.log(`[ArtifactManager] ⚠️  Skipping conflict detection for ${spec.id} (source: conflict_resolution)`);
       return;
     }
 
-    visited.add(requirementId);
-    const requirement = (this.uc1Engine as any).schema?.requirements[requirementId];
-
-    if (!requirement || !requirement.dependencies || requirement.dependencies.length === 0) {
-      return; // No dependencies to fulfill
-    }
-
-    console.log(`[ArtifactManager] Auto-fulfilling ${requirement.dependencies.length} dependencies for ${requirementId}`);
-
-    for (const dep of requirement.dependencies) {
-      const depReqId = dep.target;
-
-      // Check if dependency requirement is already active (has specifications in mapped)
-      const isDependencyActive = this.isRequirementActive(depReqId);
-
-      if (isDependencyActive) {
-        console.log(`[ArtifactManager] ✓ Dependency ${depReqId} already satisfied`);
-        continue; // Already satisfied
-      }
-
-      // Auto-add default specifications from the dependency requirement
-      console.log(`[ArtifactManager] ➕ Auto-adding dependency: ${depReqId} (${dep.rationale})`);
-      await this.addDependencyRequirement(depReqId);
-    }
-  }
-
-  /**
-   * Check if a requirement is active (has specifications in mapped artifact)
-   */
-  private isRequirementActive(requirementId: string): boolean {
-    for (const domain of Object.values(this.state.mapped.domains)) {
-      if (domain.requirements[requirementId]) {
-        const specCount = Object.keys(domain.requirements[requirementId].specifications).length;
-        if (specCount > 0) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  /**
-   * Add default specifications from a dependency requirement
-   */
-  private async addDependencyRequirement(requirementId: string): Promise<void> {
-    const requirement = (this.uc1Engine as any).schema?.requirements[requirementId];
-
-    if (!requirement) {
-      console.warn(`[ArtifactManager] Cannot find requirement ${requirementId} for dependency fulfillment`);
-      return;
-    }
-
-    // Get all specifications under this requirement
-    const specIds = requirement.child.filter((childId: string) =>
-      (this.uc1Engine as any).schema?.specifications[childId]
-    );
-
-    console.log(`[ArtifactManager] Adding ${specIds.length} default specifications for dependency ${requirementId}`);
-
-    // Add each specification with its default value
-    for (const specId of specIds) {
-      const uc1Spec = this.uc1Engine.getSpecification(specId);
-
-      console.log(`[ArtifactManager]   Checking ${specId}: spec=${!!uc1Spec}, default=${uc1Spec?.default_value}`);
-
-      if (uc1Spec && uc1Spec.default_value) {
-        // Only add if it has a meaningful default value
-        if (uc1Spec.default_value !== 'Not Required') {
-          try {
-            console.log(`[ArtifactManager]   → Adding ${specId} with value: ${uc1Spec.default_value}`);
-            await this.addSpecificationToMapped(
-              uc1Spec,
-              uc1Spec.default_value,
-              `Auto-added as dependency of ${requirementId}`,
-              `Required by: ${requirement.name}`
-            );
-            console.log(`[ArtifactManager]   ✓ Added ${specId} = ${uc1Spec.default_value}`);
-          } catch (error) {
-            console.error(`[ArtifactManager]   ✗ Failed to add ${specId}:`, error);
-          }
-        } else {
-          console.log(`[ArtifactManager]   ⊘ Skipped ${specId} (default = "Not Required")`);
-        }
-      } else {
-        console.log(`[ArtifactManager]   ⊘ Skipped ${specId} (no spec or no default_value)`);
-      }
-    }
+    // Note: UC8 dependency handling is done via UCDataLayer.getRequiredNodes()
+    // Auto-fulfillment removed - UC8 uses explicit requirement selection
   }
 
   // ============= CONFLICT DETECTION =============
@@ -302,12 +201,12 @@ export class ArtifactManager {
     // Collect all specifications from mapped artifact
     const specifications: Array<{id: string, value: any}> = [];
     const activeRequirements: string[] = [];
-    const activeDomains: string[] = [];
+    const activeScenarios: string[] = [];
 
-    Object.values(this.state.mapped.domains).forEach(domain => {
-      activeDomains.push(domain.id);
+    Object.values(this.state.mapped.scenarios).forEach(scenario => {
+      activeScenarios.push(scenario.id);
 
-      Object.values(domain.requirements).forEach(requirement => {
+      Object.values(scenario.requirements).forEach(requirement => {
         activeRequirements.push(requirement.id);
 
         Object.values(requirement.specifications).forEach(spec => {
@@ -316,26 +215,44 @@ export class ArtifactManager {
       });
     });
 
-    // Sprint 2: Full UC8 conflict detection
-    // Check if UC8 is loaded, use it; otherwise fallback to UC1
-    let result: ConflictResult;
+    // UC8 conflict detection (fail fast if not loaded)
+    if (!ucDataLayer.isLoaded()) {
+      throw new Error('[ArtifactManager] UC8 not loaded - cannot detect conflicts. System requires UC8 dataset.');
+    }
 
-    if (ucDataLayer.isLoaded()) {
-      console.log('[ArtifactManager] Using UC8 conflict detection with 107 exclusions');
+    console.log('[ArtifactManager] Using UC8 conflict detection with 107 exclusions');
 
       // Collect all specification IDs currently in mapped artifact
       const specIds = specifications.map(s => s.id);
 
+      // SPRINT 3 FIX: Also collect specification IDs from respec artifact
+      // This is critical - MAPPED specs must be checked against RESPEC specs!
+      const respecSpecIds: string[] = [];
+      Object.values(this.state.respec.scenarios).forEach(scenario => {
+        Object.values(scenario.requirements).forEach(requirement => {
+          Object.keys(requirement.specifications).forEach(specId => {
+            respecSpecIds.push(specId);
+          });
+        });
+      });
+
+      console.log(`[ArtifactManager] Checking ${specIds.length} MAPPED specs against ${respecSpecIds.length} RESPEC specs`);
+
       // Check for conflicts among current selections using UC8
       const allConflicts = new Map<string, any>(); // Use map to deduplicate
 
-      // For each spec, check if it conflicts with all others
+      // For each spec in MAPPED, check if it conflicts with:
+      // 1. Other specs in MAPPED
+      // 2. Specs already in RESPEC (critical fix!)
       for (let i = 0; i < specIds.length; i++) {
         const checkSpec = specIds[i];
-        const otherSpecs = specIds.filter((_, idx) => idx !== i);
+        const otherMappedSpecs = specIds.filter((_, idx) => idx !== i);
+
+        // Combine other MAPPED specs + all RESPEC specs
+        const allOtherSpecs = [...otherMappedSpecs, ...respecSpecIds];
 
         // Use conflictResolver to get conflicts with resolution options
-        const uc8Conflicts = conflictResolver.detectConflicts(checkSpec, otherSpecs);
+        const uc8Conflicts = conflictResolver.detectConflicts(checkSpec, allOtherSpecs);
 
         uc8Conflicts.forEach(uc8Conflict => {
           // Create unique key for this conflict pair (sorted to avoid duplicates)
@@ -348,40 +265,22 @@ export class ArtifactManager {
         });
       }
 
-      // Convert UC8 conflicts to ConflictResult format
+      // Convert UC8 conflicts to ConflictResult format (raw data for agent)
       const uc8ConflictList = Array.from(allConflicts.values());
 
-      // Store UC8 conflict data for later resolution option generation
-      this.uc8ConflictData.clear();
-      uc8ConflictList.forEach(uc8Conflict => {
-        const conflictKey = uc8Conflict.conflictingNodes.sort().join('|');
-        this.uc8ConflictData.set(conflictKey, uc8Conflict);
-      });
+    const result: ConflictResult = {
+      hasConflict: uc8ConflictList.length > 0,
+      conflicts: uc8ConflictList.map(uc8Conflict => ({
+        type: uc8Conflict.type as any,
+        nodes: uc8Conflict.conflictingNodes,
+        description: uc8Conflict.description,
+        resolution: uc8Conflict.resolution
+      }))
+    };
 
-      result = {
-        hasConflict: uc8ConflictList.length > 0,
-        conflicts: uc8ConflictList.map(uc8Conflict => ({
-          type: uc8Conflict.type as any,
-          nodes: uc8Conflict.conflictingNodes,
-          description: uc8Conflict.description,
-          resolution: uc8Conflict.resolution
-        }))
-      };
+    console.log(`[ArtifactManager] UC8 detected ${result.conflicts.length} conflicts (types: ${result.conflicts.map(c => c.type).join(', ')})`);
 
-      console.log(`[ArtifactManager] UC8 detected ${result.conflicts.length} conflicts (types: ${result.conflicts.map(c => c.type).join(', ')})`);
-    } else {
-      console.warn('[ArtifactManager] UC8 not loaded, falling back to UC1 conflict detection');
-      result = this.uc1Engine.detectConflicts(specifications, activeRequirements, activeDomains);
-    }
-
-    // Sprint 3 Week 1: Check cross-artifact conflicts (mapped vs respec)
-    const crossConflicts = await this.checkCrossArtifactConflicts();
-    if (crossConflicts.hasConflict) {
-      result.hasConflict = true;
-      result.conflicts.push(...crossConflicts.conflicts);
-    }
-
-    // Convert to active conflicts if any found
+    // Convert to active conflicts if any found - agent will generate A/B from raw data
     if (result.hasConflict) {
       result.conflicts.forEach(conflict => {
         this.addActiveConflict({
@@ -389,7 +288,7 @@ export class ArtifactManager {
           conflictingNodes: conflict.nodes,
           type: conflict.type as any,
           description: conflict.description,
-          resolutionOptions: this.generateResolutionOptions(conflict),
+          resolution: conflict.resolution, // UC8 question_template for agent
           cycleCount: 0,
           firstDetected: new Date(),
           lastUpdated: new Date()
@@ -408,202 +307,6 @@ export class ArtifactManager {
     return result;
   }
 
-  /**
-   * Check for cross-artifact conflicts (mapped vs respec)
-   * Sprint 3 Week 1: Detects user attempts to override existing validated specs
-   */
-  private async checkCrossArtifactConflicts(): Promise<ConflictResult> {
-    const result: ConflictResult = {
-      hasConflict: false,
-      conflicts: []
-    };
-
-    if (!this.state.initialized) return result;
-
-    // Collect all specs from mapped artifact
-    const mappedSpecs = new Map<string, any>();
-    Object.values(this.state.mapped.domains).forEach(domain => {
-      Object.values(domain.requirements).forEach(requirement => {
-        Object.values(requirement.specifications).forEach(spec => {
-          mappedSpecs.set(spec.id, spec);
-        });
-      });
-    });
-
-    // Collect all specs from respec artifact
-    const respecSpecs = new Map<string, any>();
-    Object.values(this.state.respec.domains).forEach(domain => {
-      Object.values(domain.requirements).forEach(requirement => {
-        Object.values(requirement.specifications).forEach(spec => {
-          respecSpecs.set(spec.id, spec);
-        });
-      });
-    });
-
-    // Compare: Check if mapped specs conflict with respec specs
-    mappedSpecs.forEach((mappedSpec, specId) => {
-      const respecSpec = respecSpecs.get(specId);
-
-      if (respecSpec) {
-        // Spec exists in both artifacts - check for value conflict
-        if (mappedSpec.value !== respecSpec.value) {
-          result.hasConflict = true;
-          result.conflicts.push({
-            type: 'cross-artifact',
-            nodes: [specId],
-            description: `Attempting to override existing specification. Current value: "${respecSpec.value}", new value: "${mappedSpec.value}"`,
-            resolution: `Choose: (A) Keep existing value "${respecSpec.value}", or (B) Replace with new value "${mappedSpec.value}"`
-          });
-        }
-      }
-    });
-
-    console.log(`[ArtifactManager] Cross-artifact conflict check: ${result.conflicts.length} conflicts found`);
-    return result;
-  }
-
-  /**
-   * Auto-resolve cross-artifact conflicts by accepting new values (user changing their mind)
-   * Sprint 3 FIX: When user provides new value for existing spec, treat as intentional override
-   */
-  async autoResolveCrossArtifactConflicts(): Promise<{ resolved: number; specs: string[] }> {
-    const resolvedSpecs: string[] = [];
-
-    if (!this.state.initialized) {
-      return { resolved: 0, specs: [] };
-    }
-
-    // Collect all specs from mapped artifact
-    const mappedSpecs = new Map<string, any>();
-    const mappedSpecLocations = new Map<string, { domainId: string; reqId: string }>();
-
-    Object.entries(this.state.mapped.domains).forEach(([domainId, domain]) => {
-      Object.entries(domain.requirements).forEach(([reqId, requirement]) => {
-        Object.values(requirement.specifications).forEach(spec => {
-          mappedSpecs.set(spec.id, spec);
-          mappedSpecLocations.set(spec.id, { domainId, reqId });
-        });
-      });
-    });
-
-    // Collect all specs from respec artifact
-    const respecSpecs = new Map<string, any>();
-    const respecSpecLocations = new Map<string, { domainId: string; reqId: string }>();
-
-    Object.entries(this.state.respec.domains).forEach(([domainId, domain]) => {
-      Object.entries(domain.requirements).forEach(([reqId, requirement]) => {
-        Object.values(requirement.specifications).forEach(spec => {
-          respecSpecs.set(spec.id, spec);
-          respecSpecLocations.set(spec.id, { domainId, reqId });
-        });
-      });
-    });
-
-    // Find and resolve conflicts (new value overwrites old value)
-    for (const [specId, mappedSpec] of mappedSpecs.entries()) {
-      const respecSpec = respecSpecs.get(specId);
-
-      if (respecSpec && mappedSpec.value !== respecSpec.value) {
-        console.log(`[ArtifactManager] 🔄 Auto-resolving cross-artifact conflict: ${specId}`);
-        console.log(`   Old value (respec): "${respecSpec.value}"`);
-        console.log(`   New value (mapped): "${mappedSpec.value}"`);
-
-        // Remove old spec from respec
-        const respecLoc = respecSpecLocations.get(specId);
-        if (respecLoc) {
-          const respecDomain = this.state.respec.domains[respecLoc.domainId];
-          const respecReq = respecDomain?.requirements[respecLoc.reqId];
-          if (respecReq?.specifications[specId]) {
-            delete respecReq.specifications[specId];
-            console.log(`   ✓ Removed old spec from respec`);
-          }
-        }
-
-        // Move new spec from mapped to respec
-        const mappedLoc = mappedSpecLocations.get(specId);
-        if (mappedLoc) {
-          // Ensure domain and requirement exist in respec
-          if (!this.state.respec.domains[mappedLoc.domainId]) {
-            this.state.respec.domains[mappedLoc.domainId] = { id: mappedLoc.domainId, name: '', requirements: {} };
-          }
-          const respecDomain = this.state.respec.domains[mappedLoc.domainId];
-
-          if (!respecDomain.requirements[mappedLoc.reqId]) {
-            respecDomain.requirements[mappedLoc.reqId] = { id: mappedLoc.reqId, name: '', specifications: {} };
-          }
-
-          // Add new spec to respec
-          respecDomain.requirements[mappedLoc.reqId].specifications[specId] = { ...mappedSpec };
-
-          // Remove from mapped
-          const mappedDomain = this.state.mapped.domains[mappedLoc.domainId];
-          const mappedReq = mappedDomain?.requirements[mappedLoc.reqId];
-          if (mappedReq?.specifications[specId]) {
-            delete mappedReq.specifications[specId];
-          }
-
-          console.log(`   ✓ Moved new spec to respec`);
-          resolvedSpecs.push(specId);
-        }
-      }
-    }
-
-    // Clear cross-artifact conflicts from active conflicts
-    const originalCount = this.state.conflicts.active.length;
-    this.state.conflicts.active = this.state.conflicts.active.filter(
-      conflict => conflict.type !== 'cross_artifact' || !resolvedSpecs.includes(conflict.nodes[0])
-    );
-    const clearedCount = originalCount - this.state.conflicts.active.length;
-
-    if (resolvedSpecs.length > 0) {
-      console.log(`[ArtifactManager] ✅ Auto-resolved ${resolvedSpecs.length} cross-artifact conflicts: ${resolvedSpecs.join(', ')}`);
-      console.log(`[ArtifactManager] ✅ Cleared ${clearedCount} active conflicts`);
-
-      // Emit event for form update
-      this.emit('specifications_moved', {
-        from: 'mapped',
-        to: 'respec',
-        specIds: resolvedSpecs,
-        reason: 'cross-artifact-auto-resolve'
-      });
-    }
-
-    return { resolved: resolvedSpecs.length, specs: resolvedSpecs };
-  }
-
-  private generateResolutionOptions(conflict: any): any[] {
-    // Sprint 2: Check if UC8 conflict data is available
-    const conflictKey = conflict.nodes.sort().join('|');
-    const uc8Conflict = this.uc8ConflictData.get(conflictKey);
-
-    if (uc8Conflict && uc8Conflict.resolutionOptions) {
-      console.log(`[ArtifactManager] Using UC8 resolution options for conflict: ${conflictKey}`);
-      return uc8Conflict.resolutionOptions;
-    }
-
-    // Fallback to UC1-style resolution options
-    if (conflict.resolution) {
-      return [
-        {
-          id: 'option-a',
-          description: 'High performance with grid power (35-65W)',
-          action: 'select_option_a',
-          targetNodes: conflict.nodes,
-          expectedOutcome: 'High performance processor with adequate power supply'
-        },
-        {
-          id: 'option-b',
-          description: 'Lower performance optimized for battery operation (10-20W)',
-          action: 'select_option_b',
-          targetNodes: conflict.nodes,
-          expectedOutcome: 'Battery-optimized configuration with lower performance'
-        }
-      ];
-    }
-
-    return [];
-  }
-
   private addActiveConflict(conflict: ActiveConflict): void {
     this.state.conflicts.active.push(conflict);
     this.state.conflicts.metadata.activeCount++;
@@ -615,150 +318,31 @@ export class ArtifactManager {
 
   // ============= CONFLICT RESOLUTION =============
 
-  async resolveConflict(conflictId: string, resolutionId: string): Promise<void> {
+  async resolveConflict(conflictId: string, choice: 'a' | 'b'): Promise<void> {
     const conflictIndex = this.state.conflicts.active.findIndex(c => c.id === conflictId);
     if (conflictIndex === -1) {
       throw new Error(`Conflict ${conflictId} not found`);
     }
 
     const conflict = this.state.conflicts.active[conflictIndex];
-    const resolution = conflict.resolutionOptions.find(r => r.id === resolutionId);
-    if (!resolution) {
-      throw new Error(`Resolution ${resolutionId} not found for conflict ${conflictId}`);
-    }
 
-    // Apply resolution to conflicting nodes
-    await this.applyConflictResolution(conflict, resolution);
-
-    // Move conflict to resolved
-    const resolvedConflict = {
-      ...conflict,
-      resolvedAt: new Date(),
-      resolution,
-      resolvedBy: 'user' as const
-    };
-
-    this.state.conflicts.resolved.push(resolvedConflict);
-    this.state.conflicts.active.splice(conflictIndex, 1);
-
-    // Update metadata
-    this.state.conflicts.metadata.activeCount--;
-    this.state.conflicts.metadata.resolvedCount++;
-
-    // Unblock system if no more active conflicts
-    if (this.state.conflicts.active.length === 0) {
-      this.state.priorityQueue.blocked = false;
-      this.state.priorityQueue.blockReason = undefined;
-      this.state.priorityQueue.currentPriority = 'CLEARING';
-
-      this.state.conflicts.metadata.systemBlocked = false;
-      this.state.conflicts.metadata.blockingConflicts = [];
-    }
-
-    console.log(`[ArtifactManager] Resolved conflict: ${conflictId}`);
-    this.emit('conflict_resolved', { conflictId, resolutionId });
-  }
-
-  /**
-   * Increment conflict cycle count
-   * Sprint 3 Week 2: Track resolution attempts
-   */
-  incrementConflictCycle(conflictId: string): void {
-    const conflictIndex = this.state.conflicts.active.findIndex(c => c.id === conflictId);
-    if (conflictIndex === -1) {
-      console.warn(`[ArtifactManager] Conflict ${conflictId} not found for cycle increment`);
-      return;
-    }
-
-    const conflict = this.state.conflicts.active[conflictIndex];
-    conflict.cycleCount++;
-    conflict.lastUpdated = new Date();
-
-    console.log(`[ArtifactManager] Conflict ${conflictId} cycle count: ${conflict.cycleCount}`);
-
-    // Check for escalation threshold
-    if (conflict.cycleCount >= 3) {
-      console.warn(`[ArtifactManager] ⚠️  Conflict ${conflictId} reached max cycles (3) - escalating`);
-      this.escalateConflict(conflictId);
-    }
-  }
-
-  /**
-   * Escalate conflict after max cycles
-   * Sprint 3 Week 2: Auto-resolution or skip
-   */
-  private escalateConflict(conflictId: string): void {
-    const conflictIndex = this.state.conflicts.active.findIndex(c => c.id === conflictId);
-    if (conflictIndex === -1) return;
-
-    const conflict = this.state.conflicts.active[conflictIndex];
-
-    // Move to escalated list
-    const escalatedConflict = {
-      ...conflict,
-      escalatedAt: new Date(),
-      escalationReason: 'Max resolution cycles reached (3)'
-    };
-
-    this.state.conflicts.escalated.push(escalatedConflict);
-    this.state.conflicts.active.splice(conflictIndex, 1);
-    this.state.conflicts.metadata.activeCount--;
-    this.state.conflicts.metadata.escalatedCount = (this.state.conflicts.metadata.escalatedCount || 0) + 1;
-
-    console.log(`[ArtifactManager] Conflict ${conflictId} escalated to manual review`);
-
-    // Unblock system if no more active conflicts
-    if (this.state.conflicts.active.length === 0) {
-      this.state.priorityQueue.blocked = false;
-      this.state.priorityQueue.blockReason = undefined;
-      this.state.priorityQueue.currentPriority = 'CLEARING';
-      this.state.conflicts.metadata.systemBlocked = false;
-      this.state.conflicts.metadata.blockingConflicts = [];
-
-      console.log(`[ArtifactManager] ✅ All active conflicts resolved or escalated - system unblocked`);
-    }
-
-    this.emit('conflict_escalated', { conflictId, reason: 'max_cycles' });
-  }
-
-  /**
-   * Apply conflict resolution with surgical precision
-   * Sprint 3 Week 1: Full implementation with safety policies
-   */
-  private async applyConflictResolution(conflict: ActiveConflict, resolution: any): Promise<void> {
-    console.log(`[ArtifactManager] Applying resolution ${resolution.id} to conflict ${conflict.id}`);
-
-    // ========== PRE-VALIDATION ==========
-    if (!resolution.targetNodes || resolution.targetNodes.length === 0) {
-      throw new Error(`[Resolution] Resolution ${resolution.id} must specify targetNodes`);
-    }
-
-    // Verify all target nodes exist in mapped artifact
-    for (const nodeId of resolution.targetNodes) {
-      const spec = this.findSpecificationInMapped(nodeId);
-      if (!spec) {
-        throw new Error(
-          `[Resolution] Node ${nodeId} not found in mapped artifact - cannot resolve. ` +
-          `This conflict may have already been resolved or the artifact state is corrupted.`
-        );
-      }
-    }
+    console.log(`[ArtifactManager] Applying user choice '${choice}' to conflict ${conflict.id}`);
 
     // ========== DETERMINE WINNING/LOSING SPECS ==========
     let losingSpecs: string[] = [];
     let winningSpecs: string[] = [];
 
-    // Parse resolution action
-    if (resolution.id === 'option-a') {
+    // Parse user choice (A = keep first, B = keep second)
+    if (choice === 'a') {
       // Option A: Keep first conflicting node, remove others
       winningSpecs = [conflict.conflictingNodes[0]];
       losingSpecs = conflict.conflictingNodes.slice(1);
-    } else if (resolution.id === 'option-b') {
+    } else if (choice === 'b') {
       // Option B: Keep second conflicting node, remove others
       winningSpecs = [conflict.conflictingNodes[1]];
       losingSpecs = conflict.conflictingNodes.slice(0, 1).concat(conflict.conflictingNodes.slice(2));
     } else {
-      throw new Error(`[Resolution] Unknown resolution option: ${resolution.id}`);
+      throw new Error(`[Resolution] Unknown choice: ${choice}. Must be 'a' or 'b'.`);
     }
 
     console.log(`[Resolution] Winning specs: ${winningSpecs.join(', ')}`);
@@ -825,6 +409,39 @@ export class ArtifactManager {
 
       throw error;
     }
+
+    // Move conflict to resolved (store user choice for audit trail)
+    const resolvedConflict = {
+      ...conflict,
+      resolvedAt: new Date(),
+      userChoice: choice,
+      resolvedBy: 'user' as const
+    };
+
+    this.state.conflicts.resolved.push(resolvedConflict);
+    this.state.conflicts.active.splice(conflictIndex, 1);
+
+    // Update metadata
+    this.state.conflicts.metadata.activeCount--;
+    this.state.conflicts.metadata.resolvedCount++;
+
+    // Unblock system if no more active conflicts
+    if (this.state.conflicts.active.length === 0) {
+      this.state.priorityQueue.blocked = false;
+      this.state.priorityQueue.blockReason = undefined;
+      this.state.priorityQueue.currentPriority = 'CLEARING';
+
+      this.state.conflicts.metadata.systemBlocked = false;
+      this.state.conflicts.metadata.blockingConflicts = [];
+    }
+
+    console.log(`[ArtifactManager] Resolved conflict: ${conflictId} with choice: ${choice}`);
+
+    // Sprint 3: After conflict resolved, move non-conflicting specs from MAPPED to RESPEC
+    // This triggers the normal flow: MAPPED → RESPEC → Form heals from RESPEC
+    await this.moveNonConflictingToRespec();
+
+    this.emit('conflict_resolved', { conflictId, choice });
   }
 
   /**
@@ -834,8 +451,8 @@ export class ArtifactManager {
   findSpecificationInArtifact(artifactName: 'mapped' | 'respec', specId: string): any | null {
     const artifact = artifactName === 'mapped' ? this.state.mapped : this.state.respec;
 
-    for (const domain of Object.values(artifact.domains)) {
-      for (const requirement of Object.values(domain.requirements)) {
+    for (const scenario of Object.values(artifact.scenarios)) {
+      for (const requirement of Object.values(scenario.requirements)) {
         if (requirement.specifications[specId]) {
           return requirement.specifications[specId];
         }
@@ -857,37 +474,56 @@ export class ArtifactManager {
    * Sprint 3 Week 1: Helper for rollback operations
    */
   private restoreSpecificationToMapped(specId: string, specBackup: any): void {
-    const hierarchy = this.uc1Engine.getHierarchy(specId);
-    if (!hierarchy || !hierarchy.domain || !hierarchy.requirement) {
-      console.error(`[Rollback] Cannot restore ${specId} - hierarchy not found or incomplete`);
+    // Use UCDataLayer for hierarchy
+    const parentReqs = ucDataLayer.getParentRequirements(specId);
+    if (parentReqs.length === 0) {
+      console.error(`[Rollback] Cannot restore ${specId} - no parent requirements found`);
       return;
     }
 
-    const { domain, requirement } = hierarchy;
+    const reqId = parentReqs[0].id;
+    const parentScenarios = ucDataLayer.getParentScenarios(reqId);
+    if (parentScenarios.length === 0) {
+      console.error(`[Rollback] Cannot restore ${specId} - no parent scenario found`);
+      return;
+    }
 
-    // Ensure domain structure exists
-    if (!this.state.mapped.domains[domain]) {
-      const uc1Spec = this.uc1Engine.getSpecification(specId);
-      const domainName = uc1Spec?.parent?.[0] || domain;
-      this.state.mapped.domains[domain] = {
-        id: domain,
-        name: domainName as any,
-        uc1Source: domain as any,
+    const scenarioId = parentScenarios[0].id; // Scenario ID (S##)
+    const requirement = reqId; // Requirement ID (R##)
+
+    // Ensure scenario structure exists
+    // Get scenario from UCDataLayer
+    if (!this.state.mapped.scenarios[scenarioId]) {
+      const uc8Scenario = ucDataLayer.getScenario(scenarioId);
+      if (!uc8Scenario) {
+        console.error(`[Rollback] UC8 scenario ${scenarioId} not found`);
+        return;
+      }
+      this.state.mapped.scenarios[scenarioId] = {
+        id: scenarioId,
+        name: uc8Scenario.name,
+        uc8Source: uc8Scenario as any,
         requirements: {}
       };
     }
 
     // Ensure requirement structure exists
-    if (!this.state.mapped.domains[domain].requirements[requirement]) {
-      this.state.mapped.domains[domain].requirements[requirement] = {
+    // SPRINT 3 FIX: Get requirement from UCDataLayer
+    if (!this.state.mapped.scenarios[scenarioId].requirements[requirement]) {
+      const uc8Requirement = ucDataLayer.getRequirement(requirement);
+      if (!uc8Requirement) {
+        console.error(`[Rollback] UC8 requirement ${requirement} not found`);
+        return;
+      }
+      this.state.mapped.scenarios[scenarioId].requirements[requirement] = {
         id: requirement,
-        name: requirement as any,
-        uc1Source: requirement as any,
+        name: uc8Requirement.name,
+        uc8Source: uc8Requirement as any,
         specifications: {}
       };
     }
 
-    this.state.mapped.domains[domain].requirements[requirement].specifications[specId] = specBackup;
+    this.state.mapped.scenarios[scenarioId].requirements[requirement].specifications[specId] = specBackup;
     console.log(`[Rollback] Restored ${specId} to mapped artifact`);
   }
 
@@ -902,8 +538,8 @@ export class ArtifactManager {
     const nonConflictingSpecs: string[] = [];
     const conflictingNodes = new Set(this.state.conflicts.metadata.blockingConflicts);
 
-    Object.values(this.state.mapped.domains).forEach(domain => {
-      Object.values(domain.requirements).forEach(requirement => {
+    Object.values(this.state.mapped.scenarios).forEach(scenario => {
+      Object.values(scenario.requirements).forEach(requirement => {
         Object.values(requirement.specifications).forEach(spec => {
           if (!conflictingNodes.has(spec.id)) {
             nonConflictingSpecs.push(spec.id);
@@ -942,43 +578,50 @@ export class ArtifactManager {
     this.emit('specifications_moved', { movement });
   }
 
-  private addSpecificationToRespec(spec: UC1ArtifactSpecification): void {
-    // Find parent requirement and domain
-    const hierarchy = this.uc1Engine.getHierarchy(spec.id);
-    if (!hierarchy || !hierarchy.domain || !hierarchy.requirement) {
+  private addSpecificationToRespec(spec: UC8ArtifactSpecification): void {
+    // Use UCDataLayer for hierarchy
+    const parentReqs = ucDataLayer.getParentRequirements(spec.id);
+    if (parentReqs.length === 0) {
+      console.warn(`[ArtifactManager] Cannot add ${spec.id} to respec - no parent requirements found`);
       return;
     }
 
-    const domainId = hierarchy.domain;
-    const reqId = hierarchy.requirement;
+    const reqId = parentReqs[0].id;
+    const parentScenarios = ucDataLayer.getParentScenarios(reqId);
+    if (parentScenarios.length === 0) {
+      console.warn(`[ArtifactManager] Cannot add ${spec.id} to respec - no parent scenario found`);
+      return;
+    }
+
+    const scenarioId = parentScenarios[0].id; // Scenario ID (S##)
 
     // Ensure structure exists in respec
-    if (!this.state.respec.domains[domainId]) {
-      const mappedDomain = this.state.mapped.domains[domainId];
-      if (mappedDomain) {
-        this.state.respec.domains[domainId] = {
-          id: domainId,
-          name: mappedDomain.name,
-          uc1Source: mappedDomain.uc1Source,
+    if (!this.state.respec.scenarios[scenarioId]) {
+      const mappedScenario = this.state.mapped.scenarios[scenarioId];
+      if (mappedScenario) {
+        this.state.respec.scenarios[scenarioId] = {
+          id: scenarioId,
+          name: mappedScenario.name,
+          uc8Source: mappedScenario.uc8Source,
           requirements: {}
         };
       }
     }
 
-    if (!this.state.respec.domains[domainId].requirements[reqId]) {
-      const mappedRequirement = this.state.mapped.domains[domainId]?.requirements[reqId];
+    if (!this.state.respec.scenarios[scenarioId].requirements[reqId]) {
+      const mappedRequirement = this.state.mapped.scenarios[scenarioId]?.requirements[reqId];
       if (mappedRequirement) {
-        this.state.respec.domains[domainId].requirements[reqId] = {
+        this.state.respec.scenarios[scenarioId].requirements[reqId] = {
           id: reqId,
           name: mappedRequirement.name,
-          uc1Source: mappedRequirement.uc1Source,
+          uc8Source: mappedRequirement.uc8Source,
           specifications: {}
         };
       }
     }
 
     // Add specification
-    this.state.respec.domains[domainId].requirements[reqId].specifications[spec.id] = {
+    this.state.respec.scenarios[scenarioId].requirements[reqId].specifications[spec.id] = {
       ...spec,
       timestamp: new Date()
     };
@@ -993,8 +636,8 @@ export class ArtifactManager {
    * Used by resolution system and branch management
    */
   private removeSpecificationFromMapped(specId: string): void {
-    for (const domain of Object.values(this.state.mapped.domains)) {
-      for (const requirement of Object.values(domain.requirements)) {
+    for (const scenario of Object.values(this.state.mapped.scenarios)) {
+      for (const requirement of Object.values(scenario.requirements)) {
         if (requirement.specifications[specId]) {
           delete requirement.specifications[specId];
           this.state.mapped.metadata.totalNodes--;
@@ -1099,11 +742,11 @@ export class ArtifactManager {
     return {
       initialized: this.state.initialized,
       respec: {
-        domains: Object.keys(this.state.respec.domains).length,
+        scenarios: Object.keys(this.state.respec.scenarios).length,
         totalNodes: this.state.respec.metadata.totalNodes
       },
       mapped: {
-        domains: Object.keys(this.state.mapped.domains).length,
+        scenarios: Object.keys(this.state.mapped.scenarios).length,
         totalNodes: this.state.mapped.metadata.totalNodes,
         pendingValidation: this.state.mapped.metadata.pendingValidation.length
       },

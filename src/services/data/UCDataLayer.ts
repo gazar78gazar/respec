@@ -291,7 +291,7 @@ export class UCDataLayer {
     newSpecId: string,
     currentSelections: string[]
   ): Array<{
-    type: 'field_overwrite' | 'exclusion' | 'cascade' | 'field_constraint';
+    type: 'exclusion' | 'cascade' | 'field_constraint';
     field: string;
     existingValue: string;
     proposedValue: string;
@@ -316,14 +316,14 @@ export class UCDataLayer {
 
       if (existingSpecForField && existingSpecForField !== newSpecId) {
         conflicts.push({
-          type: 'field_overwrite',
+          type: 'exclusion',
           field: fieldName,
           existingValue: existingSpecForField,
           proposedValue: newSpecId,
-          reason: `Field "${fieldName}" already has a value`,
+          reason: `Field "${fieldName}" already has a value (implicit exclusion)`,
           affectedNodes: [existingSpecForField]
         });
-        console.log(`[UCDataLayer]   🔄 Field overwrite detected for "${fieldName}"`);
+        console.log(`[UCDataLayer]   🔄 Field-level exclusion detected for "${fieldName}"`);
       }
     }
 
@@ -447,6 +447,12 @@ export class UCDataLayer {
     // Filter out options that are excluded by current selections
     const validOptions = allOptions.filter(option => {
       const isExcluded = currentSelections.some(selectedId => {
+        // CRITICAL FIX: Don't check if option excludes itself
+        // This caused false conflicts like "P73 ↔ P73"
+        if (option.id === selectedId) {
+          return false;
+        }
+
         return this.hasExclusionBetween(option.id, selectedId);
       });
 
