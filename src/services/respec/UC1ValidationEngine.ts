@@ -126,7 +126,7 @@ export interface ConflictResult {
 }
 
 export interface Conflict {
-  type: 'constraint' | 'dependency' | 'logical' | 'cross-artifact' | 'mutex';
+  type: 'constraint' | 'dependency' | 'logical' | 'cross_artifact' | 'mutex';
   nodes: string[];
   description: string;
   resolution?: string;

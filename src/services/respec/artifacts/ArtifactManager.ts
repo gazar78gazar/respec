@@ -466,7 +466,7 @@ export class ArtifactManager {
         if (mappedSpec.value !== respecSpec.value) {
           result.hasConflict = true;
           result.conflicts.push({
-            type: 'cross-artifact',
+            type: 'cross_artifact',
             nodes: [specId],
             description: `Attempting to override existing specification. Current value: "${respecSpec.value}", new value: "${mappedSpec.value}"`,
             resolution: `Choose: (A) Keep existing value "${respecSpec.value}", or (B) Replace with new value "${mappedSpec.value}"`
