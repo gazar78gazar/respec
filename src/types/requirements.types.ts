@@ -3,7 +3,7 @@
 
 export interface FieldData {
   value: string | number | boolean;
-  priority?: 'high' | 'medium' | 'low';
+  priority?: "high" | "medium" | "low";
   isAssumption?: boolean;
   required?: boolean;
   timestamp?: string;
@@ -72,7 +72,7 @@ export interface Requirements {
 
 // Cross-field validation error types
 export interface ValidationError {
-  severity: 'error' | 'warning' | 'info';
+  severity: "error" | "warning" | "info";
   message: string;
 }
 
@@ -81,10 +81,10 @@ export type CrossFieldErrors = Record<string, ValidationError>;
 // Chat message types
 export interface ChatMessage {
   id: string;
-  role: 'user' | 'assistant' | 'system';
+  role: "user" | "assistant" | "system";
   content: string;
   timestamp: Date;
-  status?: 'sending' | 'sent' | 'error';
+  status?: "sending" | "sent" | "error";
   metadata?: {
     isAssumption?: boolean;
     confidence?: number;
@@ -111,17 +111,13 @@ export interface MASCommunicationResult {
   error?: string;
 }
 
-// Component Props types
-export interface StepHeaderProps {
-  currentStep: string;
-  setCurrentStage: (stage: string) => void;
-}
-
 // Export type guards for runtime checking
 export const isFieldData = (value: any): value is FieldData => {
-  return value && typeof value === 'object' && 'value' in value;
+  return value && typeof value === "object" && "value" in value;
 };
 
 export const hasFieldValue = (field?: FieldData): boolean => {
-  return field?.value !== undefined && field.value !== '';
+  return field?.value !== undefined && field.value !== "";
 };
+
+export type UserRole = "assistant" | "user" | "system";

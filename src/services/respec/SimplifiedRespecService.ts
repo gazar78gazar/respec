@@ -1,16 +1,32 @@
-import { v4 as uuidv4 } from 'uuid';
-import { AnthropicService } from './AnthropicService';
-import { SemanticMatcher, createSemanticMatcher } from './semantic/SemanticMatcher';
-import { SemanticIntegrationService, createSemanticIntegrationService, EnhancedChatResult } from './semantic/SemanticIntegrationService';
-import { SemanticMatchingService, createSemanticMatchingService } from './semantic/SemanticMatchingService';
-import { SemanticIntegrationService as SemanticIntegrationServiceNew, createSemanticIntegrationService as createSemanticIntegrationServiceNew } from './semantic/SemanticIntegrationService_NEW';
-import { UC1ValidationEngine } from './UC1ValidationEngine';
-import { ArtifactManager } from './artifacts/ArtifactManager';
-import { CompatibilityLayer } from './artifacts/CompatibilityLayer';
-import { ConflictDetectionService, createConflictDetectionService, FieldConflict } from '../../legacy_isolated/ConflictDetectionService';
+import { v4 as uuidv4 } from "uuid";
+import { AnthropicService } from "./AnthropicService";
+import {
+  SemanticMatcher,
+  createSemanticMatcher,
+} from "./semantic/SemanticMatcher";
+import {
+  SemanticIntegrationService,
+  createSemanticIntegrationService,
+} from "./semantic/SemanticIntegrationService";
+import {
+  SemanticMatchingService,
+  createSemanticMatchingService,
+} from "./semantic/SemanticMatchingService";
+import {
+  SemanticIntegrationService as SemanticIntegrationServiceNew,
+  createSemanticIntegrationService as createSemanticIntegrationServiceNew,
+} from "./semantic/SemanticIntegrationService_NEW";
+import { UC1ValidationEngine } from "./UC1ValidationEngine";
+import { ArtifactManager } from "./artifacts/ArtifactManager";
+import { CompatibilityLayer } from "./artifacts/CompatibilityLayer";
+import {
+  ConflictDetectionService,
+  createConflictDetectionService,
+  FieldConflict,
+} from "../../legacy_isolated/ConflictDetectionService";
 
 // Sprint 1: Import UC8 Data Layer
-import { ucDataLayer } from '../data/UCDataLayer';
+import { ucDataLayer } from "../data/UCDataLayer";
 
 // Simplified interfaces for the browser-only service
 export interface ChatResult {
@@ -31,21 +47,21 @@ export interface FormUpdate {
 }
 
 export interface EnhancedFormUpdate extends FormUpdate {
-  originalRequest?: string;    // What user asked for
-  substitutionNote?: string;   // Explanation if different
+  originalRequest?: string; // What user asked for
+  substitutionNote?: string; // Explanation if different
 }
 
 export interface FieldOptionsMap {
   [section: string]: {
     [field: string]: {
-      type: 'dropdown' | 'text' | 'number' | 'multiselect' | 'date';
-      options?: string[];  // For dropdown/multiselect
-      min?: number;        // For number fields
-      max?: number;        // For number fields
+      type: "dropdown" | "text" | "number" | "multiselect" | "date";
+      options?: string[]; // For dropdown/multiselect
+      min?: number; // For number fields
+      max?: number; // For number fields
       validation?: string; // Regex pattern for text
-      label?: string;      // Human readable label
-    }
-  }
+      label?: string; // Human readable label
+    };
+  };
 }
 
 export interface FormProcessingResult {
@@ -60,12 +76,40 @@ export interface AutofillResult {
   trigger: string;
 }
 
+export type StrucureConflictEntry = {
+  id: string;
+  type: string;
+  description: string;
+  conflictingNodes: any;
+  resolutionOptions: {
+    id: string;
+    label: string;
+    outcome: string;
+  }[];
+  cycleCount: number;
+  priority: "critical" | "high";
+};
+
+export interface StructuredConflicts {
+  hasConflicts: boolean;
+  count: number; // Total count for transparency
+  currentConflict: number; // Currently handling first batch
+  totalConflicts: number; // For progress indicators
+  systemBlocked: boolean;
+  conflicts: StrucureConflictEntry[]; // ALL conflicts for agent aggregation
+}
+
 export class SimplifiedRespecService {
   private sessionId: string;
-  private conversationHistory: Array<{ role: 'user' | 'assistant'; content: string; timestamp: Date }> = [];
+  private conversationHistory: Array<{
+    role: "user" | "assistant";
+    content: string;
+    timestamp: Date;
+  }> = [];
   private isInitialized = false;
   private anthropicService: AnthropicService;
-  private fieldMappings: Map<string, { section: string; field: string; }> = new Map();
+  private fieldMappings: Map<string, { section: string; field: string }> =
+    new Map();
   private uc1Data: any = null;
   private fieldOptionsMap: FieldOptionsMap = {};
 
@@ -134,42 +178,37 @@ export class SimplifiedRespecService {
       /electrical\s*substation/i,
       /power\s*substation/i,
     ],
-    industrial: [
-      /industrial/i,
-      /manufacturing/i,
-      /factory/i,
-      /plant/i,
-    ],
+    industrial: [/industrial/i, /manufacturing/i, /factory/i, /plant/i],
   };
 
   // Smart defaults based on common engineering requirements
   private smartDefaults = {
     substation: {
-      'io.digital_inputs': 16,
-      'io.analog_inputs': 8,
-      'io.digital_outputs': 8,
-      'power.supply_voltage': '24',
-      'communication.ethernet': true,
-      'communication.modbus': true,
-      'environmental.operating_temp_min': '-40',
-      'environmental.operating_temp_max': '70',
-      'compliance.iec61850': true,
+      "io.digital_inputs": 16,
+      "io.analog_inputs": 8,
+      "io.digital_outputs": 8,
+      "power.supply_voltage": "24",
+      "communication.ethernet": true,
+      "communication.modbus": true,
+      "environmental.operating_temp_min": "-40",
+      "environmental.operating_temp_max": "70",
+      "compliance.iec61850": true,
     },
     industrial: {
-      'io.digital_inputs': 12,
-      'io.analog_inputs': 4,
-      'io.digital_outputs': 6,
-      'power.supply_voltage': '24',
-      'communication.ethernet': true,
-      'environmental.operating_temp_min': '0',
-      'environmental.operating_temp_max': '60',
+      "io.digital_inputs": 12,
+      "io.analog_inputs": 4,
+      "io.digital_outputs": 6,
+      "power.supply_voltage": "24",
+      "communication.ethernet": true,
+      "environmental.operating_temp_min": "0",
+      "environmental.operating_temp_max": "60",
     },
     generic: {
-      'io.digital_inputs': 8,
-      'io.analog_inputs': 2,
-      'io.digital_outputs': 4,
-      'power.supply_voltage': '12',
-      'communication.ethernet': true,
+      "io.digital_inputs": 8,
+      "io.analog_inputs": 2,
+      "io.digital_outputs": 4,
+      "power.supply_voltage": "12",
+      "communication.ethernet": true,
     },
   };
 
@@ -185,7 +224,9 @@ export class SimplifiedRespecService {
     compatibilityLayer?: CompatibilityLayer
   ): Promise<void> {
     if (!uc1Engine.isReady()) {
-      console.warn('[SimplifiedRespec] UC1ValidationEngine not ready for semantic matching');
+      console.warn(
+        "[SimplifiedRespec] UC1ValidationEngine not ready for semantic matching"
+      );
       this.useSemanticMatching = false;
       return;
     }
@@ -197,10 +238,12 @@ export class SimplifiedRespecService {
 
       // SPRINT 3 FIX: Listen for respec artifact changes to update form (respec = source of truth)
       if (artifactManager) {
-        artifactManager.on('specifications_moved', (data: any) => {
+        artifactManager.on("specifications_moved", (data: any) => {
           this.handleRespecUpdate(data);
         });
-        console.log('[SimplifiedRespec] ✅ Listening for respec artifact changes');
+        console.log(
+          "[SimplifiedRespec] ✅ Listening for respec artifact changes"
+        );
       }
 
       // Sprint 2: Initialize new SemanticMatchingService
@@ -214,7 +257,10 @@ export class SimplifiedRespecService {
       );
 
       // Keep old services for backward compatibility (temporarily)
-      this.semanticMatcher = createSemanticMatcher(this.anthropicService, uc1Engine);
+      this.semanticMatcher = createSemanticMatcher(
+        this.anthropicService,
+        uc1Engine
+      );
       this.semanticMatcher.initialize(artifactManager, compatibilityLayer);
 
       this.semanticIntegration = createSemanticIntegrationService(
@@ -226,19 +272,24 @@ export class SimplifiedRespecService {
       this.conflictDetection = createConflictDetectionService(uc1Engine);
       this.conflictDetection.initialize(compatibilityLayer);
 
-      console.log('[SimplifiedRespec] ✅ Sprint 2 semantic matching initialized');
-      console.log('[SimplifiedRespec] - SemanticMatchingService: ready');
-      console.log('[SimplifiedRespec] - SemanticIntegrationService: ready');
+      console.log(
+        "[SimplifiedRespec] ✅ Sprint 2 semantic matching initialized"
+      );
+      console.log("[SimplifiedRespec] - SemanticMatchingService: ready");
+      console.log("[SimplifiedRespec] - SemanticIntegrationService: ready");
       this.useSemanticMatching = true;
     } catch (error) {
-      console.error('[SimplifiedRespec] Failed to initialize semantic matching:', error);
+      console.error(
+        "[SimplifiedRespec] Failed to initialize semantic matching:",
+        error
+      );
       this.useSemanticMatching = false;
     }
   }
 
   async initialize(fieldDefinitions?: any): Promise<void> {
     if (this.isInitialized) {
-      console.log('[SimplifiedRespec] Already initialized');
+      console.log("[SimplifiedRespec] Already initialized");
       return;
     }
 
@@ -247,24 +298,38 @@ export class SimplifiedRespecService {
     // Sprint 1: Use UC8 Data Layer for field mappings
     try {
       if (ucDataLayer.isLoaded()) {
-        console.log('[SimplifiedRespec] Using UC8 Data Layer for field mappings');
+        console.log(
+          "[SimplifiedRespec] Using UC8 Data Layer for field mappings"
+        );
         this.extractFieldMappingsFromDataLayer();
-        console.log('[SimplifiedRespec] UC8 field mappings extracted:', this.fieldMappings.size, 'mappings');
+        console.log(
+          "[SimplifiedRespec] UC8 field mappings extracted:",
+          this.fieldMappings.size,
+          "mappings"
+        );
       } else {
         // Fallback to UC1.json if UC8 not loaded
-        console.warn('[SimplifiedRespec] UC8 not loaded, falling back to UC1.json');
-        const response = await fetch('/uc1.json');
+        console.warn(
+          "[SimplifiedRespec] UC8 not loaded, falling back to UC1.json"
+        );
+        const response = await fetch("/uc1.json");
         if (response.ok) {
           this.uc1Data = await response.json();
           this.extractFieldMappings();
-          console.log('[SimplifiedRespec] UC1.json loaded, extracted', this.fieldMappings.size, 'field mappings');
+          console.log(
+            "[SimplifiedRespec] UC1.json loaded, extracted",
+            this.fieldMappings.size,
+            "field mappings"
+          );
         } else {
-          console.warn('[SimplifiedRespec] Could not load UC1.json, using fallback mappings');
+          console.warn(
+            "[SimplifiedRespec] Could not load UC1.json, using fallback mappings"
+          );
           this.loadFallbackMappings();
         }
       }
     } catch (error) {
-      console.warn('[SimplifiedRespec] Failed to load field mappings:', error);
+      console.warn("[SimplifiedRespec] Failed to load field mappings:", error);
       this.loadFallbackMappings();
     }
 
@@ -273,63 +338,75 @@ export class SimplifiedRespecService {
 
     // Load any persisted conversation or settings
     try {
-      const savedSession = localStorage.getItem(`respec_session_${this.sessionId}`);
+      const savedSession = localStorage.getItem(
+        `respec_session_${this.sessionId}`
+      );
       if (savedSession) {
         const data = JSON.parse(savedSession);
         this.conversationHistory = data.conversationHistory || [];
       }
     } catch (error) {
-      console.warn('[SimplifiedRespec] Could not load saved session:', error);
+      console.warn("[SimplifiedRespec] Could not load saved session:", error);
     }
 
     // Build field options map if field definitions provided
     if (fieldDefinitions) {
       this.buildFieldOptionsMap(fieldDefinitions);
-      console.log('[SimplifiedRespec] Field options map built with', Object.keys(this.fieldOptionsMap).length, 'sections');
+      console.log(
+        "[SimplifiedRespec] Field options map built with",
+        Object.keys(this.fieldOptionsMap).length,
+        "sections"
+      );
     }
 
     this.isInitialized = true;
-    console.log('[SimplifiedRespec] Initialization complete');
+    console.log("[SimplifiedRespec] Initialization complete");
   }
 
   /**
    * Sprint 1: Extract field mappings from UC8 Data Layer
    */
   private extractFieldMappingsFromDataLayer(): void {
-    console.log('[SimplifiedRespec] Extracting field mappings from UC8 Data Layer');
+    console.log(
+      "[SimplifiedRespec] Extracting field mappings from UC8 Data Layer"
+    );
 
     const specifications = ucDataLayer.getAllSpecifications();
-    console.log(`[SimplifiedRespec] Found ${specifications.length} specifications in UC8`);
+    console.log(
+      `[SimplifiedRespec] Found ${specifications.length} specifications in UC8`
+    );
 
     specifications.forEach((spec) => {
       if (spec.form_mapping && spec.form_mapping.field_name) {
         const mapping = {
           section: spec.form_mapping.section,
-          field: spec.form_mapping.field_name
+          field: spec.form_mapping.field_name,
         };
 
         // Store by various possible names the user might use
-        const specName = spec.name.toLowerCase().replace(/_/g, ' ');
+        const specName = spec.name.toLowerCase().replace(/_/g, " ");
         this.fieldMappings.set(specName, mapping);
 
         // Also store by the actual field name
         this.fieldMappings.set(spec.form_mapping.field_name, mapping);
 
         // Store common variations
-        if (spec.form_mapping.field_name === 'digital_io') {
-          this.fieldMappings.set('digital inputs', mapping);
-          this.fieldMappings.set('digital outputs', mapping);
-          this.fieldMappings.set('digital i/o', mapping);
+        if (spec.form_mapping.field_name === "digital_io") {
+          this.fieldMappings.set("digital inputs", mapping);
+          this.fieldMappings.set("digital outputs", mapping);
+          this.fieldMappings.set("digital i/o", mapping);
         }
-        if (spec.form_mapping.field_name === 'analog_io') {
-          this.fieldMappings.set('analog inputs', mapping);
-          this.fieldMappings.set('analog outputs', mapping);
-          this.fieldMappings.set('analog i/o', mapping);
+        if (spec.form_mapping.field_name === "analog_io") {
+          this.fieldMappings.set("analog inputs", mapping);
+          this.fieldMappings.set("analog outputs", mapping);
+          this.fieldMappings.set("analog i/o", mapping);
         }
       }
     });
 
-    console.log(`[SimplifiedRespec] Extracted ${this.fieldMappings.size} field mappings from UC8`);
+    console.log(
+      `[SimplifiedRespec] Extracted ${this.fieldMappings.size} field mappings from UC8`
+    );
   }
 
   /**
@@ -345,26 +422,26 @@ export class SimplifiedRespecService {
       if (spec.form_mapping && spec.form_mapping.field_name) {
         const mapping = {
           section: spec.form_mapping.section,
-          field: spec.form_mapping.field_name
+          field: spec.form_mapping.field_name,
         };
 
         // Store by various possible names the user might use
-        const specName = spec.name.toLowerCase().replace(/_/g, ' ');
+        const specName = spec.name.toLowerCase().replace(/_/g, " ");
         this.fieldMappings.set(specName, mapping);
 
         // Also store by the actual field name
         this.fieldMappings.set(spec.form_mapping.field_name, mapping);
 
         // Store common variations
-        if (spec.form_mapping.field_name === 'digital_io') {
-          this.fieldMappings.set('digital inputs', mapping);
-          this.fieldMappings.set('digital outputs', mapping);
-          this.fieldMappings.set('digital i/o', mapping);
+        if (spec.form_mapping.field_name === "digital_io") {
+          this.fieldMappings.set("digital inputs", mapping);
+          this.fieldMappings.set("digital outputs", mapping);
+          this.fieldMappings.set("digital i/o", mapping);
         }
-        if (spec.form_mapping.field_name === 'analog_io') {
-          this.fieldMappings.set('analog inputs', mapping);
-          this.fieldMappings.set('analog outputs', mapping);
-          this.fieldMappings.set('analog i/o', mapping);
+        if (spec.form_mapping.field_name === "analog_io") {
+          this.fieldMappings.set("analog inputs", mapping);
+          this.fieldMappings.set("analog outputs", mapping);
+          this.fieldMappings.set("analog i/o", mapping);
         }
       }
     });
@@ -373,41 +450,79 @@ export class SimplifiedRespecService {
   private loadFallbackMappings(): void {
     // Fallback mappings if UC1.json can't be loaded
     const fallbackMappings = [
-      { name: 'processor', section: 'compute_performance', field: 'processor_type' },
-      { name: 'memory', section: 'compute_performance', field: 'memory_capacity' },
-      { name: 'storage', section: 'compute_performance', field: 'storage_capacity' },
-      { name: 'digital inputs', section: 'io_connectivity', field: 'digital_io' },
-      { name: 'analog inputs', section: 'io_connectivity', field: 'analog_io' },
-      { name: 'ethernet ports', section: 'io_connectivity', field: 'ethernet_ports' },
-      { name: 'temperature', section: 'environment_standards', field: 'operating_temperature' },
-      { name: 'budget per unit', section: 'commercial', field: 'budget_per_unit' },
-      { name: 'quantity', section: 'commercial', field: 'quantity' }
+      {
+        name: "processor",
+        section: "compute_performance",
+        field: "processor_type",
+      },
+      {
+        name: "memory",
+        section: "compute_performance",
+        field: "memory_capacity",
+      },
+      {
+        name: "storage",
+        section: "compute_performance",
+        field: "storage_capacity",
+      },
+      {
+        name: "digital inputs",
+        section: "io_connectivity",
+        field: "digital_io",
+      },
+      { name: "analog inputs", section: "io_connectivity", field: "analog_io" },
+      {
+        name: "ethernet ports",
+        section: "io_connectivity",
+        field: "ethernet_ports",
+      },
+      {
+        name: "temperature",
+        section: "environment_standards",
+        field: "operating_temperature",
+      },
+      {
+        name: "budget per unit",
+        section: "commercial",
+        field: "budget_per_unit",
+      },
+      { name: "quantity", section: "commercial", field: "quantity" },
     ];
 
-    fallbackMappings.forEach(map => {
-      this.fieldMappings.set(map.name, { section: map.section, field: map.field });
+    fallbackMappings.forEach((map) => {
+      this.fieldMappings.set(map.name, {
+        section: map.section,
+        field: map.field,
+      });
     });
   }
 
   private buildFieldOptionsMap(fieldDefinitions: any): void {
     // Build field options map from form field definitions
-    Object.entries(fieldDefinitions).forEach(([section, fields]: [string, any]) => {
-      this.fieldOptionsMap[section] = {};
-      Object.entries(fields).forEach(([fieldKey, fieldDef]: [string, any]) => {
-        this.fieldOptionsMap[section][fieldKey] = {
-          type: fieldDef.type,
-          options: fieldDef.options,
-          min: fieldDef.min,
-          max: fieldDef.max,
-          validation: fieldDef.validation,
-          label: fieldDef.label
-        };
-      });
-    });
+    Object.entries(fieldDefinitions).forEach(
+      ([section, fields]: [string, any]) => {
+        this.fieldOptionsMap[section] = {};
+        Object.entries(fields).forEach(
+          ([fieldKey, fieldDef]: [string, any]) => {
+            this.fieldOptionsMap[section][fieldKey] = {
+              type: fieldDef.type,
+              options: fieldDef.options,
+              min: fieldDef.min,
+              max: fieldDef.max,
+              validation: fieldDef.validation,
+              label: fieldDef.label,
+            };
+          }
+        );
+      }
+    );
 
-    console.log('[SimplifiedRespec] Built field options map:', {
+    console.log("[SimplifiedRespec] Built field options map:", {
       sections: Object.keys(this.fieldOptionsMap).length,
-      totalFields: Object.values(this.fieldOptionsMap).reduce((sum, section) => sum + Object.keys(section).length, 0)
+      totalFields: Object.values(this.fieldOptionsMap).reduce(
+        (sum, section) => sum + Object.keys(section).length,
+        0
+      ),
     });
   }
 
@@ -448,25 +563,25 @@ export class SimplifiedRespecService {
 
     // Also check for common patterns and keywords
     const commonFieldPatterns = {
-      'storage': ['compute_performance.storage_capacity'],
-      'memory': ['compute_performance.memory_capacity'],
-      'processor': ['compute_performance.processor_type'],
-      'cpu': ['compute_performance.processor_type'],
-      'ethernet': ['io_connectivity.ethernet_ports'],
-      'digital': ['io_connectivity.digital_io'],
-      'analog': ['io_connectivity.analog_io'],
-      'temperature': ['environment_standards.operating_temperature'],
-      'temp': ['environment_standards.operating_temperature'],
-      'budget': ['commercial.budget_per_unit'],
-      'price': ['commercial.budget_per_unit'],
-      'cost': ['commercial.budget_per_unit'],
-      'quantity': ['commercial.quantity'],
-      'qty': ['commercial.quantity']
+      storage: ["compute_performance.storage_capacity"],
+      memory: ["compute_performance.memory_capacity"],
+      processor: ["compute_performance.processor_type"],
+      cpu: ["compute_performance.processor_type"],
+      ethernet: ["io_connectivity.ethernet_ports"],
+      digital: ["io_connectivity.digital_io"],
+      analog: ["io_connectivity.analog_io"],
+      temperature: ["environment_standards.operating_temperature"],
+      temp: ["environment_standards.operating_temperature"],
+      budget: ["commercial.budget_per_unit"],
+      price: ["commercial.budget_per_unit"],
+      cost: ["commercial.budget_per_unit"],
+      quantity: ["commercial.quantity"],
+      qty: ["commercial.quantity"],
     };
 
     Object.entries(commonFieldPatterns).forEach(([keyword, fields]) => {
       if (messageLower.includes(keyword)) {
-        fields.forEach(field => {
+        fields.forEach((field) => {
           if (!relevantFields.includes(field)) {
             relevantFields.push(field);
           }
@@ -477,14 +592,17 @@ export class SimplifiedRespecService {
     return relevantFields;
   }
 
-  private buildContextPrompt(message: string, identifiedFields: string[]): string {
+  private buildContextPrompt(
+    message: string,
+    identifiedFields: string[]
+  ): string {
     let prompt = `User request: "${message}"\n\n`;
 
     if (identifiedFields.length > 0) {
       prompt += `Available field options for this request:\n`;
 
-      identifiedFields.forEach(fieldPath => {
-        const [section, field] = fieldPath.split('.');
+      identifiedFields.forEach((fieldPath) => {
+        const [section, field] = fieldPath.split(".");
         const fieldOptions = this.fieldOptionsMap[section]?.[field];
 
         if (fieldOptions) {
@@ -492,11 +610,18 @@ export class SimplifiedRespecService {
           prompt += `  Type: ${fieldOptions.type}\n`;
 
           if (fieldOptions.options && fieldOptions.options.length > 0) {
-            prompt += `  Available options: [${fieldOptions.options.join(', ')}]\n`;
+            prompt += `  Available options: [${fieldOptions.options.join(
+              ", "
+            )}]\n`;
             prompt += `  Instruction: Select the closest matching option from the available list. If substituting, explain why in substitutionNote.\n`;
-          } else if (fieldOptions.type === 'number') {
-            if (fieldOptions.min !== undefined || fieldOptions.max !== undefined) {
-              prompt += `  Range: ${fieldOptions.min || 'no minimum'} to ${fieldOptions.max || 'no maximum'}\n`;
+          } else if (fieldOptions.type === "number") {
+            if (
+              fieldOptions.min !== undefined ||
+              fieldOptions.max !== undefined
+            ) {
+              prompt += `  Range: ${fieldOptions.min || "no minimum"} to ${
+                fieldOptions.max || "no maximum"
+              }\n`;
             }
           } else if (fieldOptions.validation) {
             prompt += `  Validation pattern: ${fieldOptions.validation}\n`;
@@ -516,7 +641,7 @@ export class SimplifiedRespecService {
     return prompt;
   }
 
-  async processChatMessage(message: string, currentRequirements?: any): Promise<ChatResult> {
+  async processChatMessage(message: string): Promise<ChatResult> {
     if (!this.isInitialized) {
       await this.initialize();
     }
@@ -527,24 +652,27 @@ export class SimplifiedRespecService {
     const conflictStatus = this.getActiveConflictsForAgent();
 
     if (conflictStatus.hasConflicts && this.artifactManager) {
-      console.log(`[SimplifiedRespec] 🎯 Conflict resolution mode - routing to agent`);
+      console.log(
+        `[SimplifiedRespec] 🎯 Conflict resolution mode - routing to agent`
+      );
 
       // Use AnthropicService to handle conflict resolution (parse A/B, resolve, confirm)
-      const resolutionResult = await this.anthropicService.handleConflictResolution(
-        message,
-        conflictStatus,
-        this.artifactManager
-      );
+      const resolutionResult =
+        await this.anthropicService.handleConflictResolution(
+          message,
+          conflictStatus,
+          this.artifactManager
+        );
 
       // Add to conversation history
       this.conversationHistory.push({
-        role: 'user',
+        role: "user",
         content: message,
         timestamp: new Date(),
       });
 
       this.conversationHistory.push({
-        role: 'assistant',
+        role: "assistant",
         content: resolutionResult.response,
         timestamp: new Date(),
       });
@@ -555,54 +683,75 @@ export class SimplifiedRespecService {
         success: true,
         systemMessage: resolutionResult.response,
         formUpdates: [],
-        confidence: 1.0
+        confidence: 1.0,
       };
     }
 
     // Add to conversation history
     this.conversationHistory.push({
-      role: 'user',
+      role: "user",
       content: message,
       timestamp: new Date(),
     });
 
     try {
       // Sprint 2: New flow with Agent extraction + UC1 matching
-      console.log(`[SimplifiedRespec] 🚀 Starting Sprint 2 flow: Agent → Integration → UC1 Matcher`);
+      console.log(
+        `[SimplifiedRespec] 🚀 Starting Sprint 2 flow: Agent → Integration → UC1 Matcher`
+      );
 
       // Identify relevant fields from the message
       const identifiedFields = this.identifyRelevantFields(message);
-      console.log(`[SimplifiedRespec] Identified relevant fields:`, identifiedFields);
+      console.log(
+        `[SimplifiedRespec] Identified relevant fields:`,
+        identifiedFields
+      );
 
       // Build context with available options
       const contextPrompt = this.buildContextPrompt(message, identifiedFields);
       console.log(`[SimplifiedRespec] Built context prompt with field options`);
 
       // Step 1: Agent extracts requirements (with conversational flow)
-      console.log(`[SimplifiedRespec] 📝 Step 1: Agent extracting requirements...`);
+      console.log(
+        `[SimplifiedRespec] 📝 Step 1: Agent extracting requirements...`
+      );
       const anthropicResult = await this.anthropicService.analyzeRequirements(
         contextPrompt,
         {
           conversationHistory: this.conversationHistory.slice(-5), // Last 5 messages for context
-          sessionId: this.sessionId
+          sessionId: this.sessionId,
         }
       );
-      console.log(`[SimplifiedRespec] ✅ Agent extracted:`, anthropicResult.requirements.length, 'requirements');
+      console.log(
+        `[SimplifiedRespec] ✅ Agent extracted:`,
+        anthropicResult.requirements.length,
+        "requirements"
+      );
 
       // Step 2: Route through new semantic integration (if available and requirements exist)
-      if (this.semanticIntegrationNew && anthropicResult.requirements.length > 0) {
-        console.log(`[SimplifiedRespec] 🔍 Step 2: Routing to SemanticIntegrationService...`);
-
-        const enhancedResult = await this.semanticIntegrationNew.processExtractedRequirements(
-          anthropicResult.requirements,
-          anthropicResult.response
+      if (
+        this.semanticIntegrationNew &&
+        anthropicResult.requirements.length > 0
+      ) {
+        console.log(
+          `[SimplifiedRespec] 🔍 Step 2: Routing to SemanticIntegrationService...`
         );
 
-        console.log(`[SimplifiedRespec] ✅ Sprint 2 processing complete:`, enhancedResult.formUpdates?.length || 0, 'form updates');
+        const enhancedResult =
+          await this.semanticIntegrationNew.processExtractedRequirements(
+            anthropicResult.requirements,
+            anthropicResult.response
+          );
+
+        console.log(
+          `[SimplifiedRespec] ✅ Sprint 2 processing complete:`,
+          enhancedResult.formUpdates?.length || 0,
+          "form updates"
+        );
 
         // Add assistant response to history
         this.conversationHistory.push({
-          role: 'assistant',
+          role: "assistant",
           content: enhancedResult.systemMessage,
           timestamp: new Date(),
         });
@@ -614,25 +763,28 @@ export class SimplifiedRespecService {
       }
 
       // Fallback: Use legacy flow if semantic integration not available or no requirements
-      console.log(`[SimplifiedRespec] ⚠️  No semantic integration or no requirements, using legacy flow`);
+      console.log(
+        `[SimplifiedRespec] ⚠️  No semantic integration or no requirements, using legacy flow`
+      );
 
       // Convert Anthropic requirements to EnhancedFormUpdate format
-      const formUpdates: EnhancedFormUpdate[] = anthropicResult.requirements.map(req => ({
-        section: req.section,
-        field: req.field,
-        value: req.value,
-        isAssumption: req.isAssumption,
-        confidence: req.confidence,
-        originalRequest: req.originalRequest,
-        substitutionNote: req.substitutionNote
-      }));
+      const formUpdates: EnhancedFormUpdate[] =
+        anthropicResult.requirements.map((req) => ({
+          section: req.section,
+          field: req.field,
+          value: req.value,
+          isAssumption: req.isAssumption,
+          confidence: req.confidence,
+          originalRequest: req.originalRequest,
+          substitutionNote: req.substitutionNote,
+        }));
 
       // Use Anthropic's response
       const systemMessage = anthropicResult.response;
 
       // Add assistant response to history
       this.conversationHistory.push({
-        role: 'assistant',
+        role: "assistant",
         content: systemMessage,
         timestamp: new Date(),
       });
@@ -644,16 +796,17 @@ export class SimplifiedRespecService {
         success: true,
         systemMessage,
         formUpdates,
-        confidence: formUpdates.length > 0
-          ? formUpdates.reduce((sum, u) => sum + u.confidence, 0) / formUpdates.length
-          : 0.5,
-        clarificationNeeded: anthropicResult.clarificationNeeded
+        confidence:
+          formUpdates.length > 0
+            ? formUpdates.reduce((sum, u) => sum + u.confidence, 0) /
+              formUpdates.length
+            : 0.5,
+        clarificationNeeded: anthropicResult.clarificationNeeded,
       };
 
       return result;
-
     } catch (error) {
-      console.error('[SimplifiedRespec] ❌ LLM processing failed:', error);
+      console.error("[SimplifiedRespec] ❌ LLM processing failed:", error);
       throw error; // Fail fast for MVP (Sprint 2 requirement)
     }
   }
@@ -663,7 +816,7 @@ export class SimplifiedRespecService {
    * Sprint 3 Week 1: Returns structured conflict data to agent for binary question generation
    * Sprint 3 Week 2: Enhanced with priority queue (one conflict at a time)
    */
-  getActiveConflictsForAgent(): any {
+  getActiveConflictsForAgent(): StructuredConflicts {
     if (!this.artifactManager) {
       return { hasConflicts: false, conflicts: [] };
     }
@@ -677,12 +830,12 @@ export class SimplifiedRespecService {
 
     // Sprint 3 Week 2: Sort by priority
     const priorityOrder: Record<string, number> = {
-      'cross-artifact': 1,  // Highest - user changing existing choices
-      'cross_artifact': 1,  // Handle underscore variant
-      'logical': 2,         // High - fundamental incompatibilities
-      'constraint': 3,      // Medium - schema violations
-      'dependency': 3,      // Medium - missing requirements
-      'mutex': 4            // Low - multiple selections
+      "cross-artifact": 1, // Highest - user changing existing choices
+      cross_artifact: 1, // Handle underscore variant
+      logical: 2, // High - fundamental incompatibilities
+      constraint: 3, // Medium - schema violations
+      dependency: 3, // Medium - missing requirements
+      mutex: 4, // Low - multiple selections
     };
 
     activeConflicts = [...activeConflicts].sort((a, b) => {
@@ -692,30 +845,31 @@ export class SimplifiedRespecService {
     });
 
     // SPRINT 3 FIX B: Return ALL conflicts (agent will aggregate into one question)
-    const structuredConflicts = activeConflicts.map(conflict => ({
+    const structuredConflicts = activeConflicts.map((conflict) => ({
       id: conflict.id,
       type: conflict.type,
       description: conflict.description,
-      conflictingNodes: conflict.conflictingNodes.map(nodeId => ({
+      conflictingNodes: conflict.conflictingNodes.map((nodeId) => ({
         id: nodeId,
-        ...this.getNodeDetails(nodeId)
+        ...this.getNodeDetails(nodeId),
       })),
-      resolutionOptions: conflict.resolutionOptions.map(option => ({
+      resolutionOptions: conflict.resolutionOptions.map((option) => ({
         id: option.id,
         label: option.description,
-        outcome: option.expectedOutcome
+        outcome: option.expectedOutcome,
       })),
       cycleCount: conflict.cycleCount,
-      priority: ((conflict.type as any) === 'cross-artifact' || (conflict.type as any) === 'cross_artifact') ? 'critical' : 'high'
+      priority:
+        (conflict.type as any) === "cross_artifact" ? "critical" : "high",
     }));
 
     return {
       hasConflicts: true,
-      count: activeConflicts.length,          // Total count for transparency
-      currentConflict: 1,                      // Currently handling first batch
+      count: activeConflicts.length, // Total count for transparency
+      currentConflict: 1, // Currently handling first batch
       totalConflicts: activeConflicts.length, // For progress indicators
       systemBlocked: state.conflicts.metadata.systemBlocked,
-      conflicts: structuredConflicts          // ALL conflicts for agent aggregation
+      conflicts: structuredConflicts, // ALL conflicts for agent aggregation
     };
   }
 
@@ -727,29 +881,44 @@ export class SimplifiedRespecService {
     if (!this.artifactManager || !this.uc1Engine) return {};
 
     const hierarchy = this.uc1Engine.getHierarchy(nodeId);
-    const spec = this.artifactManager.findSpecificationInArtifact('mapped', nodeId);
+    const spec = this.artifactManager.findSpecificationInArtifact(
+      "mapped",
+      nodeId
+    );
 
     if (!hierarchy) return { name: nodeId };
 
     return {
       name: spec?.name || nodeId,
       value: spec?.value,
-      hierarchy: hierarchy ? {
-        domain: hierarchy.domain,
-        requirement: hierarchy.requirement
-      } : undefined
+      hierarchy: hierarchy
+        ? {
+            domain: hierarchy.domain,
+            requirement: hierarchy.requirement,
+          }
+        : undefined,
     };
   }
 
-  async processFormUpdate(section: string, field: string, value: any): Promise<FormProcessingResult> {
-    console.log(`[SimplifiedRespec] Form update: ${section}.${field} = ${value}`);
+  async processFormUpdate(
+    section: string,
+    field: string,
+    value: any
+  ): Promise<FormProcessingResult> {
+    console.log(
+      `[SimplifiedRespec] Form update: ${section}.${field} = ${value}`
+    );
 
     // Generate contextual acknowledgment
-    const acknowledgment = this.generateFormAcknowledgment(section, field, value);
+    const acknowledgment = this.generateFormAcknowledgment(
+      section,
+      field,
+      value
+    );
 
     if (acknowledgment) {
       this.conversationHistory.push({
-        role: 'assistant',
+        role: "assistant",
         content: acknowledgment,
         timestamp: new Date(),
       });
@@ -768,7 +937,7 @@ export class SimplifiedRespecService {
    * This ensures respec is the single source of truth
    */
   private handleRespecUpdate(data: any): void {
-    console.log('[SimplifiedRespec] 🔔 Respec artifact updated:', data);
+    console.log("[SimplifiedRespec] 🔔 Respec artifact updated:", data);
 
     // TODO: For now, this logs the update. In async conflict resolution scenarios,
     // we'll need to generate form updates and push them to the UI through a callback
@@ -786,21 +955,29 @@ export class SimplifiedRespecService {
     const context = this.determineApplicationContext();
 
     // Get appropriate defaults
-    const defaults = this.smartDefaults[context as keyof typeof this.smartDefaults] || this.smartDefaults.generic;
+    const defaults =
+      this.smartDefaults[context as keyof typeof this.smartDefaults] ||
+      this.smartDefaults.generic;
 
     // Convert to form updates
-    const fields: FormUpdate[] = Object.entries(defaults).map(([path, value]) => {
-      const [section, field] = path.split('.');
-      return {
-        section,
-        field,
-        value,
-        isAssumption: true,
-        confidence: 0.8,
-      };
-    });
+    const fields: FormUpdate[] = Object.entries(defaults).map(
+      ([path, value]) => {
+        const [section, field] = path.split(".");
+        return {
+          section,
+          field,
+          value,
+          isAssumption: true,
+          confidence: 0.8,
+        };
+      }
+    );
 
-    const message = this.generateAutofillMessage(context, trigger, fields.length);
+    const message = this.generateAutofillMessage(
+      context,
+      trigger,
+      fields.length
+    );
 
     return {
       message,
@@ -921,7 +1098,11 @@ export class SimplifiedRespecService {
   }
   END DISABLED */
 
-  private generateFormAcknowledgment(section: string, field: string, value: any): string {
+  private generateFormAcknowledgment(
+    section: string,
+    field: string,
+    value: any
+  ): string {
     const friendlyName = this.getFriendlyFieldName(section, field);
 
     const acknowledgments = [
@@ -934,19 +1115,27 @@ export class SimplifiedRespecService {
     return acknowledgments[Math.floor(Math.random() * acknowledgments.length)];
   }
 
-  private generateAutofillMessage(context: string, trigger: string, fieldCount: number): string {
+  private generateAutofillMessage(
+    context: string,
+    trigger: string,
+    fieldCount: number
+  ): string {
     const contextMessages = {
       substation: `Based on typical substation requirements, I've filled in ${fieldCount} common specifications as assumptions.`,
       industrial: `Based on common industrial automation needs, I've added ${fieldCount} typical requirements as assumptions.`,
       generic: `I've filled in ${fieldCount} common electronic system requirements as assumptions.`,
     };
 
-    let message = contextMessages[context as keyof typeof contextMessages] || contextMessages.generic;
+    let message =
+      contextMessages[context as keyof typeof contextMessages] ||
+      contextMessages.generic;
 
-    if (trigger === 'dont_know') {
-      message += " You can modify any of these that don't fit your specific needs.";
-    } else if (trigger === 'button_header') {
-      message += " These are marked as assumptions - review and update as needed.";
+    if (trigger === "dont_know") {
+      message +=
+        " You can modify any of these that don't fit your specific needs.";
+    } else if (trigger === "button_header") {
+      message +=
+        " These are marked as assumptions - review and update as needed.";
     }
 
     return message;
@@ -972,17 +1161,17 @@ export class SimplifiedRespecService {
   private getFriendlyFieldName(section: string, field: string): string {
     const friendlyNames: Record<string, Record<string, string>> = {
       io: {
-        digital_inputs: 'Digital Inputs',
-        digital_outputs: 'Digital Outputs',
-        analog_inputs: 'Analog Inputs',
-        analog_outputs: 'Analog Outputs',
+        digital_inputs: "Digital Inputs",
+        digital_outputs: "Digital Outputs",
+        analog_inputs: "Analog Inputs",
+        analog_outputs: "Analog Outputs",
       },
       power: {
-        supply_voltage: 'Supply Voltage',
+        supply_voltage: "Supply Voltage",
       },
       communication: {
-        ethernet: 'Ethernet',
-        modbus: 'Modbus',
+        ethernet: "Ethernet",
+        modbus: "Modbus",
       },
     };
 
@@ -992,13 +1181,17 @@ export class SimplifiedRespecService {
   private determineApplicationContext(): string {
     const recentMessages = this.conversationHistory
       .slice(-5)
-      .map(entry => entry.content)
-      .join(' ')
+      .map((entry) => entry.content)
+      .join(" ")
       .toLowerCase();
 
-    if (recentMessages.includes('substation')) return 'substation';
-    if (recentMessages.includes('industrial') || recentMessages.includes('factory')) return 'industrial';
-    return 'generic';
+    if (recentMessages.includes("substation")) return "substation";
+    if (
+      recentMessages.includes("industrial") ||
+      recentMessages.includes("factory")
+    )
+      return "industrial";
+    return "generic";
   }
 
   private saveSession(): void {
@@ -1007,9 +1200,12 @@ export class SimplifiedRespecService {
         conversationHistory: this.conversationHistory,
         lastUpdated: new Date().toISOString(),
       };
-      localStorage.setItem(`respec_session_${this.sessionId}`, JSON.stringify(sessionData));
+      localStorage.setItem(
+        `respec_session_${this.sessionId}`,
+        JSON.stringify(sessionData)
+      );
     } catch (error) {
-      console.warn('[SimplifiedRespec] Could not save session:', error);
+      console.warn("[SimplifiedRespec] Could not save session:", error);
     }
   }
 
@@ -1021,7 +1217,7 @@ export class SimplifiedRespecService {
   clearSession(): void {
     this.conversationHistory = [];
     localStorage.removeItem(`respec_session_${this.sessionId}`);
-    console.log('[SimplifiedRespec] Session cleared');
+    console.log("[SimplifiedRespec] Session cleared");
   }
 
   getDebugInfo() {
@@ -1029,7 +1225,9 @@ export class SimplifiedRespecService {
       sessionId: this.sessionId,
       isInitialized: this.isInitialized,
       conversationLength: this.conversationHistory.length,
-      lastActivity: this.conversationHistory[this.conversationHistory.length - 1]?.timestamp,
+      lastActivity:
+        this.conversationHistory[this.conversationHistory.length - 1]
+          ?.timestamp,
     };
   }
 
@@ -1046,7 +1244,7 @@ export class SimplifiedRespecService {
     field: string,
     newValue: string,
     currentRequirements: any,
-    source: 'semantic' | 'manual' | 'autofill' = 'manual',
+    source: "semantic" | "manual" | "autofill" = "manual",
     context?: {
       originalRequest?: string;
       confidence?: number;
@@ -1054,7 +1252,7 @@ export class SimplifiedRespecService {
     }
   ): Promise<FieldConflict[]> {
     if (!this.conflictDetection) {
-      console.warn('[SimplifiedRespec] Conflict detection not initialized');
+      console.warn("[SimplifiedRespec] Conflict detection not initialized");
       return [];
     }
 
@@ -1067,17 +1265,25 @@ export class SimplifiedRespecService {
         context
       );
     } catch (error) {
-      console.error('[SimplifiedRespec] Conflict detection failed:', error);
+      console.error("[SimplifiedRespec] Conflict detection failed:", error);
       return [];
     }
   }
 
-  async resolveConflict(conflictId: string, action: 'accept' | 'reject' | 'modify', newValue?: string) {
+  async resolveConflict(
+    conflictId: string,
+    action: "accept" | "reject" | "modify",
+    newValue?: string
+  ) {
     if (!this.conflictDetection) {
-      throw new Error('Conflict detection not initialized');
+      throw new Error("Conflict detection not initialized");
     }
 
-    return await this.conflictDetection.resolveConflict(conflictId, action, newValue);
+    return await this.conflictDetection.resolveConflict(
+      conflictId,
+      action,
+      newValue
+    );
   }
 
   getActiveConflicts(): FieldConflict[] {
