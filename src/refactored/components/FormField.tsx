@@ -1,7 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { AlertCircle, AlertTriangle, Check, Info } from "lucide-react";
 
-export type FieldValue = string | number | boolean | string[] | null | undefined;
+export type FieldValue =
+  | string
+  | number
+  | boolean
+  | string[]
+  | null
+  | undefined;
 
 export type FieldDef = {
   type: "dropdown" | "multi-select" | "number" | "date" | "text";
@@ -185,7 +191,9 @@ export const FormField: React.FC<FormFieldProps> = ({
               readOnly={isReadOnly}
               disabled={isReadOnly}
               className={`${baseInputClass} ${
-                isReadOnly ? "border-gray-200 bg-gray-50 cursor-not-allowed" : ""
+                isReadOnly
+                  ? "border-gray-200 bg-gray-50 cursor-not-allowed"
+                  : ""
               }`}
               placeholder={
                 isReadOnly
@@ -312,4 +320,3 @@ export const FormField: React.FC<FormFieldProps> = ({
     </div>
   );
 };
-

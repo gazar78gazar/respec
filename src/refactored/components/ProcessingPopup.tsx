@@ -24,4 +24,3 @@ export const ProcessingPopup: React.FC<ProcessingPopupProps> = ({
     </div>
   );
 };
-

@@ -23,11 +23,7 @@ export const ConflictPanelContainer: React.FC<ConflictPanelContainerProps> = ({
 }) => {
   if (!visible || conflicts.length === 0) return null;
   return (
-    <div
-      className={
-        className || "fixed bottom-4 right-4 w-96 max-h-80 z-50"
-      }
-    >
+    <div className={className || "fixed bottom-4 right-4 w-96 max-h-80 z-50"}>
       <ConflictPanel
         conflicts={conflicts}
         onResolveConflict={onResolve}
@@ -36,4 +32,3 @@ export const ConflictPanelContainer: React.FC<ConflictPanelContainerProps> = ({
     </div>
   );
 };
-

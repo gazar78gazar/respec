@@ -15,7 +15,7 @@ interface ConflictPanelProps {
   className?: string;
 }
 
-export const ConflictPanel: React.FC<ConflictPanelProps> =({
+export const ConflictPanel: React.FC<ConflictPanelProps> = ({
   conflicts,
   onResolveConflict,
   onDismissConflict,
@@ -422,6 +422,6 @@ export const ConflictPanel: React.FC<ConflictPanelProps> =({
       </div>
     </div>
   );
-}
+};
 
 export default ConflictPanel;

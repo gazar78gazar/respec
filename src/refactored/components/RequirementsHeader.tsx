@@ -6,9 +6,10 @@ export interface RequirementsHeaderProps {
   onAutoFillClick: () => void;
 }
 
-export const RequirementsHeader: React.FC<
-  RequirementsHeaderProps
-> = ({ activeTabTitle, onAutoFillClick }) => {
+export const RequirementsHeader: React.FC<RequirementsHeaderProps> = ({
+  activeTabTitle,
+  onAutoFillClick,
+}) => {
   return (
     <div className="px-6 py-4 border-b flex items-center justify-between">
       <h3 className="text-lg font-medium text-gray-800">

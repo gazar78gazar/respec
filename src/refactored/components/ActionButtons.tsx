@@ -22,7 +22,11 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
   className,
 }) => {
   return (
-    <div className={"flex items-center space-x-2" + (className ? ` ${className}` : "") }>
+    <div
+      className={
+        "flex items-center space-x-2" + (className ? ` ${className}` : "")
+      }
+    >
       <button
         onClick={onAutofillAll}
         disabled={!onAutofillAll}
@@ -60,4 +64,3 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
     </div>
   );
 };
-
