@@ -38,11 +38,19 @@ import { ConflictPanelContainer } from "./components/ConflictPanelContainer";
 import { RequirementsForm } from "./components/RequirementsForm";
 import { ConflictToggleButton } from "./components/ConflictToggleButton";
 import { RequirementsHeader } from "./components/RequirementsHeader";
-
-type Error = {
-  severity: "error" | "warning";
-  message: string;
-};
+import {
+  mapValueToFormField,
+  validateField,
+  validateSystemFieldUpdate,
+  getPriority,
+  calculateCompletion,
+  calculateAccuracy,
+  getMustFieldsStatus,
+  getFieldLabel,
+  applyFieldUpdate,
+  resolveFieldLocation,
+  focusAndScrollField,
+} from "./utils/fields-utils";
 
 // Safe index helpers for dynamic section keys (string index access)
 type FieldDefExt = FieldDef & { group?: string };
@@ -53,133 +61,6 @@ type FieldGroupsMap = Record<
 >;
 const FIELD_DEFS = formFieldsData.field_definitions as unknown as FieldDefsMap;
 const FIELD_GROUPS = formFieldsData.field_groups as unknown as FieldGroupsMap;
-
-const validateField = (fieldKey: string, value: any, fieldDef: any) => {
-  const errors: Error[] = [];
-
-  if (
-    value === "Not Required" ||
-    (Array.isArray(value) && value.includes("Not Required"))
-  ) {
-    return errors; // Valid, no errors
-  }
-
-  if (fieldDef.required && (!value || value === "")) {
-    errors.push({
-      severity: "error",
-      message: `${fieldDef.label} is required`,
-    });
-    return errors;
-  }
-
-  let numValue: number;
-
-  switch (fieldDef.type) {
-    case "number":
-      numValue = parseFloat(value);
-      if (value && value !== "" && isNaN(numValue)) {
-        errors.push({ severity: "error", message: "Must be a valid number" });
-      } else if (value && value !== "") {
-        if (fieldDef.min !== undefined && numValue < fieldDef.min) {
-          errors.push({
-            severity: "error",
-            message: `Minimum value is ${fieldDef.min}`,
-          });
-        }
-        if (fieldDef.max !== undefined && numValue > fieldDef.max) {
-          errors.push({
-            severity: "error",
-            message: `Maximum value is ${fieldDef.max}`,
-          });
-        }
-      }
-      if (fieldKey === "budget_per_unit" && value && value < 0) {
-        errors.push({
-          severity: "error",
-          message: "Budget cannot be negative",
-        });
-      }
-      break;
-
-    case "text":
-      break;
-
-    case "date":
-      if (value) {
-        const selectedDate = new Date(value);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        if (selectedDate < today) {
-          errors.push({ severity: "warning", message: "Date is in the past" });
-        }
-      }
-      break;
-
-    case "dropdown":
-      if (
-        value &&
-        value !== "" &&
-        fieldDef.options &&
-        !fieldDef.options.includes(value)
-      ) {
-        errors.push({
-          severity: "error",
-          message: "Please select a valid option",
-        });
-      }
-      break;
-
-    case "multi-select":
-      if (value && Array.isArray(value) && value.length > 0) {
-        const invalidOptions = value.filter(
-          (v) => v !== "Not Required" && !fieldDef.options.includes(v)
-        );
-        if (invalidOptions.length > 0) {
-          errors.push({
-            severity: "error",
-            message: `Invalid options selected: ${invalidOptions.join(", ")}`,
-          });
-        }
-      }
-      break;
-  }
-
-  return errors;
-};
-
-const autoCalculateFields = (
-  changedField: string,
-  newValue: string | number,
-  requirements: Requirements
-): Record<string, string> => {
-  const updates: Record<string, string> = {};
-
-  if (changedField === "budget_per_unit" || changedField === "quantity") {
-    const commercial = requirements.commercial || {};
-    const unitBudget = parseFloat(
-      (commercial.budget_per_unit?.value || 0).toString().replace(/[$,]/g, "")
-    );
-    const quantity = parseInt(String(commercial.quantity?.value || 0));
-
-    if (changedField === "budget_per_unit") {
-      const newUnitBudget = parseFloat(String(newValue).replace(/[$,]/g, ""));
-      if (!isNaN(newUnitBudget) && quantity > 0) {
-        updates["commercial.total_budget"] = (newUnitBudget * quantity).toFixed(
-          2
-        );
-      }
-    } else if (changedField === "quantity") {
-      const newQuantity = parseInt(String(newValue));
-      if (!isNaN(unitBudget) && !isNaN(newQuantity) && unitBudget > 0) {
-        updates["commercial.total_budget"] = (unitBudget * newQuantity).toFixed(
-          2
-        );
-      }
-    }
-  }
-
-  return updates;
-};
 
 export default function App() {
   const [currentStage, setCurrentStage] = useState<number>(1);
@@ -287,91 +168,6 @@ export default function App() {
     []
   );
 
-  const validateSystemFieldUpdate = useCallback(
-    (
-      section: string,
-      field: string,
-      value: unknown,
-      allowOverride: boolean = false
-    ): boolean => {
-      try {
-        const currentField = requirements[section]?.[field];
-        if (
-          currentField?.source === "user" &&
-          currentField?.value !== "" &&
-          currentField?.value !== null
-        ) {
-          const permissionKey = `${section}.${field}`;
-          const hasPermission =
-            fieldPermissions[permissionKey]?.allowSystemOverride;
-
-          if (!allowOverride || !hasPermission) {
-            console.error(
-              `[BLOCKED] Cannot overwrite user field ${section}.${field} without permission`
-            );
-            addTrace(
-              "field_update_blocked",
-              { section, field, reason: "no_permission" },
-              "BLOCKED"
-            );
-            return false;
-          }
-
-          console.warn(
-            `[OVERRIDE] Overwriting user field ${section}.${field} with permission`
-          );
-          addTrace("field_override", { section, field, value }, "WARNING");
-        }
-
-        const fieldExists = FIELD_DEFS[section]?.[field];
-        if (!fieldExists) {
-          console.error(
-            `[UI-MAS] Invalid field reference: ${section}.${field}`
-          );
-          addTrace(
-            "field_validation_failed",
-            { section, field, reason: "field_not_exists" },
-            "FAILED"
-          );
-          return false;
-        }
-
-        const fieldDef = FIELD_DEFS[section][field];
-        if (
-          fieldDef.type === "dropdown" &&
-          fieldDef.options &&
-          !fieldDef.options.includes(value)
-        ) {
-          console.warn(
-            `[UI-MAS] Invalid dropdown value for ${section}.${field}: ${value}`
-          );
-          return false;
-        }
-
-        if (
-          fieldDef.type === "number" &&
-          value !== null &&
-          value !== "" &&
-          isNaN(Number(value))
-        ) {
-          console.warn(
-            `[UI-MAS] Invalid number value for ${section}.${field}: ${value}`
-          );
-          return false;
-        }
-
-        return true;
-      } catch (error: unknown) {
-        console.error(
-          `[UI-MAS] Validation error for ${section}.${field}:`,
-          error
-        );
-        return false;
-      }
-    },
-    [requirements, addTrace, fieldPermissions]
-  );
-
   const handleConflictResolve = async (
     conflictId: string,
     action: "accept" | "reject" | "modify",
@@ -431,107 +227,6 @@ export default function App() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const mapValueToFormField = (
-    section: string,
-    field: string,
-    value: unknown
-  ) => {
-    console.log(`[DEBUG] Mapping value for ${section}.${field}:`, {
-      inputValue: value,
-      inputType: typeof value,
-    });
-
-    if (value === true || value === "true") {
-      switch (field) {
-        case "wireless_extension":
-        case "wirelessExtension":
-          return "WiFi"; // Default WiFi option
-        case "ethernet_ports":
-        case "networkPorts":
-          return "2"; // Default 2 ports
-        default:
-          return value;
-      }
-    }
-
-    type Maybe<InternalType> = InternalType | null;
-
-    if (typeof value === "string") {
-      const lowerValue = value.toLowerCase();
-      let validAnalogOptions: string[];
-      let validDigitalOptions: string[];
-      let analogMatch: Maybe<RegExpMatchArray>;
-      let digitalMatch: Maybe<RegExpMatchArray>;
-
-      switch (field) {
-        case "wireless_extension":
-        case "wirelessExtension":
-          if (lowerValue.includes("wifi") || lowerValue.includes("wi-fi")) {
-            return "WiFi";
-          }
-          if (lowerValue.includes("lte")) return "LTE";
-          if (lowerValue.includes("5g")) return "5G";
-          if (lowerValue.includes("lora")) return "LoRa";
-          if (
-            lowerValue.includes("none") ||
-            lowerValue.includes("not required")
-          )
-            return "None";
-          return "WiFi"; // Default fallback
-
-        case "analog_io":
-        case "analogIO":
-          validAnalogOptions = ["None", "2", "4", "8", "16", "32", "64"];
-          if (validAnalogOptions.includes(value)) return value;
-          analogMatch = value.match(/(\d+)/);
-          if (analogMatch) {
-            const num = analogMatch[1];
-            if (validAnalogOptions.includes(num)) return num;
-          }
-          return "4"; // Default fallback
-
-        case "digital_io":
-        case "digitalIO":
-          validDigitalOptions = ["None", "2", "4", "8", "16", "32", "64"];
-          if (validDigitalOptions.includes(value)) return value;
-          digitalMatch = value.match(/(\d+)/);
-          if (digitalMatch) {
-            const num = digitalMatch[1];
-            if (validDigitalOptions.includes(num)) return num;
-          }
-          return "8"; // Default fallback
-
-        case "ethernet_ports":
-        case "networkPorts":
-          if (lowerValue.includes("2") || lowerValue.includes("two"))
-            return "2";
-          if (lowerValue.includes("4") || lowerValue.includes("four"))
-            return "4";
-          if (lowerValue.includes("8") || lowerValue.includes("eight"))
-            return "8";
-          return "2"; // Default fallback
-      }
-    }
-
-    if (typeof value === "number") {
-      switch (field) {
-        case "analog_io":
-        case "analogIO":
-        case "digital_io":
-        case "digitalIO":
-          return value.toString(); // Convert to string for dropdown
-        default:
-          return value;
-      }
-    }
-
-    console.log(
-      `[DEBUG] No mapping found for ${section}.${field}, using original value:`,
-      value
-    );
-    return value;
   };
 
   const addChatMessage = (
@@ -815,7 +510,15 @@ Please respond with A or B.`;
         case "system_populate_field": {
           const d = data as PayloadMap["system_populate_field"];
           try {
-            if (!validateSystemFieldUpdate(d.section, d.field, d.value)) {
+            if (
+              !validateSystemFieldUpdate(
+                requirements,
+                fieldPermissions,
+                d.section,
+                d.field,
+                d.value
+              )
+            ) {
               addTrace(
                 "system_populate_field",
                 {
@@ -1352,17 +1055,6 @@ Please respond with A or B.`;
     }));
   };
 
-  const getPriority = (fieldKey: string) => {
-    for (const [level, config] of Object.entries(
-      formFieldsData.priority_system.priority_levels
-    )) {
-      if (config.fields.includes(fieldKey)) {
-        return parseInt(level);
-      }
-    }
-    return 4;
-  };
-
   const updateField = useCallback(
     (
       section: string,
@@ -1371,43 +1063,9 @@ Please respond with A or B.`;
       isAssumption = false,
       source = "user"
     ) => {
-      setRequirements((prev) => {
-        const updated = {
-          ...prev,
-          [section]: {
-            ...prev[section],
-            [field]: {
-              ...prev[section][field],
-              value,
-              isComplete: value !== "" && value !== null,
-              isAssumption,
-              lastUpdated: new Date().toISOString(),
-              source, // Use the provided source parameter
-            },
-          },
-        };
-
-        const autoUpdates = autoCalculateFields(field, value, updated);
-        Object.entries(autoUpdates).forEach(([path, autoValue]) => {
-          const [autoSection, autoField] = path.split(".");
-          if (autoSection && autoField) {
-            updated[autoSection][autoField] = {
-              ...updated[autoSection][autoField],
-              value: autoValue,
-              isComplete: true,
-              isAssumption: false,
-              dataSource: "requirement",
-              priority: updated[autoSection][autoField]?.priority || 1,
-              source: "system",
-              lastUpdated: new Date().toISOString(),
-              toggleHistory:
-                updated[autoSection][autoField]?.toggleHistory || [],
-            };
-          }
-        });
-
-        return updated;
-      });
+      setRequirements((prev) =>
+        applyFieldUpdate(prev, section, field, value, isAssumption, source)
+      );
 
       const fieldDef = FIELD_DEFS[section]?.[field];
       if (fieldDef) {
@@ -1479,104 +1137,23 @@ Please respond with A or B.`;
     return () => clearTimeout(timer);
   }, [requirements, projectName]);
 
-  const calculateCompletion = () => {
-    const formattedRequirements = {};
-    Object.entries(requirements).forEach(([section, fields]) => {
-      Object.entries(fields).forEach(([fieldKey, fieldData]) => {
-        formattedRequirements[fieldKey] = {
-          value: fieldData.value,
-          priority: fieldData.priority,
-          isAssumption: fieldData.isAssumption,
-        };
-      });
-    });
-    return uiUtils.calculateCompletionScore(formattedRequirements);
-  };
-
-  const calculateAccuracy = () => {
-    const TOTAL_FIELDS = 37; // Total number of fields in the system
-    const REQUIREMENT_WEIGHT = 100 / TOTAL_FIELDS; // ~2.7% per field
-    const ASSUMPTION_WEIGHT = 60 / TOTAL_FIELDS; // ~1.62% per field
-
-    let accuracyScore = 0;
-    let fieldCount = 0;
-
-    Object.values(requirements).forEach((section) => {
-      Object.values(section).forEach((field) => {
-        fieldCount++;
-
-        if (field.isComplete) {
-          if (!field.isAssumption) {
-            accuracyScore += REQUIREMENT_WEIGHT;
-          } else {
-            accuracyScore += ASSUMPTION_WEIGHT;
-          }
-        }
-      });
-    });
-
-    if (fieldCount !== TOTAL_FIELDS) {
-      console.warn(
-        `Field count mismatch: Expected ${TOTAL_FIELDS}, found ${fieldCount}`
-      );
-    }
-
-    return Math.min(100, Math.round(accuracyScore * 10) / 10);
-  };
-
-  const getMustFieldsStatus = () => {
-    const mustFields = formFieldsData.priority_system.must_fields;
-    let completed = 0;
-    const missing: string[] = [];
-
-    mustFields.forEach((fieldKey) => {
-      let found = false;
-      Object.values(requirements).forEach((section) => {
-        if (section[fieldKey]?.isComplete) {
-          found = true;
-          completed++;
-        }
-      });
-      if (!found) missing.push(fieldKey);
-    });
-
-    return { total: mustFields.length, completed, missing };
-  };
-
   const scrollToField = (fieldKey: string) => {
-    for (const [section, fields] of Object.entries(FIELD_DEFS)) {
-      if (fields[fieldKey]) {
-        const fieldDef = fields[fieldKey];
-        // Expand the group containing this field
-        if (fieldDef.group) {
-          setExpandedGroups((prev) => ({
-            ...prev,
-            [section]: {
-              ...prev[section],
-              [fieldDef.group]: true,
-            },
-          }));
-        }
-        // Find the right tab and activate it
-        for (const [tab, sections] of Object.entries(SECTION_MAPPING)) {
-          if (sections.includes(section)) {
-            setActiveTab(tab);
-            break;
-          }
-        }
-        // Scroll to field after state updates
-        setTimeout(() => {
-          const element = document.getElementById(`field-${fieldKey}`);
-          if (element) {
-            element.scrollIntoView({ behavior: "smooth", block: "center" });
-            element.focus();
-          } else {
-            console.error(`ui element ${fieldKey} not found!`);
-          }
-        }, 100);
-        break;
-      }
+    const loc = resolveFieldLocation(fieldKey);
+    if (!loc) return;
+    if (loc.group) {
+      setExpandedGroups((prev) => ({
+        ...prev,
+        [loc.section]: {
+          ...prev[loc.section],
+          [loc.group!]: true,
+        },
+      }));
     }
+    if (loc.tab) setActiveTab(loc.tab);
+    setTimeout(() => {
+      const ok = focusAndScrollField(fieldKey);
+      if (!ok) console.error(`ui element ${fieldKey} not found!`);
+    }, 100);
   };
 
   const autofillAll = async () => {
@@ -1722,7 +1299,7 @@ Please respond with A or B.`;
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [requirements, projectName, handleExport]);
 
-  const mustFieldsStatus = getMustFieldsStatus();
+  const mustFieldsStatus = getMustFieldsStatus(requirements);
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -1738,18 +1315,10 @@ Please respond with A or B.`;
 
         <ProgressSummary
           className="bg-white px-6 py-4 border-b"
-          completion={calculateCompletion()}
-          accuracy={calculateAccuracy()}
+          completion={calculateCompletion(requirements)}
+          accuracy={calculateAccuracy(requirements)}
           missingFields={mustFieldsStatus.missing}
-          getFieldLabel={(fieldKey) => {
-            for (const [, fields] of Object.entries(
-              formFieldsData.field_definitions
-            )) {
-              const def: any = (fields as any)[fieldKey];
-              if (def?.label) return def.label as string;
-            }
-            return fieldKey;
-          }}
+          getFieldLabel={(fieldKey) => getFieldLabel(fieldKey)}
           onClickField={(fieldKey) => scrollToField(fieldKey)}
         />
 
