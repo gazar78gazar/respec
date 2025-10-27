@@ -1,23 +1,21 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+
 import {
   SimplifiedRespecService,
   EnhancedFormUpdate,
   ChatResult,
   StructuredConflicts,
   AutofillResult,
-} from "../services/respec/SimplifiedRespecService";
-import * as uiUtils from "../utils/uiUtilities";
-import { dataServices } from "../services/dataServices";
-import "../styles/animations.css";
+} from "./services/SimplifiedRespecService";
+import { dataServices } from "./services/dataServices";
+import { FieldConflict } from "./services/ConflictDetectionService";
+import { ArtifactManager } from "./services/ArtifactManager";
+import { CompatibilityLayer } from "./services/CompatibilityLayer";
+import { uc1ValidationEngine } from "./services/UC1ValidationEngine";
+import { ucDataLayer } from "./services/UCDataLayer";
 
-import EnhancedChatWindow from "./components/EnhancedChatWindow";
-import { FieldConflict } from "../legacy_isolated/ConflictDetectionService";
-
-import { ArtifactManager } from "../services/respec/artifacts/ArtifactManager";
-import { CompatibilityLayer } from "../services/respec/artifacts/CompatibilityLayer";
-import { uc1ValidationEngine } from "../services/respec/UC1ValidationEngine";
-
-import { ucDataLayer } from "../services/data/UCDataLayer";
+import * as uiUtils from "../utils/uiUtilities"; // TODO zeev - to move
+import "../styles/animations.css"; // TODO zeev - to move
 
 import type {
   Requirements,
@@ -25,6 +23,7 @@ import type {
   MASCommunicationResult,
   UserRole,
 } from "../types/requirements.types";
+import EnhancedChatWindow from "./components/EnhancedChatWindow";
 import type { FieldDef } from "./components/FormField";
 import type { MASAction, PayloadMap } from "./types/mas";
 import { StepProgressIndicator } from "./components/StepProgressIndicator";
