@@ -58,20 +58,24 @@ export interface UCSpecification {
   type: "specification";
   name: string;
   parent_requirements: string[];
-  form_mapping: {
-    section: string;
-    category: string;
-    field_name: string;
-    ui_type: string;
-    selected_value: string;
-  };
-  requires?: {
-    [category: string]: string[]; // OR within category, AND across
-  };
+  form_mapping: UCFormMapping;
+  requires?: USFormRequirement;
   description?: string;
   options?: string[];
   selection_type?: string;
   technical_details?: any;
+}
+
+export interface UCFormMapping {
+  section: string;
+  category: string;
+  field_name: string;
+  ui_type: string;
+  selected_value: string;
+}
+
+export interface USFormRequirement {
+  [category: string]: string[]; // OR within category, AND across
 }
 
 export interface UCComment {

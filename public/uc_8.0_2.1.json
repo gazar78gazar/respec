@@ -1983,7 +1983,7 @@
     "P82": {
       "id": "P82",
       "type": "specification",
-      "name": "Intel Core i9 Processor",
+      "name": "Intel Core i9",
       "parent_requirements": ["R03"],
       "form_mapping": {
         "section": "compute_performance",

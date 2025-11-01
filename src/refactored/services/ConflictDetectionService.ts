@@ -12,7 +12,6 @@
 // TODO zeev to fix type issues
 
 import { UC1ValidationEngine } from "./UC1ValidationEngine";
-import { CompatibilityLayer } from "./CompatibilityLayer";
 
 export interface FieldConflict {
   id: string;
@@ -57,20 +56,12 @@ export interface ConflictResolution {
 
 export class ConflictDetectionService {
   private uc1Engine: UC1ValidationEngine;
-  private compatibilityLayer: CompatibilityLayer | null = null;
   private activeConflicts: Map<string, FieldConflict> = new Map();
   private resolutionHistory: ConflictResolution[] = [];
   private conflictListeners: ((conflicts: FieldConflict[]) => void)[] = [];
 
   constructor(uc1Engine: UC1ValidationEngine) {
     this.uc1Engine = uc1Engine;
-  }
-
-  initialize(compatibilityLayer?: CompatibilityLayer): void {
-    this.compatibilityLayer = compatibilityLayer || null;
-    console.log(
-      "[ConflictDetection] Initialized with UC1 validation and compatibility layer"
-    );
   }
 
   // ============= CONFLICT DETECTION =============

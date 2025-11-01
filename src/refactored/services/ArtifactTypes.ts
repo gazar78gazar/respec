@@ -8,6 +8,7 @@
  * 4. Conflict List: Isolated conflicting nodes
  */
 
+import { FieldPayloadData } from "../types/mas";
 import {
   UC1Specification,
   UC1Requirement,
@@ -26,9 +27,11 @@ export interface BaseArtifact {
 export interface ArtifactMetadata {
   totalNodes: number;
   lastModified: Date;
-  source: "user" | "llm" | "system" | "migration";
+  source: Source;
   validationStatus: "valid" | "pending" | "invalid" | "conflicts";
 }
+
+export type Source = "user" | "llm" | "system" | "migration" | "autofill";
 
 // ============= UC1 COMPLIANT STRUCTURE =============
 
@@ -63,7 +66,7 @@ export interface UC1ArtifactSpecification {
   uc1Source: UC1Specification;
   attribution: "requirement" | "assumption";
   confidence: number;
-  source: "user" | "llm" | "system";
+  source: Source;
   originalRequest?: string;
   substitutionNote?: string;
   timestamp: Date;
@@ -81,8 +84,10 @@ export interface RespecMetadata extends ArtifactMetadata {
   validationStatus: "valid"; // Respec is always valid (conflicts resolved)
   conflictsAllowed: false;
   userApproved: boolean;
-  formSyncStatus: "synced" | "pending" | "diverged";
+  formSyncStatus: FormSyncStatus;
 }
+
+export type FormSyncStatus = "synced" | "pending" | "diverged";
 
 // ============= MAPPED ARTIFACT =============
 
@@ -300,6 +305,32 @@ export type ConflictType =
   | "logical"
   | "cross_artifact";
 export type ProcessingPriority = "CONFLICTS" | "CLEARING" | "PROCESSING";
+
+export interface SyncResult {
+  success: boolean;
+  updated: string[]; // Field paths that were updated
+  errors: string[];
+  warnings: string[];
+}
+
+export interface LegacyRequirements {
+  // TODO zeev reimplement correctly, check real data structure, fix currently used types
+  [section: string]: {
+    [field: string]: {
+      value: any;
+      isAssumption?: boolean;
+      dataSource?: string;
+      priority?: number;
+      toggleHistory?: any[];
+      lastUpdated?: string;
+    };
+  };
+}
+
+export interface FieldsUpdatesData {
+  updates: FieldPayloadData[];
+  source: Source;
+}
 
 // ============= FACTORY FUNCTIONS =============
 

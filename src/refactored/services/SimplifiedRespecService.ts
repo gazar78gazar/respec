@@ -3,22 +3,17 @@ import { AnthropicService } from "../../services/respec/AnthropicService";
 import {
   SemanticMatcher,
   createSemanticMatcher,
-} from "../../services/respec/semantic/SemanticMatcher";
-import {
-  SemanticIntegrationService,
-  createSemanticIntegrationService,
-} from "../../services/respec/semantic/SemanticIntegrationService";
+} from "./SemanticMatcher";
 import {
   SemanticMatchingService,
   createSemanticMatchingService,
-} from "../../services/respec/semantic/SemanticMatchingService";
+} from "./SemanticMatchingService";
 import {
   SemanticIntegrationService as SemanticIntegrationServiceNew,
   createSemanticIntegrationService as createSemanticIntegrationServiceNew,
-} from "../../services/respec/semantic/SemanticIntegrationService_NEW";
+} from "./SemanticIntegrationService";
 import { UC1ValidationEngine } from "./UC1ValidationEngine";
 import { ArtifactManager } from "./ArtifactManager";
-import { CompatibilityLayer } from "./CompatibilityLayer";
 import {
   ConflictDetectionService,
   createConflictDetectionService,
@@ -115,7 +110,6 @@ export class SimplifiedRespecService {
 
   // New semantic matching system (Sprint 2)
   private semanticMatcher: SemanticMatcher | null = null;
-  private semanticIntegration: SemanticIntegrationService | null = null;
   private semanticMatchingService: SemanticMatchingService | null = null;
   private semanticIntegrationNew: SemanticIntegrationServiceNew | null = null;
   private useSemanticMatching: boolean = true;
@@ -221,7 +215,6 @@ export class SimplifiedRespecService {
   async initializeSemanticMatching(
     uc1Engine: UC1ValidationEngine,
     artifactManager?: ArtifactManager,
-    compatibilityLayer?: CompatibilityLayer
   ): Promise<void> {
     if (!uc1Engine.isReady()) {
       console.warn(
@@ -261,16 +254,10 @@ export class SimplifiedRespecService {
         this.anthropicService,
         uc1Engine
       );
-      this.semanticMatcher.initialize(artifactManager, compatibilityLayer);
-
-      this.semanticIntegration = createSemanticIntegrationService(
-        this.semanticMatcher,
-        compatibilityLayer
-      );
+      this.semanticMatcher.initialize(artifactManager);
 
       // Initialize conflict detection
       this.conflictDetection = createConflictDetectionService(uc1Engine);
-      this.conflictDetection.initialize(compatibilityLayer);
 
       console.log(
         "[SimplifiedRespec] ✅ Sprint 2 semantic matching initialized"

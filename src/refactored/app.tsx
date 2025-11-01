@@ -10,7 +10,6 @@ import {
 import { dataServices } from "./services/dataServices";
 import { FieldConflict } from "./services/ConflictDetectionService";
 import { ArtifactManager } from "./services/ArtifactManager";
-import { CompatibilityLayer } from "./services/CompatibilityLayer";
 import { uc1ValidationEngine } from "./services/UC1ValidationEngine";
 import { ucDataLayer } from "./services/UCDataLayer";
 
@@ -50,6 +49,7 @@ import {
   resolveFieldLocation,
   focusAndScrollField,
 } from "./utils/fields-utils";
+import { FieldsUpdatesData } from "./services/ArtifactTypes";
 
 // Safe index helpers for dynamic section keys (string index access)
 type FieldDefExt = FieldDef & { group?: string };
@@ -69,8 +69,6 @@ export default function App() {
 
   const [artifactManager, setArtifactManager] =
     useState<ArtifactManager | null>(null);
-  const [compatibilityLayer, setCompatibilityLayer] =
-    useState<CompatibilityLayer | null>(null);
   const [projectName] = useState("Untitled Project");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
@@ -908,20 +906,13 @@ Please respond with A or B.`;
 
         await uc1ValidationEngine.loadSchema("/uc1.json");
 
-        const manager = new ArtifactManager(uc1ValidationEngine);
-        await manager.initialize();
-        setArtifactManager(manager);
-
-        const compatibility = new CompatibilityLayer(
-          manager,
-          uc1ValidationEngine
-        );
-        setCompatibilityLayer(compatibility);
+        const artifactManager = new ArtifactManager(uc1ValidationEngine);
+        await artifactManager.initialize();
+        setArtifactManager(artifactManager);
 
         simplifiedRespecService.initializeSemanticMatching(
           uc1ValidationEngine,
-          manager,
-          compatibility
+          artifactManager
         );
 
         const unsubscribeConflicts = simplifiedRespecService.onConflictChange(
@@ -954,94 +945,97 @@ Please respond with A or B.`;
   }, []);
 
   useEffect(() => {
-    if (!compatibilityLayer || !artifactManager) return;
+    if (!artifactManager) return;
 
     const syncToArtifacts = async () => {
       try {
-        const syncResult =
-          compatibilityLayer.syncRequirementsToArtifact(requirements);
+        console.log(
+          "TODO zeev uc1 implement correct uc8 usage and data layer",
+          JSON.parse(JSON.stringify(requirements))
+        );
+        artifactManager.syncWithFormState(requirements);
 
-        if (syncResult.updated.length > 0) {
-          console.log(
-            `[APP] Synced ${syncResult.updated.length} fields to artifact state:`,
-            syncResult.updated
-          );
+        // if (syncResult.updated.length > 0) {
+        //   console.log(
+        //     `[APP] Synced ${syncResult.updated.length} fields to artifact state:`,
+        //     syncResult.updated
+        //   );
 
-          artifactManager
-            .detectConflicts()
-            .then((conflictResult) => {
-              if (conflictResult.hasConflict) {
-                console.warn(
-                  "[APP] CONFLICTS DETECTED:",
-                  conflictResult.conflicts
-                );
-                conflictResult.conflicts.forEach((conflict) => {
-                  console.warn(`🚨 Conflict: ${conflict.description}`);
-                  console.warn(`   Resolution: ${conflict.resolution}`);
-                });
-              } else {
-                console.log("[APP] No conflicts detected");
-              }
-            })
-            .catch((error) => {
-              console.error("[APP] Conflict detection failed:", error);
-            });
-        }
+        //   artifactManager
+        //     .detectConflicts()
+        //     .then((conflictResult) => {
+        //       if (conflictResult.hasConflict) {
+        //         console.warn(
+        //           "[APP] CONFLICTS DETECTED:",
+        //           conflictResult.conflicts
+        //         );
+        //         conflictResult.conflicts.forEach((conflict) => {
+        //           console.warn(`🚨 Conflict: ${conflict.description}`);
+        //           console.warn(`   Resolution: ${conflict.resolution}`);
+        //         });
+        //       } else {
+        //         console.log("[APP] No conflicts detected");
+        //       }
+        //     })
+        //     .catch((error) => {
+        //       console.error("[APP] Conflict detection failed:", error);
+        //     });
+        // }
 
-        if (syncResult.errors.length > 0) {
-          console.warn("[APP] Artifact sync errors:", syncResult.errors);
-        }
+        // if (syncResult.errors.length > 0) {
+        //   console.warn("[APP] Artifact sync errors:", syncResult.errors);
+        // }
       } catch (error) {
         console.error("[APP] Artifact sync failed:", error);
       }
     };
 
     syncToArtifacts();
-  }, [requirements, compatibilityLayer, artifactManager]);
+  }, [requirements, artifactManager]);
 
   useEffect(() => {
     if (!artifactManager) return;
 
-    artifactManager.on("form_updates_from_respec", (data) => {
-      // TODO zeev seemes to be never used
-      console.log(
-        "[APP] 📝 Form updates from conflict resolution:",
-        data.updates
-      );
+    artifactManager.on(
+      "form_updates_from_respec",
+      (data: FieldsUpdatesData) => {
+        // TODO zeev decide how to use. Suppose to be the only way to update requirements object
+        console.log(`[APP] 📝 Form updates from ${data.source}:`, data.updates);
 
-      data.updates.forEach(
-        (update: {
-          section: string;
-          field: string;
-          value: unknown;
-          isSystemGenerated?: boolean;
-        }) => {
-          setRequirements((prev) => ({
-            ...prev,
-            [update.section]: {
-              ...prev[update.section],
-              [update.field]: {
-                value: update.value,
-                isComplete: true,
-                source: "conflict_resolution",
-                lastUpdated: new Date().toISOString(),
+        data.updates.forEach(
+          (update: {
+            section: string;
+            field: string;
+            value: unknown;
+            isSystemGenerated?: boolean;
+          }) => {
+            setRequirements((prev) => ({
+              ...prev,
+              [update.section]: {
+                ...prev[update.section],
+                [update.field]: {
+                  value: update.value,
+                  isComplete: true,
+                  source: data.source,
+                  lastUpdated: new Date().toISOString(),
+                },
               },
-            },
-          }));
-        }
-      );
+            }));
+          }
+        );
 
-      const metadata = {
-        isFormUpdate: true,
-        updates: data.updates,
-      };
-      addChatMessage(
-        "system",
-        `Form updated: ${data.updates.length} field(s) changed`,
-        `form-update-${Date.now()}`,
-        metadata
-      );
-    });
+        const metadata = {
+          isFormUpdate: true,
+          updates: data.updates,
+        };
+        addChatMessage(
+          "system",
+          `Form updated: ${data.updates.length} field(s) changed`,
+          `form-update-${Date.now()}`,
+          metadata
+        );
+      }
+    );
   }, [artifactManager]);
 
   const toggleGroup = (section, group) => {
@@ -1400,7 +1394,10 @@ Please respond with A or B.`;
         chatWindowWidth={chatWidth}
       />
 
-      <ProcessingPopup visible={isProcessing} message={processingMessage} />
+      <ProcessingPopup
+        visible={isProcessing}
+        message={processingMessage}
+      />
     </div>
   );
 }

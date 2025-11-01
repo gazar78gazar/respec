@@ -30,12 +30,7 @@ export interface PayloadMap {
   };
   trigger_autofill: { trigger: string };
   autofill: { section: string };
-  system_populate_field: {
-    section: string;
-    field: string;
-    value: FieldValue;
-    isSystemGenerated?: boolean;
-  };
+  system_populate_field: FieldPayloadData;
   system_populate_multiple: {
     updates: Array<{
       section: string;
@@ -52,4 +47,11 @@ export interface PayloadMap {
     grantedBy?: string;
   };
   revoke_override_permission: { section: string; field: string };
+}
+
+export interface FieldPayloadData {
+  section: string;
+  field: string;
+  value: FieldValue;
+  isSystemGenerated?: boolean;
 }

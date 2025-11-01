@@ -8,7 +8,6 @@
  * 4. Integration with existing requirements state (compatibility layer)
  */
 
-
 // TODO zeev to fix type issues
 
 import {
@@ -23,6 +22,8 @@ import {
   ArtifactValidationResult,
   createEmptyArtifactState,
   ProcessingPriority,
+  SyncResult,
+  LegacyRequirements,
 } from "./ArtifactTypes";
 
 import {
@@ -105,7 +106,7 @@ export class ArtifactManager {
 
   // ============= SPECIFICATION OPERATIONS =============
 
-  async addSpecificationToMapped(
+  async addSpecificationToMapped( // TODO zeev main flow
     spec: UC1Specification,
     value: any,
     originalRequest?: string,
@@ -116,14 +117,14 @@ export class ArtifactManager {
       throw new Error("ArtifactManager not initialized");
     }
 
-    // Validate specification value against UC1 constraints
-    const validation = this.uc1Engine.validateSpecification(spec.id, value);
-    if (!validation.isValid) {
-      console.warn(
-        `[ArtifactManager] Validation warnings for ${spec.id}:`,
-        validation.errors
-      );
-    }
+    // TODO zeev implement uc8 validation. Validate specification value against UC1 constraints
+    // const validation = this.uc1Engine.validateSpecification(spec.id, value);
+    // if (!validation.isValid) {
+    //   console.warn(
+    //     `[ArtifactManager] Validation warnings for ${spec.id}:`,
+    //     validation.errors
+    //   );
+    // }
 
     // Create artifact specification
     const artifactSpec: UC1ArtifactSpecification = {
@@ -1259,14 +1260,111 @@ export class ArtifactManager {
 
   // ============= FORM SYNCHRONIZATION =============
 
-  async syncWithFormState(_requirements: any): Promise<void> {
+  async syncWithFormState(requirements: any): Promise<void> {
     // Compatibility layer: sync new artifact state with existing requirements state
     this.state.lastSyncWithForm = new Date();
     this.state.respec.metadata.formSyncStatus = "synced";
 
+    Object.entries(requirements).forEach(([section, fields]) => {
+      Object.entries(fields).forEach(([fieldName, fieldData]) => {
+        if (!fieldData.value)
+          return;
+
+        // TODO zeev artifact management implement correct way of working with 
+
+
+      });
+    });
+
     console.log("[ArtifactManager] Synced with form state");
     this.emit("form_sync_complete", { timestamp: this.state.lastSyncWithForm });
   }
+
+  // syncRequirementsToArtifact(requirements: LegacyRequirements): SyncResult {
+  //   const result: SyncResult = {
+  //     success: true,
+  //     updated: [],
+  //     errors: [],
+  //     warnings: [],
+  //   };
+
+  //   // if (!this.syncEnabled) {
+  //   //   result.warnings.push("Sync disabled");
+  //   //   return result;
+  //   // }
+
+  //   console.log('syncRequirementsToArtifact state', JSON.parse(JSON.stringify(this.state)));
+
+  //   try {
+  //     // Sync requirements to artifact manager
+  //     Object.entries(requirements).forEach(([section, fields]) => {
+  //       Object.entries(fields).forEach(([fieldName, fieldData]) => {
+  //         if (!fieldData.value) return;
+  //         // console.log('todo zeev fieldData', fieldData);
+
+  //         const requiredSpecifications =
+  //           ucDataLayer.getRequirementsForFormFieldAndValue(
+  //             fieldName,
+  //             fieldData.value
+  //           );
+  //         console.log("todo zeev uc1", requiredSpecifications);
+
+  //         if (!requiredSpecifications)
+  //           return;
+
+  //         Object.entries(requiredSpecifications).forEach(
+  //           ([category, requiremensSpecificationIds]) => {
+  //             console.log("dependency category", category);
+  //             console.log(
+  //               "dependency requirementSpecificationIds",
+  //               requiremensSpecificationIds
+  //             );
+  //           }
+  //         );
+
+  //         this.emit("form_updates_from_respec", {"updated": []});
+
+  //         // const specId = this.getSpecIdFromField(section, fieldName);
+  //         // console.log('TODO zeev uc1 getSpecIdFromField ' + specId, section, fieldName)
+  //         // if (specId && fieldData.value && fieldData.value !== "") {
+  //         //   // Get the real UC1 specification and pass it directly
+  //         //   const uc1Spec = this.uc1Engine.getSpecification(specId);
+  //         //   console.log('TODO zeev uc1 uc1Spec for specId ' + specId, JSON.parse(JSON.stringify(uc1Spec)))
+  //         //   if (uc1Spec) {
+  //         //     // Pass the UC1 spec directly - let ArtifactManager handle the internal structure
+  //         //     this.artifactManager
+  //         //       .addSpecificationToMapped(uc1Spec, fieldData.value)
+  //         //       .catch((error) => {
+  //         //         console.warn(
+  //         //           `[CompatibilityLayer] Failed to sync ${section}.${fieldName}:`,
+  //         //           error
+  //         //         );
+  //         //       });
+
+  //         //     result.updated.push(`${section}.${fieldName}`);
+  //         //   } else {
+  //         //     console.warn(
+  //         //       `[CompatibilityLayer] UC1 specification not found for ${specId} (${section}.${fieldName})`
+  //         //     );
+  //         //   }
+  //         // }
+  //       });
+  //     });
+
+  //     console.log(
+  //       `[CompatibilityLayer] Synced ${result.updated.length} fields from requirements to artifact`
+  //     );
+  //   } catch (error) {
+  //     result.success = false;
+  //     result.errors.push(
+  //       `Sync failed: ${
+  //         error instanceof Error ? error.message : "Unknown error " + error
+  //       }`
+  //     );
+  //   }
+
+  //   return result;
+  // }
 
   // ============= VALIDATION =============
 

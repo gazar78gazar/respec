@@ -13,6 +13,8 @@ import {
   UCSpecification,
   UCComment,
   UCExclusion,
+  UCFormMapping,
+  USFormRequirement,
 } from "./UCDataTypes";
 
 export class UCDataLayer {
@@ -290,6 +292,40 @@ export class UCDataLayer {
     return specs;
   }
 
+  getRequirementsForFormFieldAndValue(
+    fieldName: string,
+    value: string
+  ): USFormRequirement | null {
+    console.log(
+      `[UCDataLayer] 📋 getRequirementsForFormFieldAndValue(${fieldName} and value ${value})`
+    );
+    const specifications = ucDataLayer.getSpecificationsForFormField(fieldName);
+    if (!specifications || !specifications.length) return null;
+
+    console.log("todo zeev uc1 specifications", specifications);
+
+    // TODO zeev I can use .getRequiredNodes(for specification id)
+
+    const required: USFormRequirement = {};
+    specifications
+      .filter(
+        (specification: UCSpecification) =>
+          specification.name === value && specification.requires
+      )
+      .forEach((specification: UCSpecification) => {
+        console.log("todo zeev uc1 specification", specification);
+        if (!specification.requires) return;
+
+        for (const [category, requiremensSpecificationIds] of Object.entries(
+          specification.requires
+        )) {
+          required[category] = requiremensSpecificationIds;
+        }
+      });
+
+    return required;
+  }
+
   /**
    * Get form field name for a specification
    */
@@ -298,6 +334,11 @@ export class UCDataLayer {
     const fieldName = spec?.form_mapping?.field_name || null;
     console.log(`[UCDataLayer]   → Field: ${fieldName || "NONE"}`);
     return fieldName;
+  }
+
+  getFieldMapingFromSpecId(specId: string): UCFormMapping | null {
+    const spec = this.getSpecification(specId);
+    return spec?.form_mapping || null;
   }
 
   /**
