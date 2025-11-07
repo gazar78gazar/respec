@@ -9,9 +9,9 @@
  * and intelligent resolution suggestions for form field updates.
  */
 
-// TODO zeev to fix type issues
+import { ucDataLayer } from "./UCDataLayer";
 
-import { UC1ValidationEngine } from "./UC1ValidationEngine";
+// TODO zeev to fix type issues
 
 export interface FieldConflict {
   id: string;
@@ -55,14 +55,9 @@ export interface ConflictResolution {
 }
 
 export class ConflictDetectionService {
-  private uc1Engine: UC1ValidationEngine;
   private activeConflicts: Map<string, FieldConflict> = new Map();
   private resolutionHistory: ConflictResolution[] = [];
   private conflictListeners: ((conflicts: FieldConflict[]) => void)[] = [];
-
-  constructor(uc1Engine: UC1ValidationEngine) {
-    this.uc1Engine = uc1Engine;
-  }
 
   // ============= CONFLICT DETECTION =============
 
@@ -74,7 +69,7 @@ export class ConflictDetectionService {
     context?: {
       originalRequest?: string;
       confidence?: number;
-      uc1Spec?: string;
+      ucSpec?: string;
     }
   ): Promise<FieldConflict[]> {
     const conflicts: FieldConflict[] = [];
@@ -108,12 +103,12 @@ export class ConflictDetectionService {
       conflicts.push(valueChangeConflict);
     }
 
-    // 2. UC1 Constraint Validation
-    if (context?.uc1Spec) {
+    // 2. UC Constraint Validation
+    if (context?.ucSpec) {
       const constraintConflicts = await this.detectConstraintViolations(
         field,
         newValue,
-        context.uc1Spec,
+        context.ucSpec,
         currentRequirements
       );
       conflicts.push(...constraintConflicts);
@@ -240,46 +235,49 @@ export class ConflictDetectionService {
   private async detectConstraintViolations(
     field: string,
     newValue: string,
-    uc1SpecId: string,
+    specId: string,
     currentRequirements: any
   ): Promise<FieldConflict[]> {
     const conflicts: FieldConflict[] = [];
 
     try {
-      const uc1Spec = this.uc1Engine.getSpecification(uc1SpecId);
-      if (!uc1Spec) return conflicts;
+      // const ucSpec = this.ucEngine.getSpecification(ucSpecId);
+      const spec = ucDataLayer.getSpecification(specId);
+      if (!spec) return conflicts;
 
-      // Check if value violates UC1 constraints
-      const validation = this.uc1Engine.validateSpecification(
-        uc1Spec,
-        newValue
-      );
-      if (!validation.isValid) {
-        conflicts.push({
-          id: `constraint_${field}_${Date.now()}`,
-          field,
-          section: field.split(".")[0],
-          currentValue: this.getNestedValue(
-            currentRequirements,
-            ...field.split(".")
-          ),
-          newValue,
-          severity: "error",
-          type: "constraint_violation",
-          reason: `Value "${newValue}" violates UC1 constraints for ${
-            uc1Spec.name
-          }: ${validation.errors.join(", ")}`,
-          confidence: 0.9,
-          suggestions: this.generateConstraintSuggestions(uc1Spec, newValue),
-          metadata: {
-            timestamp: new Date(),
-            source: "semantic",
-            affectedFields: [],
-          },
-        });
-      }
+      alert('!!! detectConstraintViolations should be re-implemented')
+
+      // Check if value violates UC constraints
+      // const validation = this.ucEngine.validateSpecification(
+      //   ucSpec,
+      //   newValue
+      // );
+      // if (!validation.isValid) {
+      //   conflicts.push({
+      //     id: `constraint_${field}_${Date.now()}`,
+      //     field,
+      //     section: field.split(".")[0],
+      //     currentValue: this.getNestedValue(
+      //       currentRequirements,
+      //       ...field.split(".")
+      //     ),
+      //     newValue,
+      //     severity: "error",
+      //     type: "constraint_violation",
+      //     reason: `Value "${newValue}" violates UC constraints for ${
+      //       ucSpec.name
+      //     }: ${validation.errors.join(", ")}`,
+      //     confidence: 0.9,
+      //     suggestions: this.generateConstraintSuggestions(ucSpec, newValue),
+      //     metadata: {
+      //       timestamp: new Date(),
+      //       source: "semantic",
+      //       affectedFields: [],
+      //     },
+      //   });
+      // }
     } catch (error) {
-      console.warn("[ConflictDetection] UC1 constraint check failed:", error);
+      console.warn("[ConflictDetection] UC constraint check failed:", error);
     }
 
     return conflicts;
@@ -507,37 +505,37 @@ export class ConflictDetectionService {
     ];
   }
 
-  private generateConstraintSuggestions( // TODO zeev to fix type issues - seems like a real logic bug
-    uc1Spec: any,
-    invalidValue: string
-  ): ConflictSuggestion[] {
-    const suggestions: ConflictSuggestion[] = [
-      {
-        id: "reject_invalid",
-        action: "reject",
-        label: "Reject Invalid Value",
-        description: "Keep current value that meets constraints",
-        confidence: 0.9,
-        consequences: ["Maintains specification compliance"],
-      },
-    ];
+  // private generateConstraintSuggestions( // TODO zeev to fix type issues - seems like a real logic bug
+  //   spec: UCSpecification,
+  //   invalidValue: string
+  // ): ConflictSuggestion[] {
+  //   const suggestions: ConflictSuggestion[] = [
+  //     {
+  //       id: "reject_invalid",
+  //       action: "reject",
+  //       label: "Reject Invalid Value",
+  //       description: "Keep current value that meets constraints",
+  //       confidence: 0.9,
+  //       consequences: ["Maintains specification compliance"],
+  //     },
+  //   ];
 
-    // Add suggestions based on UC1 spec type
-    if (uc1Spec.constraints?.options) {
-      suggestions.push({
-        id: "suggest_valid",
-        action: "modify",
-        label: "Choose Valid Option",
-        description: `Select from: ${uc1Spec.constraints.options
-          .slice(0, 3)
-          .join(", ")}`,
-        confidence: 0.8,
-        consequences: ["Ensures specification compliance"],
-      });
-    }
+  //   // Add suggestions based on UC spec type
+  //   if (spec.constraints?.options) {
+  //     suggestions.push({
+  //       id: "suggest_valid",
+  //       action: "modify",
+  //       label: "Choose Valid Option",
+  //       description: `Select from: ${ucSpec.constraints.options
+  //         .slice(0, 3)
+  //         .join(", ")}`,
+  //       confidence: 0.8,
+  //       consequences: ["Ensures specification compliance"],
+  //     });
+  //   }
 
-    return suggestions;
-  }
+  //   return suggestions;
+  // }
 
   private getNestedValue(obj: any, ...keys: string[]): string {
     return keys.reduce((current, key) => current?.[key], obj) || "";
@@ -599,8 +597,6 @@ export class ConflictDetectionService {
 }
 
 // Export singleton for easy use
-export const createConflictDetectionService = (
-  uc1Engine: UC1ValidationEngine
-): ConflictDetectionService => {
-  return new ConflictDetectionService(uc1Engine);
+export const createConflictDetectionService = (): ConflictDetectionService => {
+  return new ConflictDetectionService();
 };

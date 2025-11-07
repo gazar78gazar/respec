@@ -9,11 +9,7 @@
  */
 
 import { FieldPayloadData } from "../types/mas";
-import {
-  UC1Specification,
-  UC1Requirement,
-  UC1Domain,
-} from "./UC1ValidationEngine";
+import { UCDomain, UCRequirement, UCSpecification } from "./UCDataTypes";
 
 // ============= BASE INTERFACES =============
 
@@ -33,37 +29,37 @@ export interface ArtifactMetadata {
 
 export type Source = "user" | "llm" | "system" | "migration" | "autofill";
 
-// ============= UC1 COMPLIANT STRUCTURE =============
+// ============= UC COMPLIANT STRUCTURE =============
 
-export interface UC1CompliantStructure {
+interface UCCompliantStructure {
   domains: {
-    [domainId: string]: UC1ArtifactDomain;
+    [domainId: string]: UCArtifactDomain;
   };
 }
 
-export interface UC1ArtifactDomain {
+interface UCArtifactDomain {
   id: string;
   name: string;
-  uc1Source: UC1Domain;
+  ucSource: UCDomain;
   requirements: {
-    [reqId: string]: UC1ArtifactRequirement;
+    [reqId: string]: UCArtifactRequirement;
   };
 }
 
-export interface UC1ArtifactRequirement {
+export interface UCArtifactRequirement {
   id: string;
   name: string;
-  uc1Source: UC1Requirement;
+  ucSource: UCRequirement;
   specifications: {
-    [specId: string]: UC1ArtifactSpecification;
+    [specId: string]: UCArtifactSpecification;
   };
 }
 
-export interface UC1ArtifactSpecification {
+export interface UCArtifactSpecification {
   id: string;
   name: string;
   value: any;
-  uc1Source: UC1Specification;
+  ucSource: UCSpecification;
   attribution: "requirement" | "assumption";
   confidence: number;
   source: Source;
@@ -74,7 +70,7 @@ export interface UC1ArtifactSpecification {
 
 // ============= RESPEC ARTIFACT =============
 
-export interface RespecArtifact extends BaseArtifact, UC1CompliantStructure {
+export interface RespecArtifact extends BaseArtifact, UCCompliantStructure {
   type: "respec";
   metadata: RespecMetadata;
 }
@@ -91,7 +87,7 @@ export type FormSyncStatus = "synced" | "pending" | "diverged";
 
 // ============= MAPPED ARTIFACT =============
 
-export interface MappedArtifact extends BaseArtifact, UC1CompliantStructure {
+export interface MappedArtifact extends BaseArtifact, UCCompliantStructure {
   type: "mapped";
   metadata: MappedMetadata;
 }

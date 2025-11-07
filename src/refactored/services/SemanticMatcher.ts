@@ -4,14 +4,13 @@
  * This service extends the existing AnthropicService to provide:
  * 1. Intent detection (is this a technical requirement?)
  * 2. Semantic extraction (pull out technical values and constraints)
- * 3. UC1 specification mapping (link to UC1 schema)
  * 4. Confidence scoring (how certain are we?)
  * 5. Integration with artifact state management
  */
 
-import { AnthropicService } from "../../services/respec/AnthropicService";
-import { UC1ValidationEngine, UC1Specification } from "./UC1ValidationEngine";
 import { ArtifactManager } from "./ArtifactManager";
+import { ucDataLayer } from "./UCDataLayer";
+import { Maybe, UCSpecification } from "./UCDataTypes";
 
 // ============= SEMANTIC MATCHING TYPES =============
 
@@ -29,15 +28,15 @@ export interface TechnicalExtraction {
   constraint?: string; // e.g., 'minimum', 'maximum', 'exactly'
   context: string; // Original text context
   confidence: number; // 0.0 - 1.0
-  uc1Candidates: UC1Candidate[];
+  ucCandidates: UCCandidate[];
 }
 
-export interface UC1Candidate {
+export interface UCCandidate {
   specId: string; // e.g., 'spc001'
   specName: string; // e.g., 'processor_type'
   matchReason: string; // Why this spec was chosen
   confidence: number; // 0.0 - 1.0
-  uc1Spec: UC1Specification;
+  ucSpec: UCSpecification;
 }
 
 export interface MessageIntent {
@@ -57,38 +56,15 @@ export interface SemanticMatchingContext {
 // ============= MAIN SEMANTIC MATCHER CLASS =============
 
 export class SemanticMatcher {
-  private anthropicService: AnthropicService;
-  private uc1Engine: UC1ValidationEngine;
   private artifactManager: ArtifactManager | null = null;
-
-  // Semantic parsing models (future: could load different models)
-  private intentModel: string =
-    import.meta.env.VITE_LLM_MODEL || "claude-4-opus-20241222";
-  private extractionModel: string =
-    import.meta.env.VITE_LLM_MODEL || "claude-4-opus-20241222";
-
-  constructor(
-    anthropicService: AnthropicService,
-    uc1Engine: UC1ValidationEngine
-  ) {
-    this.anthropicService = anthropicService;
-    this.uc1Engine = uc1Engine;
-  }
 
   // ============= INITIALIZATION =============
 
   async initialize(artifactManager?: ArtifactManager): Promise<void> {
     this.artifactManager = artifactManager || null;
 
-    // Verify UC1 engine is ready
-    if (!this.uc1Engine.isReady()) {
-      throw new Error(
-        "UC1ValidationEngine must be initialized before SemanticMatcher"
-      );
-    }
-
     console.log(
-      "[SemanticMatcher] Initialized with UC1 schema and LLM services"
+      "[SemanticMatcher] Initialized"
     );
   }
 
@@ -121,8 +97,8 @@ export class SemanticMatcher {
         context
       );
 
-      // Step 4: UC1 Mapping
-      const mappedExtractions = await this.mapToUC1Specifications(extractions);
+      // Step 4: UC Mapping
+      const mappedExtractions = await this.mapToUCSpecifications(extractions);
 
       // Step 5: Confidence Scoring
       const overallConfidence = this.calculateOverallConfidence(
@@ -229,7 +205,7 @@ export class SemanticMatcher {
         confidence: processorMatch[0].toLowerCase().includes("fast")
           ? 0.6
           : 0.9,
-        uc1Candidates: [], // Will be populated in mapping step
+        ucCandidates: [], // Will be populated in mapping step
       });
     }
 
@@ -247,7 +223,7 @@ export class SemanticMatcher {
         value: value,
         context: message,
         confidence: memoryMatch[1] ? 0.85 : 0.6, // Lower confidence for vague terms
-        uc1Candidates: [],
+        ucCandidates: [],
       });
     }
 
@@ -261,7 +237,7 @@ export class SemanticMatcher {
         value: powerMatch[0],
         context: message,
         confidence: 0.8,
-        uc1Candidates: [],
+        ucCandidates: [],
       });
     }
 
@@ -275,7 +251,7 @@ export class SemanticMatcher {
         value: storageMatch[0],
         context: message,
         confidence: 0.8,
-        uc1Candidates: [],
+        ucCandidates: [],
       });
     }
 
@@ -289,7 +265,7 @@ export class SemanticMatcher {
         value: performanceMatch[0],
         context: message,
         confidence: 0.6,
-        uc1Candidates: [],
+        ucCandidates: [],
       });
     }
 
@@ -298,24 +274,24 @@ export class SemanticMatcher {
     return extractions;
   }
 
-  // ============= UC1 MAPPING =============
+  // ============= UC MAPPING =============
 
-  private async mapToUC1Specifications(
+  private async mapToUCSpecifications(
     extractions: TechnicalExtraction[]
   ): Promise<TechnicalExtraction[]> {
     const mappedExtractions = [...extractions];
 
     for (const extraction of mappedExtractions) {
-      extraction.uc1Candidates = await this.findUC1Candidates(extraction);
+      extraction.ucCandidates = await this.findUCCandidates(extraction);
     }
 
     return mappedExtractions;
   }
 
-  private async findUC1Candidates(
+  private async findUCCandidates(
     extraction: TechnicalExtraction
-  ): Promise<UC1Candidate[]> {
-    const candidates: UC1Candidate[] = [];
+  ): Promise<UCCandidate[]> {
+    const candidates: UCCandidate[] = [];
 
     // Category-based mapping: processor→spc001, memory→spc002, power→spc036
     const categoryMap: { [key: string]: string[] } = {
@@ -329,14 +305,14 @@ export class SemanticMatcher {
     const candidateIds = categoryMap[extraction.category] || [];
 
     for (const specId of candidateIds) {
-      const uc1Spec = this.uc1Engine.getSpecification(specId);
-      if (uc1Spec) {
+      const spec = ucDataLayer.getSpecification(specId);
+      if (spec) {
         candidates.push({
           specId,
-          specName: uc1Spec.name,
+          specName: spec.name,
           matchReason: `Category match: ${extraction.category}`,
           confidence: 0.8, // Base confidence for category match
-          uc1Spec,
+          ucSpec: spec,
         });
       }
     }
@@ -360,10 +336,10 @@ export class SemanticMatcher {
     // Intent confidence boost
     const intentBoost = intent.type === "requirement" ? 0.1 : 0.0;
 
-    // UC1 mapping confidence
+    // UC mapping confidence
     const mappingConfidence =
       extractions.reduce((sum, ext) => {
-        const bestCandidate = ext.uc1Candidates.reduce(
+        const bestCandidate = ext.ucCandidates.reduce(
           (best, candidate) =>
             candidate.confidence > best.confidence ? candidate : best,
           { confidence: 0 }
@@ -390,16 +366,16 @@ export class SemanticMatcher {
     }
 
     for (const extraction of extractions) {
-      const bestCandidate = extraction.uc1Candidates.reduce(
+      const bestCandidate = extraction.ucCandidates.reduce(
         (best, candidate) =>
-          candidate.confidence > best.confidence ? candidate : best,
-        { confidence: 0 }
+          !best || candidate.confidence > best.confidence ? candidate : best,
+        undefined as Maybe<UCCandidate>
       );
 
-      if (bestCandidate.confidence > 0.7) {
+      if (bestCandidate && bestCandidate.confidence > 0.7) {
         try {
           await this.artifactManager.addSpecificationToMapped(
-            bestCandidate.uc1Spec,
+            (bestCandidate as UCCandidate).ucSpec,
             extraction.value,
             `LLM extraction: "${extraction.context}"`,
             `Semantic match with ${(bestCandidate.confidence * 100).toFixed(
@@ -431,22 +407,14 @@ export class SemanticMatcher {
     return `Analyze this message for technical requirements: "${message}"`;
   }
 
-  isReady(): boolean {
-    return this.uc1Engine.isReady();
-  }
-
   getStats(): any {
     return {
-      uc1SpecsAvailable: this.uc1Engine.isReady() ? 56 : 0,
       artifactIntegration: !!this.artifactManager,
     };
   }
 }
 
 // Export singleton for easy use
-export const createSemanticMatcher = (
-  anthropicService: AnthropicService,
-  uc1Engine: UC1ValidationEngine
-): SemanticMatcher => {
-  return new SemanticMatcher(anthropicService, uc1Engine);
+export const createSemanticMatcher = (): SemanticMatcher => {
+  return new SemanticMatcher();
 };

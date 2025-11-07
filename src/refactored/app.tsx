@@ -10,10 +10,9 @@ import {
 import { dataServices } from "./services/dataServices";
 import { FieldConflict } from "./services/ConflictDetectionService";
 import { ArtifactManager } from "./services/ArtifactManager";
-import { uc1ValidationEngine } from "./services/UC1ValidationEngine";
 import { ucDataLayer } from "./services/UCDataLayer";
 
-import * as uiUtils from "../utils/uiUtilities"; // TODO zeev - to move
+import * as uiUtils from "./utils/ui-utils";
 import "../styles/animations.css"; // TODO zeev - to move
 
 import type {
@@ -904,16 +903,11 @@ Please respond with A or B.`;
       try {
         console.log("[APP] Initializing artifact state management...");
 
-        await uc1ValidationEngine.loadSchema("/uc1.json");
-
-        const artifactManager = new ArtifactManager(uc1ValidationEngine);
+        const artifactManager = new ArtifactManager();
         await artifactManager.initialize();
         setArtifactManager(artifactManager);
 
-        simplifiedRespecService.initializeSemanticMatching(
-          uc1ValidationEngine,
-          artifactManager
-        );
+        simplifiedRespecService.initializeSemanticMatching(artifactManager);
 
         const unsubscribeConflicts = simplifiedRespecService.onConflictChange(
           (conflicts) => {
@@ -950,7 +944,7 @@ Please respond with A or B.`;
     const syncToArtifacts = async () => {
       try {
         console.log(
-          "TODO zeev uc1 implement correct uc8 usage and data layer",
+          "TODO zeev uc implement correct uc8 usage and data layer",
           JSON.parse(JSON.stringify(requirements))
         );
         artifactManager.syncWithFormState(requirements);

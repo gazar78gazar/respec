@@ -10,7 +10,7 @@ interface ChatMessage {
       category: string;
       value: string;
       confidence: number;
-      uc1Spec?: string;
+      ucSpec?: string;
     }>;
     intent: string;
     confidence: number;
@@ -158,9 +158,9 @@ export const EnhancedChatWindow: React.FC<EnhancedChatWindowProps> = ({
                       {extraction.category}:
                     </span>{" "}
                     {extraction.value}
-                    {extraction.uc1Spec && (
+                    {extraction.ucSpec && (
                       <span className="ml-2 text-gray-500">
-                        ({extraction.uc1Spec})
+                        ({extraction.ucSpec})
                       </span>
                     )}
                   </div>

@@ -15,10 +15,11 @@ import {
   UCExclusion,
   UCFormMapping,
   USFormRequirement,
+  Maybe,
 } from "./UCDataTypes";
 
 export class UCDataLayer {
-  private dataset: UCDataset | null = null;
+  private dataset: Maybe<UCDataset>;
   private readonly version: "UC8" = "UC8"; // FIXED to UC8 only
 
   // ============= INITIALIZATION =============
@@ -79,7 +80,7 @@ export class UCDataLayer {
     return node;
   }
 
-  getScenario(id: string): UCScenario | undefined {
+  getScenario(id: string): Maybe<UCScenario> {
     console.log(
       `[UCDataLayer] 🎬 getScenario(${id})`,
       this.dataset!.scenarios?.[id]
@@ -87,7 +88,7 @@ export class UCDataLayer {
     return this.dataset!.scenarios?.[id];
   }
 
-  getRequirement(id: string): UCRequirement | undefined {
+  getRequirement(id: string): Maybe<UCRequirement> {
     console.log(
       `[UCDataLayer] 📋 getRequirement(${id})`,
       this.dataset!.requirements?.[id]
@@ -95,7 +96,7 @@ export class UCDataLayer {
     return this.dataset!.requirements?.[id];
   }
 
-  getSpecification(id: string): UCSpecification | undefined {
+  getSpecification(id: string): Maybe<UCSpecification> {
     console.log(
       `[UCDataLayer] 🔧 getSpecification(${id})`,
       this.dataset!.specifications?.[id]
@@ -104,7 +105,15 @@ export class UCDataLayer {
     return this.dataset!.specifications?.[id];
   }
 
-  getComment(id: string): UCComment | undefined {
+    getSpecificationsByRequirement(requirementId: string): UCSpecification[] {
+      if (!this.dataset)
+        return [];
+      return Object.values(this.dataset.specifications).filter((spec) =>
+        spec.parent_requirements.includes(requirementId)
+      );
+    }
+
+  getComment(id: string): Maybe<UCComment> {
     console.log(
       `[UCDataLayer] 💬 getComment(${id})`,
       this.dataset!.comments?.[id]
@@ -137,7 +146,7 @@ export class UCDataLayer {
 
   // ============= EXCLUSION QUERIES =============
 
-  getExclusion(id: string): UCExclusion | undefined {
+  getExclusion(id: string): Maybe<UCExclusion> {
     console.log(`[UCDataLayer] ⚠️ getExclusion(${id})`);
     return this.dataset!.exclusions?.[id];
   }
@@ -245,7 +254,7 @@ export class UCDataLayer {
 
     return spec.parent_requirements
       .map((reqId: string) => this.getRequirement(reqId))
-      .filter((req): req is UCRequirement => req !== undefined);
+      .filter((req): req is UCRequirement => !!req);
   }
 
   /**
@@ -257,7 +266,7 @@ export class UCDataLayer {
 
     return req.specification_ids
       .map((specId: string) => this.getSpecification(specId))
-      .filter((spec): spec is UCSpecification => spec !== undefined);
+      .filter((spec): spec is UCSpecification => !!spec);
   }
 
   /**
@@ -269,7 +278,7 @@ export class UCDataLayer {
 
     return req.parent_scenarios
       .map((scenarioId: string) => this.getScenario(scenarioId))
-      .filter((scenario): scenario is UCScenario => scenario !== undefined);
+      .filter((scenario): scenario is UCScenario => !!scenario);
   }
 
   // ============= FORM MAPPING QUERIES =============
@@ -302,7 +311,7 @@ export class UCDataLayer {
     const specifications = ucDataLayer.getSpecificationsForFormField(fieldName);
     if (!specifications || !specifications.length) return null;
 
-    console.log("todo zeev uc1 specifications", specifications);
+    console.log("todo zeev uc specifications", specifications);
 
     // TODO zeev I can use .getRequiredNodes(for specification id)
 
@@ -313,7 +322,7 @@ export class UCDataLayer {
           specification.name === value && specification.requires
       )
       .forEach((specification: UCSpecification) => {
-        console.log("todo zeev uc1 specification", specification);
+        console.log("todo zeev uc specification", specification);
         if (!specification.requires) return;
 
         for (const [category, requiremensSpecificationIds] of Object.entries(

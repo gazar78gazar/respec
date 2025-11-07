@@ -2,6 +2,17 @@
  * TypeScript interfaces for UC v8.0 dataset
  */
 
+
+// TODO zeev how is it being used really?
+export interface UCDomain {
+  id: string;
+  name: string;
+  parent: string[];
+  child: string[];
+  required_areas: string[];
+  dependencies: any[];
+}
+
 export interface UCMetadata {
   schema_version: string;
   dataset_version: string;
@@ -65,6 +76,8 @@ export interface UCSpecification {
   selection_type?: string;
   technical_details?: any;
 }
+
+export type Maybe<T> = T | undefined
 
 export interface UCFormMapping {
   section: string;
@@ -153,4 +166,9 @@ export interface ConflictResolution {
   nodeToAdd?: string;
   userChoice: string;
   timestamp: Date;
+}
+
+export interface ConflictResult {
+  hasConflict: boolean;
+  conflicts: Conflict[];
 }

@@ -12,7 +12,6 @@ import {
   SemanticIntegrationService as SemanticIntegrationServiceNew,
   createSemanticIntegrationService as createSemanticIntegrationServiceNew,
 } from "./SemanticIntegrationService";
-import { UC1ValidationEngine } from "./UC1ValidationEngine";
 import { ArtifactManager } from "./ArtifactManager";
 import {
   ConflictDetectionService,
@@ -105,75 +104,73 @@ export class SimplifiedRespecService {
   private anthropicService: AnthropicService;
   private fieldMappings: Map<string, { section: string; field: string }> =
     new Map();
-  private uc1Data: any = null;
   private fieldOptionsMap: FieldOptionsMap = {};
 
   // New semantic matching system (Sprint 2)
   private semanticMatcher: SemanticMatcher | null = null;
   private semanticMatchingService: SemanticMatchingService | null = null;
   private semanticIntegrationNew: SemanticIntegrationServiceNew | null = null;
-  private useSemanticMatching: boolean = true;
+  private useSemanticMatching: boolean = true; // TODO zeev how to use it?
 
   // Sprint 3 Week 1: Core services for conflict detection and resolution
-  private uc1Engine?: UC1ValidationEngine;
   private artifactManager?: ArtifactManager;
 
   // Conflict detection system
   private conflictDetection: ConflictDetectionService | null = null;
 
   // Sprint 3: Pending form updates from RESPEC artifact changes
-  private pendingFormUpdates: EnhancedFormUpdate[] = [];
+  // private pendingFormUpdates: EnhancedFormUpdate[] = []; // TODO zeev how is it being used?
 
   // Engineering pattern recognition database
-  private patterns = {
-    // Digital I/O patterns
-    digital_input: [
-      /(\d+)\s*(digital)?\s*(inputs?)/i,
-      /(\d+)\s*DI/i,
-      /(\d+)\s*binary\s*inputs?/i,
-      /need\s*(\d+)\s*on[\/\-]?off\s*signals?/i,
-    ],
-    digital_output: [
-      /(\d+)\s*(digital)?\s*(outputs?)/i,
-      /(\d+)\s*DO/i,
-      /(\d+)\s*binary\s*outputs?/i,
-      /control\s*(\d+)\s*devices?/i,
-    ],
-    analog_input: [
-      /(\d+)\s*(analog)?\s*(inputs?)/i,
-      /(\d+)\s*AI/i,
-      /(\d+)\s*sensors?/i,
-      /measure\s*(\d+)\s*signals?/i,
-    ],
-    analog_output: [
-      /(\d+)\s*(analog)?\s*(outputs?)/i,
-      /(\d+)\s*AO/i,
-      /(\d+)\s*control\s*outputs?/i,
-      /drive\s*(\d+)\s*actuators?/i,
-    ],
-    // Power and voltage patterns
-    power_supply: [
-      /(\d+)\s*v(olt)?s?\s*(supply|power)/i,
-      /(\d+)\s*vdc/i,
-      /power\s*at\s*(\d+)\s*v/i,
-    ],
-    communication: [
-      /ethernet/i,
-      /modbus/i,
-      /profinet/i,
-      /canbus/i,
-      /serial/i,
-      /rs485/i,
-      /rs232/i,
-    ],
-    // Application contexts
-    substation: [
-      /substation/i,
-      /electrical\s*substation/i,
-      /power\s*substation/i,
-    ],
-    industrial: [/industrial/i, /manufacturing/i, /factory/i, /plant/i],
-  };
+  // private patterns = {
+  //   // Digital I/O patterns
+  //   digital_input: [
+  //     /(\d+)\s*(digital)?\s*(inputs?)/i,
+  //     /(\d+)\s*DI/i,
+  //     /(\d+)\s*binary\s*inputs?/i,
+  //     /need\s*(\d+)\s*on[\/\-]?off\s*signals?/i,
+  //   ],
+  //   digital_output: [
+  //     /(\d+)\s*(digital)?\s*(outputs?)/i,
+  //     /(\d+)\s*DO/i,
+  //     /(\d+)\s*binary\s*outputs?/i,
+  //     /control\s*(\d+)\s*devices?/i,
+  //   ],
+  //   analog_input: [
+  //     /(\d+)\s*(analog)?\s*(inputs?)/i,
+  //     /(\d+)\s*AI/i,
+  //     /(\d+)\s*sensors?/i,
+  //     /measure\s*(\d+)\s*signals?/i,
+  //   ],
+  //   analog_output: [
+  //     /(\d+)\s*(analog)?\s*(outputs?)/i,
+  //     /(\d+)\s*AO/i,
+  //     /(\d+)\s*control\s*outputs?/i,
+  //     /drive\s*(\d+)\s*actuators?/i,
+  //   ],
+  //   // Power and voltage patterns
+  //   power_supply: [
+  //     /(\d+)\s*v(olt)?s?\s*(supply|power)/i,
+  //     /(\d+)\s*vdc/i,
+  //     /power\s*at\s*(\d+)\s*v/i,
+  //   ],
+  //   communication: [
+  //     /ethernet/i,
+  //     /modbus/i,
+  //     /profinet/i,
+  //     /canbus/i,
+  //     /serial/i,
+  //     /rs485/i,
+  //     /rs232/i,
+  //   ],
+  //   // Application contexts
+  //   substation: [
+  //     /substation/i,
+  //     /electrical\s*substation/i,
+  //     /power\s*substation/i,
+  //   ],
+  //   industrial: [/industrial/i, /manufacturing/i, /factory/i, /plant/i],
+  // };
 
   // Smart defaults based on common engineering requirements
   private smartDefaults = {
@@ -213,20 +210,10 @@ export class SimplifiedRespecService {
 
   // Initialize semantic matching system (called externally with dependencies)
   async initializeSemanticMatching(
-    uc1Engine: UC1ValidationEngine,
     artifactManager?: ArtifactManager,
   ): Promise<void> {
-    if (!uc1Engine.isReady()) {
-      console.warn(
-        "[SimplifiedRespec] UC1ValidationEngine not ready for semantic matching"
-      );
-      this.useSemanticMatching = false;
-      return;
-    }
-
     try {
       // Sprint 3 Week 1: Store core services for conflict detection
-      this.uc1Engine = uc1Engine;
       this.artifactManager = artifactManager;
 
       // SPRINT 3 FIX: Listen for respec artifact changes to update form (respec = source of truth)
@@ -240,24 +227,20 @@ export class SimplifiedRespecService {
       }
 
       // Sprint 2: Initialize new SemanticMatchingService
-      this.semanticMatchingService = createSemanticMatchingService(uc1Engine);
+      this.semanticMatchingService = createSemanticMatchingService();
       await this.semanticMatchingService.initialize();
 
       this.semanticIntegrationNew = createSemanticIntegrationServiceNew(
         this.semanticMatchingService,
-        uc1Engine,
         artifactManager
       );
 
       // Keep old services for backward compatibility (temporarily)
-      this.semanticMatcher = createSemanticMatcher(
-        this.anthropicService,
-        uc1Engine
-      );
+      this.semanticMatcher = createSemanticMatcher();
       this.semanticMatcher.initialize(artifactManager);
 
       // Initialize conflict detection
-      this.conflictDetection = createConflictDetectionService(uc1Engine);
+      this.conflictDetection = createConflictDetectionService();
 
       console.log(
         "[SimplifiedRespec] ✅ Sprint 2 semantic matching initialized"
@@ -295,25 +278,7 @@ export class SimplifiedRespecService {
           "mappings"
         );
       } else {
-        // Fallback to UC1.json if UC8 not loaded
-        console.warn(
-          "[SimplifiedRespec] UC8 not loaded, falling back to UC1.json"
-        );
-        const response = await fetch("/uc1.json");
-        if (response.ok) {
-          this.uc1Data = await response.json();
-          this.extractFieldMappings();
-          console.log(
-            "[SimplifiedRespec] UC1.json loaded, extracted",
-            this.fieldMappings.size,
-            "field mappings"
-          );
-        } else {
-          console.warn(
-            "[SimplifiedRespec] Could not load UC1.json, using fallback mappings"
-          );
-          this.loadFallbackMappings();
-        }
+        console.error("[SimplifiedRespec] UC8 not loaded");
       }
     } catch (error) {
       console.warn("[SimplifiedRespec] Failed to load field mappings:", error);
@@ -396,46 +361,42 @@ export class SimplifiedRespecService {
     );
   }
 
-  /**
-   * Legacy: Extract field mappings from UC1.json (fallback)
-   */
-  private extractFieldMappings(): void {
-    if (!this.uc1Data || !this.uc1Data.specifications) {
-      return;
-    }
+  // /**
+  //  * Legacy: Extract field mappings from UC.json (fallback)
+  //  */
+  // private extractFieldMappings(): void {
+  //   // Extract field mappings from UC.json specifications
+  //   Object.values(ucDataLayer.getAllSpecifications()).forEach((spec: UCSpecification) => {
+  //     if (spec.form_mapping && spec.form_mapping.field_name) {
+  //       const mapping = {
+  //         section: spec.form_mapping.section,
+  //         field: spec.form_mapping.field_name,
+  //       };
 
-    // Extract field mappings from UC1.json specifications
-    Object.values(this.uc1Data.specifications).forEach((spec: any) => {
-      if (spec.form_mapping && spec.form_mapping.field_name) {
-        const mapping = {
-          section: spec.form_mapping.section,
-          field: spec.form_mapping.field_name,
-        };
+  //       // Store by various possible names the user might use
+  //       const specName = spec.name.toLowerCase().replace(/_/g, " ");
+  //       this.fieldMappings.set(specName, mapping);
 
-        // Store by various possible names the user might use
-        const specName = spec.name.toLowerCase().replace(/_/g, " ");
-        this.fieldMappings.set(specName, mapping);
+  //       // Also store by the actual field name
+  //       this.fieldMappings.set(spec.form_mapping.field_name, mapping);
 
-        // Also store by the actual field name
-        this.fieldMappings.set(spec.form_mapping.field_name, mapping);
-
-        // Store common variations
-        if (spec.form_mapping.field_name === "digital_io") {
-          this.fieldMappings.set("digital inputs", mapping);
-          this.fieldMappings.set("digital outputs", mapping);
-          this.fieldMappings.set("digital i/o", mapping);
-        }
-        if (spec.form_mapping.field_name === "analog_io") {
-          this.fieldMappings.set("analog inputs", mapping);
-          this.fieldMappings.set("analog outputs", mapping);
-          this.fieldMappings.set("analog i/o", mapping);
-        }
-      }
-    });
-  }
+  //       // Store common variations
+  //       if (spec.form_mapping.field_name === "digital_io") {
+  //         this.fieldMappings.set("digital inputs", mapping);
+  //         this.fieldMappings.set("digital outputs", mapping);
+  //         this.fieldMappings.set("digital i/o", mapping);
+  //       }
+  //       if (spec.form_mapping.field_name === "analog_io") {
+  //         this.fieldMappings.set("analog inputs", mapping);
+  //         this.fieldMappings.set("analog outputs", mapping);
+  //         this.fieldMappings.set("analog i/o", mapping);
+  //       }
+  //     }
+  //   });
+  // }
 
   private loadFallbackMappings(): void {
-    // Fallback mappings if UC1.json can't be loaded
+    // Fallback mappings if UC.json can't be loaded
     const fallbackMappings = [
       {
         name: "processor",
@@ -682,9 +643,9 @@ export class SimplifiedRespecService {
     });
 
     try {
-      // Sprint 2: New flow with Agent extraction + UC1 matching
+      // Sprint 2: New flow with Agent extraction + UC matching
       console.log(
-        `[SimplifiedRespec] 🚀 Starting Sprint 2 flow: Agent → Integration → UC1 Matcher`
+        `[SimplifiedRespec] 🚀 Starting Sprint 2 flow: Agent → Integration → UC Matcher`
       );
 
       // Identify relevant fields from the message
@@ -865,9 +826,10 @@ export class SimplifiedRespecService {
    * Sprint 3 Week 1: Helper for structuring conflict data
    */
   private getNodeDetails(nodeId: string): any {
-    if (!this.artifactManager || !this.uc1Engine) return {};
+    if (!this.artifactManager) return {};
 
-    const hierarchy = this.uc1Engine.getHierarchy(nodeId);
+    // const hierarchy = this.ucEngine.getHierarchy(nodeId);
+    const hierarchy = null;
     const spec = this.artifactManager.findSpecificationInArtifact(
       "mapped",
       nodeId
@@ -1235,7 +1197,7 @@ export class SimplifiedRespecService {
     context?: {
       originalRequest?: string;
       confidence?: number;
-      uc1Spec?: string;
+      ucSpec?: string;
     }
   ): Promise<FieldConflict[]> {
     if (!this.conflictDetection) {

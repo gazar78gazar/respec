@@ -1,17 +1,16 @@
 /**
- * SemanticMatchingService - Stateless LLM for UC1 Semantic Matching
+ * SemanticMatchingService - Stateless LLM for UC Semantic Matching
  *
- * Purpose: Matches already-extracted requirements to UC1 schema nodes
+ * Purpose: Matches already-extracted requirements to UC schema nodes
  * - Receives: Extracted data nodes from Agent
- * - Does: Semantic matching to UC1 (domain/requirement/specification)
- * - Returns: Best UC1 match with confidence score
+ * - Does: Semantic matching to UC (domain/requirement/specification)
+ * - Returns: Best UC match with confidence score
  *
  * This is a STATELESS service - each call is independent
- * Full UC1 schema is loaded on every call for semantic matching
+ * Full UC schema is loaded on every call for semantic matching
  */
 
 import Anthropic from "@anthropic-ai/sdk";
-import { UC1ValidationEngine } from "./UC1ValidationEngine";
 import { ucDataLayer } from "./UCDataLayer";
 
 // ============= TYPES =============
@@ -25,11 +24,12 @@ export interface ExtractedNode {
 
 export interface MatchResult {
   extractedNode: ExtractedNode;
-  uc1Match: UC1Match;
+  ucMatch: UCMatch;
   value?: any; // Final value (may be transformed)
+  extractedText: string;
 }
 
-export interface UC1Match {
+export interface UCMatch {
   id: string; // e.g., 'spc001', 'req001', 'dom001'
   name: string; // e.g., 'processor_type'
   type: "domain" | "requirement" | "specification";
@@ -38,7 +38,7 @@ export interface UC1Match {
   rationale?: string; // Why this match was chosen
 }
 
-export interface UC1SchemaContext {
+interface UCSchemaContext {
   scenarios: Array<{ id: string; name: string; description: string }>;
   requirements: Array<{
     id: string;
@@ -65,10 +65,8 @@ export interface UC1SchemaContext {
 export class SemanticMatchingService {
   private client: Anthropic | null = null;
   private apiKey: string;
-  private uc1Engine: UC1ValidationEngine;
 
-  constructor(uc1Engine: UC1ValidationEngine, apiKey?: string) {
-    this.uc1Engine = uc1Engine;
+  constructor(apiKey?: string) {
     this.apiKey = apiKey || import.meta.env.VITE_ANTHROPIC_API_KEY || "";
 
     if (!this.apiKey) {
@@ -90,7 +88,7 @@ export class SemanticMatchingService {
 
   // ============= MAIN MATCHING METHOD =============
 
-  async matchExtractedNodesToUC1(
+  async matchExtractedNodesToUC(
     extractedNodes: ExtractedNode[]
   ): Promise<MatchResult[]> {
     if (!this.client) {
@@ -99,7 +97,7 @@ export class SemanticMatchingService {
       );
     }
 
-    // SPRINT 3 FIX: Check UCDataLayer instead of UC1ValidationEngine
+    // SPRINT 3 FIX: Check UCDataLayer instead of UCValidationEngine
     if (!ucDataLayer.isLoaded()) {
       throw new Error(
         "[SemanticMatching] ❌ UCDataLayer not loaded - ensure ucDataLayer.load() is called at startup"
@@ -112,11 +110,11 @@ export class SemanticMatchingService {
       "nodes to UC8 (P## IDs)"
     );
 
-    // Prepare condensed UC1 schema (full schema would be too large)
-    const uc1Context = this.prepareUC1Context();
+    // Prepare condensed UC schema (full schema would be too large)
+    const ucContext = this.prepareUCContext();
 
     // Build prompt
-    const prompt = this.buildMatchingPrompt(extractedNodes, uc1Context);
+    const prompt = this.buildMatchingPrompt(extractedNodes, ucContext);
 
     try {
       const startTime = Date.now();
@@ -155,7 +153,7 @@ export class SemanticMatchingService {
       );
       matchResults.forEach((match) => {
         console.log(
-          `  → ${match.extractedNode.text} → ${match.uc1Match.id} (${match.uc1Match.confidence})`
+          `  → ${match.extractedNode.text} → ${match.ucMatch.id} (${match.ucMatch.confidence})`
         );
       });
 
@@ -204,7 +202,7 @@ Return ONLY valid JSON with P## IDs, no additional text.`;
 
   private buildMatchingPrompt(
     extractedNodes: ExtractedNode[],
-    uc1Context: UC1SchemaContext
+    ucContext: UCSchemaContext
   ): string {
     return `Match these extracted nodes to UC8 schema:
 
@@ -212,14 +210,14 @@ EXTRACTED NODES:
 ${JSON.stringify(extractedNodes, null, 2)}
 
 UC8 SCHEMA CONTEXT:
-${JSON.stringify(uc1Context, null, 2)}
+${JSON.stringify(ucContext, null, 2)}
 
 Return JSON array of matches using P## IDs:
 {
   "matches": [
     {
       "extractedText": "original extracted text",
-      "uc1Match": {
+      "ucMatch": {
         "id": "P82",
         "name": "processor_type",
         "type": "specification",
@@ -237,10 +235,10 @@ Match ALL provided nodes. If no good match exists, use confidence < 0.5.`;
   }
 
   // ============= UC8 CONTEXT PREPARATION =============
-  // SPRINT 3 FIX: Now uses UCDataLayer to get P## IDs instead of UC1ValidationEngine spc### IDs
+  // SPRINT 3 FIX: Now uses UCDataLayer to get P## IDs instead of UCValidationEngine spc### IDs
 
-  private prepareUC1Context(): UC1SchemaContext {
-    const context: UC1SchemaContext = {
+  private prepareUCContext(): UCSchemaContext {
+    const context: UCSchemaContext = {
       scenarios: [],
       requirements: [],
       specifications: [],
@@ -313,18 +311,18 @@ Match ALL provided nodes. If no good match exists, use confidence < 0.5.`;
       const matches = parsed.matches || [];
 
       // Convert to MatchResult format
-      const results: MatchResult[] = matches.map((match: any) => ({
+      const results: MatchResult[] = matches.map((match: MatchResult) => ({
         extractedNode: {
           text: match.extractedText,
           value: match.value,
         },
-        uc1Match: {
-          id: match.uc1Match.id,
-          name: match.uc1Match.name,
-          type: match.uc1Match.type,
-          confidence: match.uc1Match.confidence,
-          matchType: match.uc1Match.matchType || "semantic",
-          rationale: match.uc1Match.rationale,
+        ucMatch: {
+          id: match.ucMatch.id,
+          name: match.ucMatch.name,
+          type: match.ucMatch.type,
+          confidence: match.ucMatch.confidence,
+          matchType: match.ucMatch.matchType || "semantic",
+          rationale: match.ucMatch.rationale,
         },
         value: match.value,
       }));
@@ -344,8 +342,7 @@ Match ALL provided nodes. If no good match exists, use confidence < 0.5.`;
 // ============= FACTORY FUNCTION =============
 
 export function createSemanticMatchingService(
-  uc1Engine: UC1ValidationEngine,
   apiKey?: string
 ): SemanticMatchingService {
-  return new SemanticMatchingService(uc1Engine, apiKey);
+  return new SemanticMatchingService(apiKey);
 }
