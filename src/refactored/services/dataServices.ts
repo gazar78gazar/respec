@@ -131,7 +131,11 @@ class ExportService {
       const jsonString = JSON.stringify(exportData, null, 2);
       return new Blob([jsonString], { type: "application/json" });
     } catch (error: unknown) {
-      throw new Error(`JSON export failed: ${error instanceof Error ? error.message : "Unknown error " + error}`);
+      throw new Error(
+        `JSON export failed: ${
+          error instanceof Error ? error.message : "Unknown error " + error
+        }`
+      );
     }
   }
 
@@ -165,7 +169,11 @@ class ExportService {
       const csvContent = rows.join("\n");
       return new Blob([csvContent], { type: "text/csv" });
     } catch (error: unknown) {
-      throw new Error(`CSV export failed: ${error instanceof Error ? error.message : "Unknown error " + error}`);
+      throw new Error(
+        `CSV export failed: ${
+          error instanceof Error ? error.message : "Unknown error " + error
+        }`
+      );
     }
   }
 
@@ -183,9 +191,9 @@ class ExportService {
 
       // Group by sections (using field mapping logic)
       const sections = {
-        performance_computing: [],
-        io_connectivity: [],
-        power_environment: [],
+        performanceComputing: [],
+        IOConnectivity: [],
+        powerEnvironment: [],
         commercial: [],
         other: [],
       };
@@ -217,20 +225,26 @@ class ExportService {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
     } catch (error: unknown) {
-      throw new Error(`Excel export failed: ${error instanceof Error ? error.message : "Unknown error " + error}`);
+      throw new Error(
+        `Excel export failed: ${
+          error instanceof Error ? error.message : "Unknown error " + error
+        }`
+      );
     }
   }
 
+  // TODO zeev refactor - seems to be not used at all
+
   private getFieldSection(fieldName: string): string | null {
     const fieldSections: Record<string, string> = {
-      cpuType: "performance_computing",
-      cpuCores: "performance_computing",
-      ramSize: "performance_computing",
-      digitalIO: "io_connectivity",
-      analogIO: "io_connectivity",
-      networkPorts: "io_connectivity",
-      powerSupply: "power_environment",
-      operatingTemp: "power_environment",
+      cpuType: "performanceComputing",
+      cpuCores: "performanceComputing",
+      ramSize: "performanceComputing",
+      digitalIO: "IOConnectivity",
+      analogIO: "IOConnectivity",
+      networkPorts: "IOConnectivity",
+      powerSupply: "powerEnvironment",
+      operatingTemp: "powerEnvironment",
       budgetPerUnit: "commercial",
       quantity: "commercial",
     };
@@ -267,7 +281,11 @@ class ShareService {
       const baseUrl = window.location.origin;
       return `${baseUrl}/shared/${shareToken}`;
     } catch (error: unknown) {
-      throw new Error(`Failed to generate shareable link: ${error instanceof Error ? error.message : "Unknown error " + error}`);
+      throw new Error(
+        `Failed to generate shareable link: ${
+          error instanceof Error ? error.message : "Unknown error " + error
+        }`
+      );
     }
   }
 
@@ -369,7 +387,13 @@ class ImportService {
     } catch (error: unknown) {
       return {
         success: false,
-        errors: [`JSON parsing failed: ${error instanceof Error ? error.message : "Unknown error " + errorerror.message}`],
+        errors: [
+          `JSON parsing failed: ${
+            error instanceof Error
+              ? error.message
+              : "Unknown error " + errorerror.message
+          }`,
+        ],
       };
     }
   }
@@ -428,7 +452,11 @@ class ImportService {
     } catch (error: unknown) {
       return {
         success: false,
-        errors: [`CSV parsing failed: ${error instanceof Error ? error.message : "Unknown error " + error}`],
+        errors: [
+          `CSV parsing failed: ${
+            error instanceof Error ? error.message : "Unknown error " + error
+          }`,
+        ],
       };
     }
   }
@@ -810,9 +838,9 @@ class HelperUtilities {
     requirements: Requirements
   ): Record<string, any[]> {
     const sections = {
-      performance_computing: [],
-      io_connectivity: [],
-      power_environment: [],
+      performanceComputing: [],
+      IOConnectivity: [],
+      powerEnvironment: [],
       commercial: [],
       other: [],
     };
@@ -841,14 +869,14 @@ class HelperUtilities {
 
   private getFieldSection(fieldName: string): string | null {
     const fieldSections: Record<string, string> = {
-      cpuType: "performance_computing",
-      cpuCores: "performance_computing",
-      ramSize: "performance_computing",
-      digitalIO: "io_connectivity",
-      analogIO: "io_connectivity",
-      networkPorts: "io_connectivity",
-      powerSupply: "power_environment",
-      operatingTemp: "power_environment",
+      cpuType: "performanceComputing",
+      cpuCores: "performanceComputing",
+      ramSize: "performanceComputing",
+      digitalIO: "IOConnectivity",
+      analogIO: "IOConnectivity",
+      networkPorts: "IOConnectivity",
+      powerSupply: "powerEnvironment",
+      operatingTemp: "powerEnvironment",
       budgetPerUnit: "commercial",
       quantity: "commercial",
     };

@@ -17,7 +17,6 @@ import { SemanticMatchingService, ExtractedNode, MatchResult } from './SemanticM
 import { EnhancedFormUpdate, ChatResult } from './SimplifiedRespecService';
 import { ArtifactManager } from './ArtifactManager';
 import { ucDataLayer } from './UCDataLayer';
-import { UCSpecification } from './UCDataTypes';
 
 // ============= INTEGRATION TYPES =============
 
@@ -142,79 +141,6 @@ export class SemanticIntegrationService {
     }));
   }
 
-  // Legacy method - kept for reference, now using generateFormUpdatesFromRespec()
-  // private _convertMatchesToFormUpdates(matches: MatchResult[]): EnhancedFormUpdate[] {
-  //   const formUpdates: EnhancedFormUpdate[] = [];
-
-  //   for (const match of matches) {
-  //     // Only specifications can update form (requirements/domains cannot)
-  //     if (match.ucMatch.type !== 'specification') {
-  //       console.log(`[SemanticIntegration] ⏭️  Skipping ${match.ucMatch.type} (not a specification)`);
-  //       continue;
-  //     }
-
-  //     // Get form field mapping from UC8 specification (UC8 specs have form_mapping built-in)
-  //     const uc8Spec = ucDataLayer.getSpecification(match.ucMatch.id);
-
-  //     if (!uc8Spec?.form_mapping) {
-  //       console.warn(`[SemanticIntegration] ⚠️  No form mapping for ${match.ucMatch.id}`);
-  //       continue;
-  //     }
-
-  //     const fieldMapping = {
-  //       section: uc8Spec.form_mapping.section,
-  //       field: uc8Spec.form_mapping.field_name,
-  //       category: uc8Spec.form_mapping.category || uc8Spec.form_mapping.section
-  //     };
-
-  //     // Get UC specification to retrieve proper value from options
-  //     // const ucSpec = this.ucEngine.getSpecification(match.ucMatch.id);
-  //     const spec = ucDataLayer.getSpecification(match.ucMatch.id);
-
-  //     let finalValue = match.value;
-  //     let substitutionNote = match.ucMatch.matchType === 'semantic'
-  //       ? `Matched semantically: ${match.ucMatch.rationale}`
-  //       : undefined;
-
-  //     if (spec) {
-  //       // If spec has options (dropdown), select the best match
-  //       if (spec.options && spec.options.length > 0) {
-  //         const selectedOption = this.selectBestOption(
-  //           match.value,
-  //           match.extractedNode.text,
-  //           spec.options
-  //         );
-
-  //         if (selectedOption !== match.value) {
-  //           substitutionNote = `Selected "${selectedOption}" from available options (you requested: "${match.extractedNode.context}")`;
-  //           console.log(`[SemanticIntegration] 🔄 Value substitution: "${match.value}" → "${selectedOption}"`);
-  //         }
-
-  //         finalValue = selectedOption;
-  //       } 
-  //       // else if (!match.value && spec.default_value) {
-  //       //   // Use default if no value extracted
-  //       //   finalValue = spec.default_value;
-  //       //   substitutionNote = `Used default value "${ucSpec.default_value}"`;
-  //       //   console.log(`[SemanticIntegration] 🔄 Using default: ${finalValue}`);
-  //       // }
-  //     }
-
-  //     // Create form update
-  //     formUpdates.push({
-  //       section: fieldMapping.section,
-  //       field: fieldMapping.field,
-  //       value: finalValue,
-  //       confidence: match.ucMatch.confidence,
-  //       isAssumption: match.ucMatch.confidence < 0.9,
-  //       originalRequest: match.extractedNode.context,
-  //       substitutionNote
-  //     });
-  //   }
-
-  //   return formUpdates;
-  // }
-
   /**
    * Generate form updates from respec artifact
    * This includes auto-added dependency specs that weren't in the original matches
@@ -234,26 +160,25 @@ export class SemanticIntegrationService {
     Object.values(respecArtifact.domains).forEach(domain => {
       Object.values(domain.requirements).forEach(requirement => {
         Object.values(requirement.specifications).forEach(spec => {
-          // Get form field mapping from UC8 specification (UC8 specs have form_mapping built-in)
-          const uc8SpecForMapping = ucDataLayer.getSpecification(spec.id);
-
-          if (!uc8SpecForMapping?.form_mapping) {
-            console.log(`[SemanticIntegration] ⏭️  No form mapping for ${spec.id} (may be comment type)`);
+          // Get form field mapping from UC8 specification (UC8 specs have ui fields definitions built-in)
+          const fullSpec = ucDataLayer.getSpecification(spec.id);
+          if (!fullSpec){
+            console.log(`[SemanticIntegration] ⏭️  No full spec found for ${spec.id}`);
             return;
           }
 
-          const fieldMapping = {
-            section: uc8SpecForMapping.form_mapping.section,
-            field: uc8SpecForMapping.form_mapping.field_name,
-            category: uc8SpecForMapping.form_mapping.category || uc8SpecForMapping.form_mapping.section
-          };
+          const uiField = ucDataLayer.getUiFieldByFieldName(fullSpec.field_name);
+          if (!uiField) {
+            console.log(`[SemanticIntegration] ⏭️  No ui field found for ${spec.id}`);
+            return;
+          }
 
-          console.log(`[SemanticIntegration] 📋 Generating form update for ${spec.id} = ${spec.value}`);
+          console.log(`[SemanticIntegration] 📋 Generating form update for ${spec.id} = ${spec.value}`, {uiField});
 
           // Create form update
           formUpdates.push({
-            section: fieldMapping.section,
-            field: fieldMapping.field,
+            section: uiField.section,
+            field: uiField.field_name,
             value: spec.value,
             confidence: spec.confidence || 1.0,
             isAssumption: spec.source === 'llm' && (spec.confidence || 1.0) < 0.9,
@@ -351,25 +276,11 @@ export class SemanticIntegrationService {
           return;
         }
 
-        // UC8 spec needs to be converted to UC format for compatibility with ArtifactManager
-        // TODO: Refactor ArtifactManager to use UC8 types directly
-        const ucSpec: UCSpecification = {
-          id: uc8Spec.id,
-          type: 'specification',
-          name: uc8Spec.name,
-          form_mapping: uc8Spec.form_mapping,
-          category: uc8Spec.form_mapping?.category || uc8Spec.form_mapping?.section || 'unknown',
-          parent: uc8Spec.parent_requirements || [],
-          options: uc8Spec.options,
-          description: uc8Spec.description,
-          dependencies: [] // UC8 uses 'requires' field differently
-        };
-
         console.log(`[Route] ✅ Found UC8 spec: ${uc8Spec.name} (${specId})`);
 
         // Step 2: Add to mapped artifact
         await this.artifactManager.addSpecificationToMapped(
-          ucSpec,
+          uc8Spec,
           value,
           match.extractedNode.context,
           match.ucMatch.rationale

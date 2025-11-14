@@ -2,7 +2,6 @@
  * TypeScript interfaces for UC v8.0 dataset
  */
 
-
 // TODO zeev how is it being used really?
 export interface UCDomain {
   id: string;
@@ -19,19 +18,12 @@ export interface UCMetadata {
   description: string;
   created_at: string;
   updated_at: string;
-  coverage: string;
-  uno_compatible: boolean;
-  changes: string[];
   id_format: {
     scenarios: string;
     requirements: string;
     specifications: string;
     comments: string;
     exclusions: string;
-  };
-  skipped_ids?: {
-    specifications?: string[];
-    note?: string;
   };
 }
 
@@ -58,8 +50,6 @@ export interface UCRequirement {
   description: string;
   parent_scenarios: string[];
   specification_ids: string[];
-  form_field: string;
-  allows_conflicts?: boolean;
   category?: string;
   metadata?: any;
 }
@@ -69,23 +59,48 @@ export interface UCSpecification {
   type: "specification";
   name: string;
   parent_requirements: string[];
-  form_mapping: UCFormMapping;
+  field_name: string;
   requires?: USFormRequirement;
   description?: string;
-  options?: string[];
-  selection_type?: string;
   technical_details?: any;
 }
 
-export type Maybe<T> = T | undefined
+// type UCUISection =
+//   | "IOConnectivity"
+//   | "formFactor"
+//   | "computePerformance"
+//   | "environmentStandards";
 
-export interface UCFormMapping {
+// type UCUIFieldCategory =
+//   | "core_io"
+//   | "physical_design"
+//   | "ethernet"
+//   | "gpu_acceleration"
+//   | "environment"
+//   | "memory"
+//   | "software"
+//   | "power_requirements"
+//   | "processing"
+//   | "response_time"
+//   | "serial_protocols"
+//   | "storage"
+//   | "serial_usb"
+//   | "utility_protocols"
+//   | "wireless";
+
+type UCUIType = "dropdown" | "multi_select";
+type UCSelectionType = "single_choice" | "multi_choice";
+
+export interface UCUIField {
   section: string;
   category: string;
   field_name: string;
-  ui_type: string;
-  selected_value: string;
+  ui_type: UCUIType;
+  selection_type: UCSelectionType;
+  options: string[];
 }
+
+export type Maybe<T> = T | undefined;
 
 export interface USFormRequirement {
   [category: string]: string[]; // OR within category, AND across
@@ -117,17 +132,12 @@ export interface UCExclusion {
 
 export interface UCDataset {
   metadata: UCMetadata;
-  id_mapping: {
-    scenarios: Record<string, string>;
-    requirements?: Record<string, string>;
-    specifications?: Record<string, string>;
-  };
   scenarios: Record<string, UCScenario>;
   requirements: Record<string, UCRequirement>;
   specifications: Record<string, UCSpecification>;
   comments: Record<string, UCComment>;
   exclusions: Record<string, UCExclusion>;
-  validation?: any;
+  ui_fields: Record<string, UCUIField>;
 }
 
 // ============= CONFLICT TYPES (EXTENDED) =============

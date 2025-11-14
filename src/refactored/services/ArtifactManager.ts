@@ -146,18 +146,17 @@ export class ArtifactManager {
       throw new Error(`Cannot find parent scenario for requirement ${reqId}`);
 
     console.log("[addSpecificationToMapped] found parentScenarios", JSON.parse(JSON.stringify(parentScenarios)));
-    const domainId = parentScenarios[0].id; // S## format (stored as "domain" in artifact)
+    const scenarioId = parentScenarios[0].id; // S## format (stored as "domain" in artifact)
 
     // Ensure domain exists in mapped artifact
     // SPRINT 3 FIX: Get scenario from UCDataLayer instead of domain from UCEngine
-    if (!this.state.mapped.domains[domainId]) {
-      const uc8Scenario = ucDataLayer.getScenario(domainId);
-      if (!uc8Scenario) {
-        throw new Error(`UC8 scenario ${domainId} not found`);
-      }
+    if (!this.state.mapped.domains[scenarioId]) {
+      const uc8Scenario = ucDataLayer.getScenario(scenarioId);
+      if (!uc8Scenario)
+        throw new Error(`UC8 scenario ${scenarioId} not found`);
 
-      this.state.mapped.domains[domainId] = {
-        id: domainId,
+      this.state.mapped.domains[scenarioId] = {
+        id: scenarioId,
         name: uc8Scenario.name,
         ucSource: uc8Scenario, // UC8 scenario stored as "domain" in artifact
         requirements: {},
@@ -166,13 +165,12 @@ export class ArtifactManager {
 
     // Ensure requirement exists in domain
     // SPRINT 3 FIX: Get requirement from UCDataLayer
-    if (!this.state.mapped.domains[domainId].requirements[reqId]) {
+    if (!this.state.mapped.domains[scenarioId].requirements[reqId]) {
       const uc8Requirement = ucDataLayer.getRequirement(reqId);
-      if (!uc8Requirement) {
+      if (!uc8Requirement)
         throw new Error(`UC8 requirement ${reqId} not found`);
-      }
 
-      this.state.mapped.domains[domainId].requirements[reqId] = {
+      this.state.mapped.domains[scenarioId].requirements[reqId] = {
         id: reqId,
         name: uc8Requirement.name,
         ucSource: uc8Requirement, // UC8 requirement stored in artifact
@@ -181,7 +179,7 @@ export class ArtifactManager {
     }
 
     // Add specification to requirement
-    this.state.mapped.domains[domainId].requirements[reqId].specifications[
+    this.state.mapped.domains[scenarioId].requirements[reqId].specifications[
       spec.id
     ] = artifactSpec;
 
@@ -244,7 +242,7 @@ export class ArtifactManager {
     }
 
     visited.add(requirementId);
-    const requirement = ucDataLayer.getSpecification(requirementId);
+    const requirement = ucDataLayer.getRequirement(requirementId);
 
     console.log("[ArtifactManager] found requirement", requirement);
 
@@ -302,9 +300,8 @@ export class ArtifactManager {
    * Add default specifications from a dependency requirement
    */
   private async addDependencyRequirement(requirementId: string): Promise<void> {
-    const requirement = (this.uc1Engine as any).schema?.requirements[
-      requirementId
-    ];
+    
+    const requirement = ucDataLayer.getRequirement(requirementId);
 
     if (!requirement) {
       console.warn(
@@ -453,7 +450,7 @@ export class ArtifactManager {
       );
     } else {
       console.warn(
-        "[ArtifactManager] UC8 not loaded, falling back to UC1 conflict detection"
+        "[ArtifactManager] UC8 not loaded, falling back to uc conflict detection"
       );
       result = this.uc1Engine.detectConflicts(
         specifications,

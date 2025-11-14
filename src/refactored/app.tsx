@@ -20,7 +20,7 @@ import type {
   ChatMessage,
   MASCommunicationResult,
   UserRole,
-} from "../types/requirements.types";
+} from "./types/requirements.types";
 import EnhancedChatWindow from "./components/EnhancedChatWindow";
 import type { FieldDef } from "./components/FormField";
 import type { MASAction, PayloadMap } from "./types/mas";
@@ -29,7 +29,7 @@ import { TabsNav } from "./components/TabsNav";
 import { ProgressSummary } from "./components/ProgressSummary";
 import { HeaderBar } from "./components/HeaderBar";
 import { RequirementsReview } from "./components/RequirementsReview";
-import { formFieldsData, SECTION_MAPPING } from "../config/uiConfig";
+import { formFieldsData, SECTION_MAPPING } from "./config/uiConfig";
 import { ProcessingPopup } from "./components/ProcessingPopup";
 import { ConflictPanelContainer } from "./components/ConflictPanelContainer";
 import { RequirementsForm } from "./components/RequirementsForm";

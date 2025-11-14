@@ -282,7 +282,7 @@ export class SimplifiedRespecService {
       }
     } catch (error) {
       console.warn("[SimplifiedRespec] Failed to load field mappings:", error);
-      this.loadFallbackMappings();
+      // this.loadFallbackMappings();
     }
 
     // Initialize Anthropic service with field mappings
@@ -325,14 +325,14 @@ export class SimplifiedRespecService {
 
     const specifications = ucDataLayer.getAllSpecifications();
     console.log(
-      `[SimplifiedRespec] Found ${specifications.length} specifications in UC8`
+      `[SimplifiedRespec] Found ${specifications.length} specifications in UC8`, {specifications}
     );
 
     specifications.forEach((spec) => {
-      if (spec.form_mapping && spec.form_mapping.field_name) {
+      if (spec.field_name) {
         const mapping = {
-          section: spec.form_mapping.section,
-          field: spec.form_mapping.field_name,
+          section: ucDataLayer.getUiFieldByFieldName(spec.field_name)?.section || "",
+          field: spec.field_name,
         };
 
         // Store by various possible names the user might use
@@ -340,15 +340,15 @@ export class SimplifiedRespecService {
         this.fieldMappings.set(specName, mapping);
 
         // Also store by the actual field name
-        this.fieldMappings.set(spec.form_mapping.field_name, mapping);
+        this.fieldMappings.set(spec.field_name, mapping);
 
         // Store common variations
-        if (spec.form_mapping.field_name === "digital_io") {
+        if (spec.field_name === "digitalIO") {
           this.fieldMappings.set("digital inputs", mapping);
           this.fieldMappings.set("digital outputs", mapping);
           this.fieldMappings.set("digital i/o", mapping);
         }
-        if (spec.form_mapping.field_name === "analog_io") {
+        if (spec.field_name === "analogIO") {
           this.fieldMappings.set("analog inputs", mapping);
           this.fieldMappings.set("analog outputs", mapping);
           this.fieldMappings.set("analog i/o", mapping);
@@ -361,89 +361,55 @@ export class SimplifiedRespecService {
     );
   }
 
-  // /**
-  //  * Legacy: Extract field mappings from UC.json (fallback)
-  //  */
-  // private extractFieldMappings(): void {
-  //   // Extract field mappings from UC.json specifications
-  //   Object.values(ucDataLayer.getAllSpecifications()).forEach((spec: UCSpecification) => {
-  //     if (spec.form_mapping && spec.form_mapping.field_name) {
-  //       const mapping = {
-  //         section: spec.form_mapping.section,
-  //         field: spec.form_mapping.field_name,
-  //       };
+  // private loadFallbackMappings(): void {
+  //   // Fallback mappings if UC.json can't be loaded
+  //   const fallbackMappings = [
+  //     {
+  //       name: "processor",
+  //       section: "computePerformance",
+  //       field: "processorType",
+  //     },
+  //     {
+  //       name: "memory",
+  //       section: "computePerformance",
+  //       field: "memory_capacity",
+  //     },
+  //     {
+  //       name: "storage",
+  //       section: "computePerformance",
+  //       field: "storage_capacity",
+  //     },
+  //     {
+  //       name: "digital inputs",
+  //       section: "IOConnectivity",
+  //       field: "digitalIO",
+  //     },
+  //     { name: "analog inputs", section: "IOConnectivity", field: "analogIO" },
+  //     {
+  //       name: "ethernet ports",
+  //       section: "IOConnectivity",
+  //       field: "ethernetPorts",
+  //     },
+  //     {
+  //       name: "temperature",
+  //       section: "environmentStandards",
+  //       field: "operatingTemperature",
+  //     },
+  //     {
+  //       name: "budget per unit",
+  //       section: "commercial",
+  //       field: "budgetPerUnit",
+  //     },
+  //     { name: "quantity", section: "commercial", field: "quantity" },
+  //   ];
 
-  //       // Store by various possible names the user might use
-  //       const specName = spec.name.toLowerCase().replace(/_/g, " ");
-  //       this.fieldMappings.set(specName, mapping);
-
-  //       // Also store by the actual field name
-  //       this.fieldMappings.set(spec.form_mapping.field_name, mapping);
-
-  //       // Store common variations
-  //       if (spec.form_mapping.field_name === "digital_io") {
-  //         this.fieldMappings.set("digital inputs", mapping);
-  //         this.fieldMappings.set("digital outputs", mapping);
-  //         this.fieldMappings.set("digital i/o", mapping);
-  //       }
-  //       if (spec.form_mapping.field_name === "analog_io") {
-  //         this.fieldMappings.set("analog inputs", mapping);
-  //         this.fieldMappings.set("analog outputs", mapping);
-  //         this.fieldMappings.set("analog i/o", mapping);
-  //       }
-  //     }
+  //   fallbackMappings.forEach((map) => {
+  //     this.fieldMappings.set(map.name, {
+  //       section: map.section,
+  //       field: map.field,
+  //     });
   //   });
   // }
-
-  private loadFallbackMappings(): void {
-    // Fallback mappings if UC.json can't be loaded
-    const fallbackMappings = [
-      {
-        name: "processor",
-        section: "compute_performance",
-        field: "processor_type",
-      },
-      {
-        name: "memory",
-        section: "compute_performance",
-        field: "memory_capacity",
-      },
-      {
-        name: "storage",
-        section: "compute_performance",
-        field: "storage_capacity",
-      },
-      {
-        name: "digital inputs",
-        section: "io_connectivity",
-        field: "digital_io",
-      },
-      { name: "analog inputs", section: "io_connectivity", field: "analog_io" },
-      {
-        name: "ethernet ports",
-        section: "io_connectivity",
-        field: "ethernet_ports",
-      },
-      {
-        name: "temperature",
-        section: "environment_standards",
-        field: "operating_temperature",
-      },
-      {
-        name: "budget per unit",
-        section: "commercial",
-        field: "budget_per_unit",
-      },
-      { name: "quantity", section: "commercial", field: "quantity" },
-    ];
-
-    fallbackMappings.forEach((map) => {
-      this.fieldMappings.set(map.name, {
-        section: map.section,
-        field: map.field,
-      });
-    });
-  }
 
   private buildFieldOptionsMap(fieldDefinitions: any): void {
     // Build field options map from form field definitions
@@ -511,18 +477,18 @@ export class SimplifiedRespecService {
 
     // Also check for common patterns and keywords
     const commonFieldPatterns = {
-      storage: ["compute_performance.storage_capacity"],
-      memory: ["compute_performance.memory_capacity"],
-      processor: ["compute_performance.processor_type"],
-      cpu: ["compute_performance.processor_type"],
-      ethernet: ["io_connectivity.ethernet_ports"],
-      digital: ["io_connectivity.digital_io"],
-      analog: ["io_connectivity.analog_io"],
-      temperature: ["environment_standards.operating_temperature"],
-      temp: ["environment_standards.operating_temperature"],
-      budget: ["commercial.budget_per_unit"],
-      price: ["commercial.budget_per_unit"],
-      cost: ["commercial.budget_per_unit"],
+      storage: ["computePerformance.storageCapacity"],
+      memory: ["computePerformance.memoryCapacity"],
+      processor: ["computePerformance.processorType"],
+      cpu: ["computePerformance.processorType"],
+      ethernet: ["IOConnectivity.ethernetPorts"],
+      digital: ["IOConnectivity.digitalIO"],
+      analog: ["IOConnectivity.analogIO"],
+      temperature: ["environmentStandards.operatingTemperature"],
+      temp: ["environmentStandards.operatingTemperature"],
+      budget: ["commercial.budgetPerUnit"],
+      price: ["commercial.budgetPerUnit"],
+      cost: ["commercial.budgetPerUnit"],
       quantity: ["commercial.quantity"],
       qty: ["commercial.quantity"],
     };
@@ -934,118 +900,6 @@ export class SimplifiedRespecService {
       trigger,
     };
   }
-
-  // ============= LEGACY PATTERN MATCHING - DISABLED (Sprint 2) =============
-  // These methods are no longer used - Sprint 2 uses LLM-only approach with fail-fast
-
-  /* DISABLED - Pattern matching fallback removed per Sprint 2 requirements
-  private analyzeMessage(message: string): {
-    requirements: Array<{ type: string; value: any; confidence: number }>;
-    context: string;
-    confidence: number;
-  } {
-    const requirements: Array<{ type: string; value: any; confidence: number }> = [];
-    let overallConfidence = 0;
-    let context = 'generic';
-
-    // Check for application context
-    if (this.patterns.substation.some(pattern => pattern.test(message))) {
-      context = 'substation';
-      overallConfidence += 0.3;
-    } else if (this.patterns.industrial.some(pattern => pattern.test(message))) {
-      context = 'industrial';
-      overallConfidence += 0.2;
-    }
-
-    // Extract specific requirements
-    for (const [type, patterns] of Object.entries(this.patterns)) {
-      if (type === 'substation' || type === 'industrial') continue;
-
-      for (const pattern of patterns) {
-        const match = pattern.exec(message);
-        if (match) {
-          const value = type === 'communication' ? true : parseInt(match[1]) || match[0];
-          requirements.push({
-            type,
-            value,
-            confidence: 0.8,
-          });
-          overallConfidence += 0.2;
-          break;
-        }
-      }
-    }
-
-    // Normalize confidence
-    overallConfidence = Math.min(overallConfidence, 1.0);
-
-    return {
-      requirements,
-      context,
-      confidence: overallConfidence,
-    };
-  }
-
-  private generateFormUpdates(analysis: any): FormUpdate[] {
-    const updates: FormUpdate[] = [];
-
-    for (const requirement of analysis.requirements) {
-      const update = this.mapRequirementToFormField(requirement);
-      if (update) {
-        updates.push(update);
-      }
-    }
-
-    return updates;
-  }
-
-  private mapRequirementToFormField(requirement: { type: string; value: any; confidence: number }): FormUpdate | null {
-    const mapping: Record<string, { section: string; field: string }> = {
-      digital_input: { section: 'io', field: 'digital_inputs' },
-      digital_output: { section: 'io', field: 'digital_outputs' },
-      analog_input: { section: 'io', field: 'analog_inputs' },
-      analog_output: { section: 'io', field: 'analog_outputs' },
-      power_supply: { section: 'power', field: 'supply_voltage' },
-      ethernet: { section: 'communication', field: 'ethernet' },
-      modbus: { section: 'communication', field: 'modbus' },
-    };
-
-    const fieldMapping = mapping[requirement.type];
-    if (!fieldMapping) {
-      return null;
-    }
-
-    return {
-      section: fieldMapping.section,
-      field: fieldMapping.field,
-      value: requirement.value,
-      isAssumption: requirement.confidence < 0.9,
-      confidence: requirement.confidence,
-    };
-  }
-
-  private generateResponse(message: string, analysis: any, formUpdates: FormUpdate[]): string {
-    if (formUpdates.length === 0) {
-      return `I understand you mentioned: "${message}". I'm analyzing the requirements - could you provide more specific details about quantities or specifications?`;
-    }
-
-    let response = "I've identified the following requirements from your message:\n\n";
-
-    for (const update of formUpdates) {
-      const friendlyName = this.getFriendlyFieldName(update.section, update.field);
-      const certainty = update.isAssumption ? "I'm assuming" : "I've set";
-      response += `• ${certainty} ${friendlyName}: ${update.value}\n`;
-    }
-
-    if (analysis.confidence < 0.7) {
-      response += "\nPlease let me know if these assumptions are correct or if you need different specifications.";
-    } else {
-      response += "\nThese requirements have been updated in your specification.";
-    }
-
-    return response;
-  }
-  END DISABLED */
 
   private generateFormAcknowledgment(
     section: string,

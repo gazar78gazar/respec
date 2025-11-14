@@ -22,9 +22,9 @@ export interface SectionProgress {
 
 export type AnimationType = "success" | "error" | "warning";
 export type SectionKey =
-  | "performance_computing"
-  | "io_connectivity"
-  | "power_environment"
+  | "performanceComputing"
+  | "IOConnectivity"
+  | "powerEnvironment"
   | "commercial";
 
 // Field mappings
@@ -38,27 +38,27 @@ const MUST_FIELDS = [
 
 const FIELD_SECTIONS: Record<string, SectionKey> = {
   // Performance & Computing
-  cpuType: "performance_computing",
-  cpuCores: "performance_computing",
-  cpuSpeed: "performance_computing",
-  ramSize: "performance_computing",
-  storageType: "performance_computing",
-  storageCapacity: "performance_computing",
+  cpuType: "performanceComputing",
+  cpuCores: "performanceComputing",
+  cpuSpeed: "performanceComputing",
+  ramSize: "performanceComputing",
+  storageType: "performanceComputing",
+  storageСapacity: "performanceComputing",
 
   // I/O & Connectivity
-  digitalIO: "io_connectivity",
-  analogIO: "io_connectivity",
-  networkPorts: "io_connectivity",
-  wirelessCapabilities: "io_connectivity",
-  serialPorts: "io_connectivity",
-  usbPorts: "io_connectivity",
+  digitalIO: "IOConnectivity",
+  analogIO: "IOConnectivity",
+  networkPorts: "IOConnectivity",
+  wirelessCapabilities: "IOConnectivity",
+  serialPorts: "IOConnectivity",
+  usbPorts: "IOConnectivity",
 
   // Power & Environment
-  powerSupply: "power_environment",
-  powerConsumption: "power_environment",
-  operatingTemp: "power_environment",
-  enclosureType: "power_environment",
-  coolingRequirements: "power_environment",
+  powerSupply: "powerEnvironment",
+  powerConsumption: "powerEnvironment",
+  operatingTemp: "powerEnvironment",
+  enclosureType: "powerEnvironment",
+  coolingRequirements: "powerEnvironment",
 
   // Commercial
   budgetPerUnit: "commercial",
@@ -86,7 +86,7 @@ const FIELD_PRIORITIES: Record<string, 1 | 2 | 3 | 4> = {
   // Priority 3 (Medium importance)
   cpuCores: 3,
   cpuSpeed: 3,
-  storageCapacity: 3,
+  storageСapacity: 3,
   powerConsumption: 3,
   enclosureType: 3,
   timeline: 3,

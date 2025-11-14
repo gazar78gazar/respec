@@ -33,7 +33,7 @@ export interface TechnicalExtraction {
 
 export interface UCCandidate {
   specId: string; // e.g., 'spc001'
-  specName: string; // e.g., 'processor_type'
+  specName: string; // e.g., 'processorType'
   matchReason: string; // Why this spec was chosen
   confidence: number; // 0.0 - 1.0
   ucSpec: UCSpecification;

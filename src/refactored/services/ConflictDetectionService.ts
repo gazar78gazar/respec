@@ -295,13 +295,13 @@ export class ConflictDetectionService {
 
     // Processor-Memory compatibility
     if (
-      fieldName === "processor_type" &&
+      fieldName === "processorType" &&
       newValue.toLowerCase().includes("intel")
     ) {
       const memoryType = this.getNestedValue(
         currentRequirements,
-        "compute_performance",
-        "memory_type"
+        "computePerformance",
+        "memoryType"
       );
       if (
         memoryType &&
@@ -338,18 +338,18 @@ export class ConflictDetectionService {
           metadata: {
             timestamp: new Date(),
             source: "semantic",
-            affectedFields: ["compute_performance.memory_type"],
+            affectedFields: ["computePerformance.memoryType"],
           },
         });
       }
     }
 
     // Power-Performance compatibility
-    if (fieldName === "max_power_consumption") {
+    if (fieldName === "maxPowerConsumption") {
       const processorType = this.getNestedValue(
         currentRequirements,
-        "compute_performance",
-        "processor_type"
+        "computePerformance",
+        "processorType"
       );
       if (
         processorType &&
@@ -396,7 +396,7 @@ export class ConflictDetectionService {
           metadata: {
             timestamp: new Date(),
             source: "semantic",
-            affectedFields: ["compute_performance.processor_type"],
+            affectedFields: ["computePerformance.processorType"],
           },
         });
       }

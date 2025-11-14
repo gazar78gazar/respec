@@ -12,6 +12,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { ucDataLayer } from "./UCDataLayer";
+import { UCUIField } from "./UCDataTypes";
 
 // ============= TYPES =============
 
@@ -31,8 +32,8 @@ export interface MatchResult {
 
 export interface UCMatch {
   id: string; // e.g., 'spc001', 'req001', 'dom001'
-  name: string; // e.g., 'processor_type'
-  type: "domain" | "requirement" | "specification";
+  name: string; // e.g., 'processorType'
+  type: "scenario" | "requirement" | "specification";
   confidence: number; // 0.0 - 1.0
   matchType: "exact" | "fuzzy" | "semantic";
   rationale?: string; // Why this match was chosen
@@ -52,11 +53,7 @@ interface UCSchemaContext {
     description: string;
     parent_requirements?: string[];
     options?: string[];
-    form_mapping?: {
-      section: string;
-      field_name: string;
-      ui_type?: string;
-    };
+    form_mapping?: UCUIField;
   }>;
 }
 
@@ -219,7 +216,7 @@ Return JSON array of matches using P## IDs:
       "extractedText": "original extracted text",
       "ucMatch": {
         "id": "P82",
-        "name": "processor_type",
+        "name": "processorType",
         "type": "specification",
         "confidence": 0.95,
         "matchType": "semantic",
@@ -279,8 +276,7 @@ Match ALL provided nodes. If no good match exists, use confidence < 0.5.`;
         name: spec.name,
         description: spec.description || "",
         parent_requirements: spec.parent_requirements || [],
-        options: spec.options,
-        form_mapping: spec.form_mapping,
+        form_mapping: ucDataLayer.getUiFieldByFieldName(spec.field_name),
       });
     });
 

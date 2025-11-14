@@ -1,5 +1,5 @@
-import type { Requirements } from "../../types/requirements.types";
-import { formFieldsData, SECTION_MAPPING } from "../../config/uiConfig";
+import type { Requirements } from "../types/requirements.types";
+import { formFieldsData, SECTION_MAPPING } from "../config/uiConfig";
 import * as uiUtils from "../../utils/uiUtilities";
 
 export const autoCalculateFields = (
@@ -9,24 +9,24 @@ export const autoCalculateFields = (
 ): Record<string, string> => {
   const updates: Record<string, string> = {};
 
-  if (changedField === "budget_per_unit" || changedField === "quantity") {
+  if (changedField === "budgetPerUnit" || changedField === "quantity") {
     const commercial = (requirements as any).commercial || {};
     const unitBudget = parseFloat(
-      (commercial.budget_per_unit?.value || 0).toString().replace(/[$,]/g, "")
+      (commercial.budgetPerUnit?.value || 0).toString().replace(/[$,]/g, "")
     );
     const quantity = parseInt(String(commercial.quantity?.value || 0));
 
-    if (changedField === "budget_per_unit") {
+    if (changedField === "budgetPerUnit") {
       const newUnitBudget = parseFloat(String(newValue).replace(/[$,]/g, ""));
       if (!isNaN(newUnitBudget) && quantity > 0) {
-        updates["commercial.total_budget"] = (newUnitBudget * quantity).toFixed(
+        updates["commercial.totalBudget"] = (newUnitBudget * quantity).toFixed(
           2
         );
       }
     } else if (changedField === "quantity") {
       const newQuantity = parseInt(String(newValue));
       if (!isNaN(unitBudget) && !isNaN(newQuantity) && unitBudget > 0) {
-        updates["commercial.total_budget"] = (unitBudget * newQuantity).toFixed(
+        updates["commercial.totalBudget"] = (unitBudget * newQuantity).toFixed(
           2
         );
       }
@@ -48,10 +48,9 @@ export const mapValueToFormField = (
 
   if (value === true || value === "true") {
     switch (field) {
-      case "wireless_extension":
       case "wirelessExtension":
         return "WiFi"; // Default WiFi option
-      case "ethernet_ports":
+      case "ethernetPorts":
       case "networkPorts":
         return "2"; // Default 2 ports
       default:
@@ -69,7 +68,6 @@ export const mapValueToFormField = (
     let digitalMatch: Maybe<RegExpMatchArray>;
 
     switch (field) {
-      case "wireless_extension":
       case "wirelessExtension":
         if (lowerValue.includes("wifi") || lowerValue.includes("wi-fi")) {
           return "WiFi";
@@ -81,7 +79,6 @@ export const mapValueToFormField = (
           return "None";
         return "WiFi"; // Default fallback
 
-      case "analog_io":
       case "analogIO":
         validAnalogOptions = ["None", "2", "4", "8", "16", "32", "64"];
         if (validAnalogOptions.includes(value)) return value;
@@ -92,7 +89,6 @@ export const mapValueToFormField = (
         }
         return "4"; // Default fallback
 
-      case "digital_io":
       case "digitalIO":
         validDigitalOptions = ["None", "2", "4", "8", "16", "32", "64"];
         if (validDigitalOptions.includes(value)) return value;
@@ -103,7 +99,7 @@ export const mapValueToFormField = (
         }
         return "8"; // Default fallback
 
-      case "ethernet_ports":
+      case "ethernetPorts":
       case "networkPorts":
         if (lowerValue.includes("2") || lowerValue.includes("two")) return "2";
         if (lowerValue.includes("4") || lowerValue.includes("four")) return "4";
@@ -115,9 +111,7 @@ export const mapValueToFormField = (
 
   if (typeof value === "number") {
     switch (field) {
-      case "analog_io":
       case "analogIO":
-      case "digital_io":
       case "digitalIO":
         return value.toString(); // Convert to string for dropdown
       default:
@@ -390,7 +384,7 @@ export const validateField = (fieldKey: string, value: any, fieldDef: any) => {
           });
         }
       }
-      if (fieldKey === "budget_per_unit" && value && value < 0) {
+      if (fieldKey === "budgetPerUnit" && value && value < 0) {
         errors.push({
           severity: "error",
           message: "Budget cannot be negative",

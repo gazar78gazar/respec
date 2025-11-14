@@ -13,9 +13,9 @@ import {
   UCSpecification,
   UCComment,
   UCExclusion,
-  UCFormMapping,
   USFormRequirement,
   Maybe,
+  UCUIField,
 } from "./UCDataTypes";
 
 export class UCDataLayer {
@@ -27,7 +27,7 @@ export class UCDataLayer {
   async load(): Promise<void> {
     console.log(`[UCDataLayer] 📂 Loading dataset version: ${this.version}`);
 
-    const path = "/uc_8.0_2.1.json";
+    const path = "/uc_8.0_2.2.json";
     const response = await fetch(path);
     this.dataset = await response.json();
 
@@ -105,13 +105,12 @@ export class UCDataLayer {
     return this.dataset!.specifications?.[id];
   }
 
-    getSpecificationsByRequirement(requirementId: string): UCSpecification[] {
-      if (!this.dataset)
-        return [];
-      return Object.values(this.dataset.specifications).filter((spec) =>
-        spec.parent_requirements.includes(requirementId)
-      );
-    }
+  getSpecificationsByRequirement(requirementId: string): UCSpecification[] {
+    if (!this.dataset) return [];
+    return Object.values(this.dataset.specifications).filter((spec) =>
+      spec.parent_requirements.includes(requirementId)
+    );
+  }
 
   getComment(id: string): Maybe<UCComment> {
     console.log(
@@ -290,9 +289,7 @@ export class UCDataLayer {
     console.log(`[UCDataLayer] 📋 getSpecificationsForFormField(${fieldName})`);
 
     const specs = Object.values(this.dataset!.specifications || {}).filter(
-      (spec: UCSpecification) => {
-        return spec.form_mapping?.field_name === fieldName;
-      }
+      (spec: UCSpecification) => spec.field_name === fieldName
     );
 
     console.log(
@@ -336,21 +333,6 @@ export class UCDataLayer {
   }
 
   /**
-   * Get form field name for a specification
-   */
-  getFormFieldForSpecification(specId: string): string | null {
-    const spec = this.getSpecification(specId);
-    const fieldName = spec?.form_mapping?.field_name || null;
-    console.log(`[UCDataLayer]   → Field: ${fieldName || "NONE"}`);
-    return fieldName;
-  }
-
-  getFieldMapingFromSpecId(specId: string): UCFormMapping | null {
-    const spec = this.getSpecification(specId);
-    return spec?.form_mapping || null;
-  }
-
-  /**
    * Get all form fields (unique list)
    */
   getAllFormFields(): string[] {
@@ -358,13 +340,16 @@ export class UCDataLayer {
 
     Object.values(this.dataset!.specifications || {}).forEach(
       (spec: UCSpecification) => {
-        const fieldName = spec.form_mapping?.field_name;
-        if (fieldName) fields.add(fieldName);
+        if (spec.field_name) fields.add(spec.field_name);
       }
     );
 
     console.log(`[UCDataLayer] 📋 Found ${fields.size} unique form fields`);
     return Array.from(fields);
+  }
+
+  getUiFieldByFieldName(fieldName: string): Maybe<UCUIField> {
+    return this.dataset!.ui_fields[fieldName];
   }
 
   // ============= EXTENDED CONFLICT DETECTION (CRITICAL!) =============
@@ -404,11 +389,11 @@ export class UCDataLayer {
     if (!newSpec) return conflicts;
 
     // 1. Check direct field overwrites
-    const fieldName = newSpec.form_mapping?.field_name;
+    const fieldName = newSpec.field_name;
     if (fieldName) {
       const existingSpecForField = currentSelections.find((id) => {
         const spec = this.getSpecification(id);
-        return spec?.form_mapping?.field_name === fieldName;
+        return spec?.field_name === fieldName;
       });
 
       if (existingSpecForField && existingSpecForField !== newSpecId) {
@@ -437,7 +422,7 @@ export class UCDataLayer {
         const conflictingSpec = this.getSpecification(conflictingNode);
         conflicts.push({
           type: "exclusion",
-          field: conflictingSpec?.form_mapping?.field_name || "",
+          field: conflictingSpec?.field_name || "",
           existingValue: conflictingNode,
           proposedValue: newSpecId,
           reason: exclusion.reason,
