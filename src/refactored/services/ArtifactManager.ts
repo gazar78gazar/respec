@@ -49,10 +49,10 @@ export class ArtifactManager {
     }
 
     this.state.initialized = true;
-    this.state.lastSyncWithForm = new Date();
+    // this.state.lastSyncWithForm = new Date();
 
     console.log("[ArtifactManager] Initialized with ucDataLayer");
-    this.emit("initialized", { state: this.getState() });
+    // this.emit("initialized", { state: this.getState() });
   }
 
   // ============= STATE ACCESS =============
@@ -193,12 +193,12 @@ export class ArtifactManager {
         spec.id
       } to mapped artifact (source: ${source || "user_request"})`
     );
-    this.emit("specification_added", {
-      artifactType: "mapped",
-      specId: spec.id,
-      value,
-      source,
-    });
+    // this.emit("specification_added", {
+    //   artifactType: "mapped",
+    //   specId: spec.id,
+    //   value,
+    //   source,
+    // });
 
     // SPRINT 3 FIX: Skip conflict detection and dependency fulfillment if this is from conflict resolution
     if (source === "conflict_resolution") {
@@ -680,12 +680,12 @@ export class ArtifactManager {
       );
 
       // Emit event for form update
-      this.emit("specifications_moved", {
-        from: "mapped",
-        to: "respec",
-        specIds: resolvedSpecs,
-        reason: "cross-artifact-auto-resolve",
-      });
+      // this.emit("specifications_moved", {
+      //   from: "mapped",
+      //   to: "respec",
+      //   specIds: resolvedSpecs,
+      //   reason: "cross-artifact-auto-resolve",
+      // });
     }
 
     return { resolved: resolvedSpecs.length, specs: resolvedSpecs };
@@ -735,7 +735,7 @@ export class ArtifactManager {
     this.state.conflicts.metadata.lastModified = new Date();
 
     console.log(`[ArtifactManager] Added active conflict: ${conflict.id}`);
-    this.emit("conflict_detected", { conflict });
+    // this.emit("conflict_detected", { conflict });
   }
 
   // ============= CONFLICT RESOLUTION =============
@@ -795,7 +795,7 @@ export class ArtifactManager {
     // This triggers the normal flow: MAPPED → RESPEC → Form heals from RESPEC
     await this.moveNonConflictingToRespec();
 
-    this.emit("conflict_resolved", { conflictId, resolutionId });
+    // this.emit("conflict_resolved", { conflictId, resolutionId });
   }
 
   /**
@@ -872,7 +872,7 @@ export class ArtifactManager {
       );
     }
 
-    this.emit("conflict_escalated", { conflictId, reason: "max_cycles" });
+    // this.emit("conflict_escalated", { conflictId, reason: "max_cycles" });
   }
 
   /**
@@ -1147,7 +1147,7 @@ export class ArtifactManager {
       }
     });
 
-    this.emit("specifications_moved", { movement });
+    // this.emit("specifications_moved", { movement });
   }
 
   private addSpecificationToRespec(spec: UCArtifactSpecification): void {
@@ -1245,7 +1245,7 @@ export class ArtifactManager {
 
   async syncWithFormState(requirements: any): Promise<void> {
     // Compatibility layer: sync new artifact state with existing requirements state
-    this.state.lastSyncWithForm = new Date();
+    // this.state.lastSyncWithForm = new Date();
     this.state.respec.metadata.formSyncStatus = "synced";
 
     Object.entries(requirements).forEach(([section, fields]) => {
@@ -1257,7 +1257,7 @@ export class ArtifactManager {
     });
 
     console.log("[ArtifactManager] Synced with form state");
-    this.emit("form_sync_complete", { timestamp: this.state.lastSyncWithForm });
+    // this.emit("form_sync_complete", { timestamp: this.state.lastSyncWithForm });
   }
 
   // syncRequirementsToArtifact(requirements: LegacyRequirements): SyncResult {

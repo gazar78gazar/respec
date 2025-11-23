@@ -293,6 +293,7 @@ export class SemanticMatcher {
   ): Promise<UCCandidate[]> {
     const candidates: UCCandidate[] = [];
 
+    // TODO zeev refactor this logic - seems to be uc1 related
     // Category-based mapping: processor→spc001, memory→spc002, power→spc036
     const categoryMap: { [key: string]: string[] } = {
       processor: ["spc001"], // processorType
@@ -360,6 +361,7 @@ export class SemanticMatcher {
   async applyExtractionsToArtifacts(
     extractions: TechnicalExtraction[]
   ): Promise<void> {
+    alert('applyExtractionsToArtifacts')
     if (!this.artifactManager) {
       console.warn("[SemanticMatcher] Artifact integration not available");
       return;

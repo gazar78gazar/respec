@@ -987,50 +987,50 @@ Please respond with A or B.`;
     syncToArtifacts();
   }, [requirements, artifactManager]);
 
-  useEffect(() => {
-    if (!artifactManager) return;
+  // useEffect(() => {
+  //   if (!artifactManager) return;
 
-    artifactManager.on(
-      "form_updates_from_respec",
-      (data: FieldsUpdatesData) => {
-        // TODO zeev decide how to use. Suppose to be the only way to update requirements object
-        console.log(`[APP] 📝 Form updates from ${data.source}:`, data.updates);
+  //   artifactManager.on(
+  //     "form_updates_from_respec",
+  //     (data: FieldsUpdatesData) => {
+  //       // TODO zeev decide how to use. Suppose to be the only way to update requirements object
+  //       console.log(`[APP] 📝 Form updates from ${data.source}:`, data.updates);
 
-        data.updates.forEach(
-          (update: {
-            section: string;
-            field: string;
-            value: unknown;
-            isSystemGenerated?: boolean;
-          }) => {
-            setRequirements((prev) => ({
-              ...prev,
-              [update.section]: {
-                ...prev[update.section],
-                [update.field]: {
-                  value: update.value,
-                  isComplete: true,
-                  source: data.source,
-                  lastUpdated: new Date().toISOString(),
-                },
-              },
-            }));
-          }
-        );
+  //       data.updates.forEach(
+  //         (update: {
+  //           section: string;
+  //           field: string;
+  //           value: unknown;
+  //           isSystemGenerated?: boolean;
+  //         }) => {
+  //           setRequirements((prev) => ({
+  //             ...prev,
+  //             [update.section]: {
+  //               ...prev[update.section],
+  //               [update.field]: {
+  //                 value: update.value,
+  //                 isComplete: true,
+  //                 source: data.source,
+  //                 lastUpdated: new Date().toISOString(),
+  //               },
+  //             },
+  //           }));
+  //         }
+  //       );
 
-        const metadata = {
-          isFormUpdate: true,
-          updates: data.updates,
-        };
-        addChatMessage(
-          "system",
-          `Form updated: ${data.updates.length} field(s) changed`,
-          `form-update-${Date.now()}`,
-          metadata
-        );
-      }
-    );
-  }, [artifactManager]);
+  //       const metadata = {
+  //         isFormUpdate: true,
+  //         updates: data.updates,
+  //       };
+  //       addChatMessage(
+  //         "system",
+  //         `Form updated: ${data.updates.length} field(s) changed`,
+  //         `form-update-${Date.now()}`,
+  //         metadata
+  //       );
+  //     }
+  //   );
+  // }, [artifactManager]);
 
   const toggleGroup = (section, group) => {
     setExpandedGroups((prev) => ({

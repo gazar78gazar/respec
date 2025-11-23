@@ -133,6 +133,7 @@ export class SemanticIntegrationService {
   // ============= CONVERSION METHODS =============
 
   private convertToExtractedNodes(requirements: any[]): ExtractedNode[] {
+    alert('convertToExtractedNodes - using section')
     return requirements.map(req => ({
       text: `${req.field}: ${req.value}`,
       category: req.section,
@@ -264,6 +265,7 @@ export class SemanticIntegrationService {
     value: any,
     match: MatchResult
   ): Promise<void> {
+    alert('handleSpecificationMatch')
     console.log(`[Route] 🎯 SPECIFICATION: ${specId} = ${value}`);
 
     // If artifact manager available, use full Week 2 flow
@@ -312,6 +314,7 @@ export class SemanticIntegrationService {
   // ============= REQUIREMENT HANDLING =============
 
   private async handleRequirementMatch(reqId: string): Promise<void> {
+    alert('handleRequirementMatch')
     console.log(`[Route] 📋 REQUIREMENT: ${reqId}`);
 
     if (this.artifactManager) {

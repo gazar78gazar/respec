@@ -239,7 +239,7 @@ export interface ArtifactState {
   conflicts: ConflictList;
   priorityQueue: PriorityQueueState;
   initialized: boolean;
-  lastSyncWithForm: Date;
+  // lastSyncWithForm: Date;
 }
 
 // ============= VALIDATION RESULTS =============
@@ -409,6 +409,6 @@ export function createEmptyArtifactState(): ArtifactState {
     conflicts: createEmptyConflictList(),
     priorityQueue: createEmptyPriorityQueue(),
     initialized: false,
-    lastSyncWithForm: new Date(),
+    // lastSyncWithForm: new Date(),
   };
 }

@@ -217,14 +217,14 @@ export class SimplifiedRespecService {
       this.artifactManager = artifactManager;
 
       // SPRINT 3 FIX: Listen for respec artifact changes to update form (respec = source of truth)
-      if (artifactManager) {
-        artifactManager.on("specifications_moved", (data: any) => {
-          this.handleRespecUpdate(data);
-        });
-        console.log(
-          "[SimplifiedRespec] ✅ Listening for respec artifact changes"
-        );
-      }
+      // if (artifactManager) {
+      //   artifactManager.on("specifications_moved", (data: any) => {
+      //     this.handleRespecUpdate(data);
+      //   });
+      //   console.log(
+      //     "[SimplifiedRespec] ✅ Listening for respec artifact changes"
+      //   );
+      // }
 
       // Sprint 2: Initialize new SemanticMatchingService
       this.semanticMatchingService = createSemanticMatchingService();
@@ -851,8 +851,8 @@ export class SimplifiedRespecService {
    * When specs move to respec, generate form updates and push to UI
    * This ensures respec is the single source of truth
    */
-  private handleRespecUpdate(data: any): void {
-    console.log("[SimplifiedRespec] 🔔 Respec artifact updated:", data);
+  // private handleRespecUpdate(data: any): void {
+  //   console.log("[SimplifiedRespec] 🔔 Respec artifact updated:", data);
 
     // TODO: For now, this logs the update. In async conflict resolution scenarios,
     // we'll need to generate form updates and push them to the UI through a callback
@@ -861,7 +861,7 @@ export class SimplifiedRespecService {
 
     // Future enhancement: Store pending form updates and return them on next poll
     // or emit events that app.tsx listens to for real-time updates
-  }
+  // }
 
   async triggerAutofill(trigger: string): Promise<AutofillResult> {
     console.log(`[SimplifiedRespec] Autofill triggered: ${trigger}`);
