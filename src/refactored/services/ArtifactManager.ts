@@ -1147,7 +1147,6 @@ export class ArtifactManager {
       }
     });
 
-    this.state.branchManagement.movements.completed.push(movement);
     this.emit("specifications_moved", { movement });
   }
 

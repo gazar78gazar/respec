@@ -295,11 +295,11 @@ export class SemanticMatcher {
 
     // Category-based mapping: processor→spc001, memory→spc002, power→spc036
     const categoryMap: { [key: string]: string[] } = {
-      processor: ["spc001"], // processor_type
-      memory: ["spc002", "spc044"], // memory_capacity, memory_type
-      power: ["spc036"], // max_power_consumption
-      storage: ["spc003", "spc004"], // storage_type, storage_capacity
-      performance: ["spc005"], // response_latency
+      processor: ["spc001"], // processorType
+      memory: ["spc002", "spc044"], // memoryCapacity, memoryType
+      power: ["spc036"], // maxPowerConsumption
+      storage: ["spc003", "spc004"], // storageType, storageCapacity
+      performance: ["spc005"], // responseLatency
     };
 
     const candidateIds = categoryMap[extraction.category] || [];

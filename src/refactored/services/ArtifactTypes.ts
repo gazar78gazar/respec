@@ -179,24 +179,6 @@ export interface ConflictMetadata extends ArtifactMetadata {
 
 // ============= BRANCH MANAGEMENT =============
 
-export interface BranchManagement {
-  hierarchy: HierarchyMap;
-  movements: MovementHistory;
-  pendingMerges: PendingMerge[];
-}
-
-export interface HierarchyMap {
-  domains: Map<string, Set<string>>; // domainId -> requirementIds
-  requirements: Map<string, Set<string>>; // reqId -> specIds
-  nodeParents: Map<string, string>; // nodeId -> parentId
-  nodeChildren: Map<string, string[]>; // nodeId -> childIds
-}
-
-export interface MovementHistory {
-  pending: Movement[];
-  completed: Movement[];
-  partial: PartialMovement[];
-}
 
 export interface Movement {
   id: string;
@@ -255,7 +237,6 @@ export interface ArtifactState {
   mapped: MappedArtifact;
   unmapped: UnmappedList;
   conflicts: ConflictList;
-  branchManagement: BranchManagement;
   priorityQueue: PriorityQueueState;
   initialized: boolean;
   lastSyncWithForm: Date;
@@ -411,23 +392,6 @@ export function createEmptyConflictList(): ConflictList {
   };
 }
 
-export function createEmptyBranchManagement(): BranchManagement {
-  return {
-    hierarchy: {
-      domains: new Map(),
-      requirements: new Map(),
-      nodeParents: new Map(),
-      nodeChildren: new Map(),
-    },
-    movements: {
-      pending: [],
-      completed: [],
-      partial: [],
-    },
-    pendingMerges: [],
-  };
-}
-
 export function createEmptyPriorityQueue(): PriorityQueueState {
   return {
     currentPriority: "PROCESSING",
@@ -443,7 +407,6 @@ export function createEmptyArtifactState(): ArtifactState {
     mapped: createEmptyMappedArtifact(),
     unmapped: createEmptyUnmappedList(),
     conflicts: createEmptyConflictList(),
-    branchManagement: createEmptyBranchManagement(),
     priorityQueue: createEmptyPriorityQueue(),
     initialized: false,
     lastSyncWithForm: new Date(),
