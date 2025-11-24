@@ -63,9 +63,7 @@ export class SemanticMatcher {
   async initialize(artifactManager?: ArtifactManager): Promise<void> {
     this.artifactManager = artifactManager || null;
 
-    console.log(
-      "[SemanticMatcher] Initialized"
-    );
+    console.log("[SemanticMatcher] Initialized");
   }
 
   // ============= MAIN SEMANTIC PARSING =============
@@ -354,49 +352,6 @@ export class SemanticMatcher {
         mappingConfidence * 0.4 +
         intentBoost * 0.2
     );
-  }
-
-  // ============= INTEGRATION HELPERS =============
-
-  async applyExtractionsToArtifacts(
-    extractions: TechnicalExtraction[]
-  ): Promise<void> {
-    alert('applyExtractionsToArtifacts')
-    if (!this.artifactManager) {
-      console.warn("[SemanticMatcher] Artifact integration not available");
-      return;
-    }
-
-    for (const extraction of extractions) {
-      const bestCandidate = extraction.ucCandidates.reduce(
-        (best, candidate) =>
-          !best || candidate.confidence > best.confidence ? candidate : best,
-        undefined as Maybe<UCCandidate>
-      );
-
-      if (bestCandidate && bestCandidate.confidence > 0.7) {
-        try {
-          await this.artifactManager.addSpecificationToMapped(
-            (bestCandidate as UCCandidate).ucSpec,
-            extraction.value,
-            `LLM extraction: "${extraction.context}"`,
-            `Semantic match with ${(bestCandidate.confidence * 100).toFixed(
-              0
-            )}% confidence. substitutionNote: Original request was "${
-              extraction.context
-            }"`
-          );
-          console.log(
-            `[SemanticMatcher] Added ${bestCandidate.specId}: ${extraction.value}`
-          );
-        } catch (error) {
-          console.error(
-            `[SemanticMatcher] Failed to add ${bestCandidate.specId}:`,
-            error
-          );
-        }
-      }
-    }
   }
 
   // ============= UTILITY METHODS =============

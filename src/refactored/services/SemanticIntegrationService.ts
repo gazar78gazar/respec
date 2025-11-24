@@ -13,10 +13,14 @@
  * - Transformation between formats
  */
 
-import { SemanticMatchingService, ExtractedNode, MatchResult } from './SemanticMatchingService';
-import { EnhancedFormUpdate, ChatResult } from './SimplifiedRespecService';
-import { ArtifactManager } from './ArtifactManager';
-import { ucDataLayer } from './UCDataLayer';
+import {
+  SemanticMatchingService,
+  ExtractedNode,
+  MatchResult,
+} from "./SemanticMatchingService";
+import { EnhancedFormUpdate, ChatResult } from "./SimplifiedRespecService";
+import { ArtifactManager } from "./ArtifactManager";
+import { ucDataLayer } from "./UCDataLayer";
 
 // ============= INTEGRATION TYPES =============
 
@@ -49,7 +53,7 @@ export class SemanticIntegrationService {
     // Default processing options
     this.processingOptions = {
       confidenceThreshold: 0.7,
-      includeDebugInfo: false
+      includeDebugInfo: false,
     };
   }
 
@@ -65,44 +69,63 @@ export class SemanticIntegrationService {
     extractedRequirements: any[],
     conversationalResponse: string
   ): Promise<EnhancedChatResult> {
-
     try {
-      console.log('[SemanticIntegration] 📨 Received', extractedRequirements.length, 'extracted requirements');
+      console.log(
+        "[SemanticIntegration] 📨 Received",
+        extractedRequirements.length,
+        "extracted requirements"
+      );
 
       // Convert agent extractions to ExtractedNode format
-      const extractedNodes = this.convertToExtractedNodes(extractedRequirements);
+      const extractedNodes = this.convertToExtractedNodes(
+        extractedRequirements
+      );
 
       if (extractedNodes.length === 0) {
-        console.log('[SemanticIntegration] ⚠️  No requirements to match');
+        console.log("[SemanticIntegration] ⚠️  No requirements to match");
         return {
           success: true,
           systemMessage: conversationalResponse,
           formUpdates: [],
-          confidence: 1.0
+          confidence: 1.0,
         };
       }
 
       // Match to UC
-      console.log('[SemanticIntegration] 🔍 Sending to SemanticMatchingService...');
-      const matchResults = await this.semanticMatchingService.matchExtractedNodesToUC(extractedNodes);
-      console.log('[SemanticIntegration] ✅ Received', matchResults.length, 'UC matches');
+      console.log(
+        "[SemanticIntegration] 🔍 Sending to SemanticMatchingService..."
+      );
+      const matchResults =
+        await this.semanticMatchingService.matchExtractedNodesToUC(
+          extractedNodes
+        );
+      console.log(
+        "[SemanticIntegration] ✅ Received",
+        matchResults.length,
+        "UC matches"
+      );
 
       // Log matches for debugging
-      matchResults.forEach(match => {
+      matchResults.forEach((match) => {
         console.log(`[SemanticIntegration] 📍 Match:`, {
           text: match.extractedNode.text,
           uc: `${match.ucMatch.id} (${match.ucMatch.name})`,
           type: match.ucMatch.type,
-          confidence: match.ucMatch.confidence
+          confidence: match.ucMatch.confidence,
         });
       });
 
       // Filter by confidence threshold
       const highConfidenceMatches = matchResults.filter(
-        m => m.ucMatch.confidence >= this.processingOptions.confidenceThreshold
+        (m) =>
+          m.ucMatch.confidence >= this.processingOptions.confidenceThreshold
       );
 
-      console.log('[SemanticIntegration] 🎯', highConfidenceMatches.length, 'matches above threshold');
+      console.log(
+        "[SemanticIntegration] 🎯",
+        highConfidenceMatches.length,
+        "matches above threshold"
+      );
 
       // Route matches by node type (this adds specs to artifacts, including auto-fulfilled dependencies)
       await this.routeMatchesByType(highConfidenceMatches);
@@ -110,7 +133,11 @@ export class SemanticIntegrationService {
       // Generate form updates from respec artifact (includes auto-added dependencies)
       const formUpdates = this.generateFormUpdatesFromRespec();
 
-      console.log('[SemanticIntegration] 📝', formUpdates.length, 'form updates generated (includes dependencies)');
+      console.log(
+        "[SemanticIntegration] 📝",
+        formUpdates.length,
+        "form updates generated (includes dependencies)"
+      );
 
       // Build result
       const result: EnhancedChatResult = {
@@ -118,14 +145,15 @@ export class SemanticIntegrationService {
         systemMessage: conversationalResponse, // Use Agent's response
         formUpdates,
         confidence: this.calculateAverageConfidence(matchResults),
-        matchResults: this.processingOptions.includeDebugInfo ? matchResults : undefined,
-        extractionSummary: this.buildExtractionSummary(matchResults)
+        matchResults: this.processingOptions.includeDebugInfo
+          ? matchResults
+          : undefined,
+        extractionSummary: this.buildExtractionSummary(matchResults),
       };
 
       return result;
-
     } catch (error) {
-      console.error('[SemanticIntegration] ❌ Processing failed:', error);
+      console.error("[SemanticIntegration] ❌ Processing failed:", error);
       throw error; // Fail fast for MVP
     }
   }
@@ -133,12 +161,12 @@ export class SemanticIntegrationService {
   // ============= CONVERSION METHODS =============
 
   private convertToExtractedNodes(requirements: any[]): ExtractedNode[] {
-    alert('convertToExtractedNodes - using section')
-    return requirements.map(req => ({
+    console.error("convertToExtractedNodes - using section");
+    return requirements.map((req) => ({
       text: `${req.field}: ${req.value}`,
       category: req.section,
       value: req.value,
-      context: req.originalRequest || req.value
+      context: req.originalRequest || req.value,
     }));
   }
 
@@ -150,43 +178,47 @@ export class SemanticIntegrationService {
     const formUpdates: EnhancedFormUpdate[] = [];
 
     if (!this.artifactManager) {
-      console.warn('[SemanticIntegration] No artifact manager - cannot generate form updates');
+      console.warn(
+        "[SemanticIntegration] No artifact manager - cannot generate form updates"
+      );
       return formUpdates;
     }
 
     // Get the respec artifact which contains all approved specs (including dependencies)
     const respecArtifact = this.artifactManager.getRespecArtifact();
 
-    // Iterate through all specifications in respec artifact
-    Object.values(respecArtifact.domains).forEach(domain => {
-      Object.values(domain.requirements).forEach(requirement => {
-        Object.values(requirement.specifications).forEach(spec => {
-          // Get form field mapping from UC8 specification (UC8 specs have ui fields definitions built-in)
-          const fullSpec = ucDataLayer.getSpecification(spec.id);
-          if (!fullSpec){
-            console.log(`[SemanticIntegration] ⏭️  No full spec found for ${spec.id}`);
-            return;
-          }
+    Object.values(respecArtifact.specifications).forEach((spec) => {
+      const fullSpec = ucDataLayer.getSpecification(spec.id);
+      if (!fullSpec) {
+        console.log(
+          `[SemanticIntegration] ??  No full spec found for ${spec.id}`
+        );
+        return;
+      }
 
-          const uiField = ucDataLayer.getUiFieldByFieldName(fullSpec.field_name);
-          if (!uiField) {
-            console.log(`[SemanticIntegration] ⏭️  No ui field found for ${spec.id}`);
-            return;
-          }
+      const uiField = ucDataLayer.getUiFieldByFieldName(fullSpec.field_name);
+      if (!uiField) {
+        console.log(
+          `[SemanticIntegration] ??  No ui field found for ${spec.id}`
+        );
+        return;
+      }
 
-          console.log(`[SemanticIntegration] 📋 Generating form update for ${spec.id} = ${spec.value}`, {uiField});
+      console.log(
+        `[SemanticIntegration] ?? Generating form update for ${spec.id} = ${spec.value}`,
+        { uiField }
+      );
 
-          // Create form update
-          formUpdates.push({
-            section: uiField.section,
-            field: uiField.field_name,
-            value: spec.value,
-            confidence: spec.confidence || 1.0,
-            isAssumption: spec.source === 'llm' && (spec.confidence || 1.0) < 0.9,
-            originalRequest: spec.originalRequest,
-            substitutionNote: spec.substitutionNote
-          });
-        });
+      formUpdates.push({
+        section: uiField.section,
+        field: uiField.field_name,
+        value: spec.value,
+        confidence: spec.confidence || 1.0,
+        isAssumption:
+          spec.source === "dependency" ||
+          (spec.source === "llm" && (spec.confidence || 1.0) < 0.9),
+        originalRequest: spec.originalRequest,
+        substitutionNote: spec.substitutionNote,
       });
     });
 
@@ -197,40 +229,40 @@ export class SemanticIntegrationService {
    * Select best matching option from dropdown values
    * Uses case-insensitive partial matching and semantic similarity
    */
-  private selectBestOption(
-    extractedValue: any,
-    extractedText: string,
-    availableOptions: string[]
-  ): string {
-    // If extracted value is already in options, use it
-    if (availableOptions.includes(extractedValue)) {
-      return extractedValue;
-    }
+  // private selectBestOption(
+  //   extractedValue: any,
+  //   extractedText: string,
+  //   availableOptions: string[]
+  // ): string {
+  //   // If extracted value is already in options, use it
+  //   if (availableOptions.includes(extractedValue)) {
+  //     return extractedValue;
+  //   }
 
-    // Try case-insensitive exact match
-    const lowerValue = String(extractedValue || '').toLowerCase();
-    const exactMatch = availableOptions.find(opt => opt.toLowerCase() === lowerValue);
-    if (exactMatch) return exactMatch;
+  //   // Try case-insensitive exact match
+  //   const lowerValue = String(extractedValue || '').toLowerCase();
+  //   const exactMatch = availableOptions.find(opt => opt.toLowerCase() === lowerValue);
+  //   if (exactMatch) return exactMatch;
 
-    // Try partial match (e.g., "fanless" matches "Fanless Operation")
-    const partialMatch = availableOptions.find(opt =>
-      opt.toLowerCase().includes(lowerValue) ||
-      lowerValue.includes(opt.toLowerCase())
-    );
-    if (partialMatch) return partialMatch;
+  //   // Try partial match (e.g., "fanless" matches "Fanless Operation")
+  //   const partialMatch = availableOptions.find(opt =>
+  //     opt.toLowerCase().includes(lowerValue) ||
+  //     lowerValue.includes(opt.toLowerCase())
+  //   );
+  //   if (partialMatch) return partialMatch;
 
-    // Try semantic matching on extracted text (e.g., "compact" → "Compact")
-    const textLower = extractedText.toLowerCase();
-    const semanticMatch = availableOptions.find(opt => {
-      const optLower = opt.toLowerCase();
-      return textLower.includes(optLower) || optLower.includes(textLower);
-    });
-    if (semanticMatch) return semanticMatch;
+  //   // Try semantic matching on extracted text (e.g., "compact" → "Compact")
+  //   const textLower = extractedText.toLowerCase();
+  //   const semanticMatch = availableOptions.find(opt => {
+  //     const optLower = opt.toLowerCase();
+  //     return textLower.includes(optLower) || optLower.includes(textLower);
+  //   });
+  //   if (semanticMatch) return semanticMatch;
 
-    // Fallback to first option (with warning)
-    console.warn(`[SemanticIntegration] ⚠️  Could not match "${extractedValue}" to options:`, availableOptions);
-    return availableOptions[0];
-  }
+  //   // Fallback to first option (with warning)
+  //   console.warn(`[SemanticIntegration] ⚠️  Could not match "${extractedValue}" to options:`, availableOptions);
+  //   return availableOptions[0];
+  // }
 
   // ============= ROUTING BY NODE TYPE (Sprint 2 Week 2: Artifact Management) =============
 
@@ -239,17 +271,12 @@ export class SemanticIntegrationService {
       const { ucMatch, value } = match;
 
       switch (ucMatch.type) {
-        case 'specification':
+        case "specification":
           await this.handleSpecificationMatch(ucMatch.id, value, match);
           break;
 
-        case 'requirement':
+        case "requirement":
           await this.handleRequirementMatch(ucMatch.id);
-          break;
-
-        case 'domain':
-          // await this.handleDomainMatch(ucMatch.id);
-          alert('!!! unhandled handleDomainMatch')
           break;
 
         default:
@@ -265,7 +292,6 @@ export class SemanticIntegrationService {
     value: any,
     match: MatchResult
   ): Promise<void> {
-    alert('handleSpecificationMatch')
     console.log(`[Route] 🎯 SPECIFICATION: ${specId} = ${value}`);
 
     // If artifact manager available, use full Week 2 flow
@@ -274,7 +300,9 @@ export class SemanticIntegrationService {
         // SPRINT 3 FIX: Get specification from UCDataLayer (P## IDs) instead of UCEngine (spc### IDs)
         const uc8Spec = ucDataLayer.getSpecification(specId);
         if (!uc8Spec) {
-          console.warn(`[Route] ⚠️  Specification ${specId} not found in UC8 dataset`);
+          console.warn(
+            `[Route] ⚠️  Specification ${specId} not found in UC8 dataset`
+          );
           return;
         }
 
@@ -284,8 +312,9 @@ export class SemanticIntegrationService {
         await this.artifactManager.addSpecificationToMapped(
           uc8Spec,
           value,
-          match.extractedNode.context,
-          match.ucMatch.rationale
+          match.extractedNode.context || "",
+          match.ucMatch.rationale || "",
+          "llm"
         );
 
         // Step 3: Trigger conflict detection
@@ -293,16 +322,27 @@ export class SemanticIntegrationService {
 
         // Step 4: Sprint 3 - NO auto-resolution, ALL conflicts go to agent for binary question
         if (conflictResult.hasConflict) {
-          console.log(`[Route] 🚨 ${conflictResult.conflicts.length} conflict(s) detected - BLOCKING for user resolution`);
-          console.log(`[Route] Conflict types: ${conflictResult.conflicts.map(c => c.type).join(', ')}`);
+          console.log(
+            `[Route] 🚨 ${conflictResult.conflicts.length} conflict(s) detected - BLOCKING for user resolution`
+          );
+          console.log(
+            `[Route] Conflict types: ${conflictResult.conflicts
+              .map((c) => c.type)
+              .join(", ")}`
+          );
           // Do NOT move to respec - specs stay in mapped until user resolves via agent
           // Agent will receive conflict data via getActiveConflictsForAgent() in app.tsx
         } else {
-          console.log(`[Route] ✅ No conflicts - moving non-conflicting specs to respec`);
+          console.log(
+            `[Route] ✅ No conflicts - moving non-conflicting specs to respec`
+          );
           await this.artifactManager.moveNonConflictingToRespec();
         }
       } catch (error) {
-        console.error(`[Route] ❌ Error handling specification ${specId}:`, error);
+        console.error(
+          `[Route] ❌ Error handling specification ${specId}:`,
+          error
+        );
         // Fall through to legacy behavior
       }
     } else {
@@ -314,7 +354,6 @@ export class SemanticIntegrationService {
   // ============= REQUIREMENT HANDLING =============
 
   private async handleRequirementMatch(reqId: string): Promise<void> {
-    alert('handleRequirementMatch')
     console.log(`[Route] 📋 REQUIREMENT: ${reqId}`);
 
     if (this.artifactManager) {
@@ -323,25 +362,34 @@ export class SemanticIntegrationService {
         const childSpecs = ucDataLayer.getSpecificationsByRequirement(reqId);
 
         if (childSpecs.length === 0) {
-          console.warn(`[Route] ⚠️  No specifications found for requirement ${reqId}`);
+          console.warn(
+            `[Route] ⚠️  No specifications found for requirement ${reqId}`
+          );
           return;
         }
 
-        console.log(`[Route] 📋 Found ${childSpecs.length} specifications for requirement ${reqId}`);
+        console.log(
+          `[Route] 📋 Found ${childSpecs.length} specifications for requirement ${reqId}`
+        );
 
         // Add all child specifications to mapped artifact
         // Sprint 3 Week 1: Check for existing user-selected values before adding
         for (const spec of childSpecs) {
           // Check if spec already exists with user-selected value
-          const existingInMapped = this.artifactManager.findSpecificationInArtifact('mapped', spec.id);
-          const existingInRespec = this.artifactManager.findSpecificationInArtifact('respec', spec.id);
+          const existingInMapped =
+            this.artifactManager.findSpecificationInArtifact("mapped", spec.id);
+          const existingInRespec =
+            this.artifactManager.findSpecificationInArtifact("respec", spec.id);
 
           if (existingInMapped) {
             // Check source - preserve user selections
-            if (existingInMapped.source === 'user' || existingInMapped.source === 'direct_extraction') {
+            if (
+              existingInMapped.source === "user" ||
+              existingInMapped.source === "direct_extraction"
+            ) {
               console.log(
                 `[Route] ⚠️  Skipping ${spec.id} - user-selected value already exists in mapped ` +
-                `(value: "${existingInMapped.value}")`
+                  `(value: "${existingInMapped.value}")`
               );
               continue; // Don't overwrite user selection
             } else {
@@ -363,7 +411,8 @@ export class SemanticIntegrationService {
             spec,
             null,
             `From requirement ${reqId}`,
-            `Auto-added as part of requirement ${reqId}`
+            `Auto-added as part of requirement ${reqId}`,
+            "llm"
           );
         }
 
@@ -371,10 +420,14 @@ export class SemanticIntegrationService {
         const conflictResult = await this.artifactManager.detectConflicts();
 
         if (!conflictResult.hasConflict) {
-          console.log(`[Route] ✅ No conflicts - moving requirement + ${childSpecs.length} children to respec`);
+          console.log(
+            `[Route] ✅ No conflicts - moving requirement + ${childSpecs.length} children to respec`
+          );
           await this.artifactManager.moveNonConflictingToRespec();
         } else {
-          console.log(`[Route] ⚠️  Conflicts detected - holding requirement in mapped`);
+          console.log(
+            `[Route] ⚠️  Conflicts detected - holding requirement in mapped`
+          );
         }
       } catch (error) {
         console.error(`[Route] ❌ Error handling requirement ${reqId}:`, error);
@@ -382,83 +435,19 @@ export class SemanticIntegrationService {
     }
   }
 
-  // ============= DOMAIN HANDLING =============
-
-  // private async handleDomainMatch(domainId: string): Promise<void> {
-  //   alert('handleDomainMatch')
-  //   console.log(`[Route] 🏢 DOMAIN: ${domainId}`);
-
-  //   if (this.artifactManager) {
-  //     try {
-  //       // Get domain and all child requirements + specifications
-  //       const domain = this.ucEngine.getDomains().find(d => d.id === domainId);
-  //       if (!domain) {
-  //         console.warn(`[Route] ⚠️  Domain ${domainId} not found in UC schema`);
-  //         return;
-  //       }
-
-  //       const childRequirements = this.ucEngine.getRequirementsByDomain(domainId);
-
-  //       // Add all child specifications from all requirements
-  //       // Sprint 3 Week 1: Check for existing user-selected values before adding
-  //       for (const req of childRequirements) {
-  //         const childSpecs = this.ucEngine.getSpecificationsByRequirement(req.id);
-
-  //         for (const spec of childSpecs) {
-  //           // Check if spec already exists with user-selected value
-  //           const existingInMapped = this.artifactManager.findSpecificationInArtifact('mapped', spec.id);
-  //           const existingInRespec = this.artifactManager.findSpecificationInArtifact('respec', spec.id);
-
-  //           if (existingInMapped) {
-  //             if (existingInMapped.source === 'user' || existingInMapped.source === 'direct_extraction') {
-  //               console.log(
-  //                 `[Route] ⚠️  Skipping ${spec.id} - user-selected value already exists in mapped`
-  //               );
-  //               continue;
-  //             }
-  //           }
-
-  //           if (existingInRespec) {
-  //             console.log(
-  //               `[Route] ⚠️  Spec ${spec.id} exists in respec - cross-artifact conflict will be detected`
-  //             );
-  //           }
-
-  //           await this.artifactManager.addSpecificationToMapped(
-  //             spec,
-  //             spec.default_value || null,
-  //             `From domain ${domainId}`,
-  //             `Auto-added as part of domain ${domain.name}`
-  //           );
-  //         }
-  //       }
-
-  //       // Trigger conflict detection
-  //       const conflictResult = await this.artifactManager.detectConflicts();
-
-  //       if (!conflictResult.hasConflict) {
-  //         console.log(`[Route] ✅ No conflicts - moving domain + descendants to respec`);
-  //         await this.artifactManager.moveNonConflictingToRespec();
-  //       } else {
-  //         console.log(`[Route] ⚠️  Conflicts detected - holding domain in mapped`);
-  //       }
-  //     } catch (error) {
-  //       console.error(`[Route] ❌ Error handling domain ${domainId}:`, error);
-  //     }
-  //   }
-  // }
-
   // ============= UTILITY METHODS =============
 
   private buildExtractionSummary(matches: MatchResult[]): string {
     if (matches.length === 0) {
-      return 'No UC matches found';
+      return "No UC matches found";
     }
 
     const byType = {
-      specification: matches.filter(m => m.ucMatch.type === 'specification').length,
-      requirement: matches.filter(m => m.ucMatch.type === 'requirement').length,
-      domain: matches.filter(m => m.ucMatch.type === 'domain').length
+      specification: matches.filter((m) => m.ucMatch.type === "specification")
+        .length,
+      requirement: matches.filter((m) => m.ucMatch.type === "requirement")
+        .length,
+      // domain: matches.filter(m => m.ucMatch.type === 'domain').length
     };
 
     return `Matched ${matches.length} nodes: ${byType.specification} specs, ${byType.requirement} reqs, ${byType.domain} domains`;
@@ -478,5 +467,8 @@ export function createSemanticIntegrationService(
   semanticMatchingService: SemanticMatchingService,
   artifactManager?: ArtifactManager
 ): SemanticIntegrationService {
-  return new SemanticIntegrationService(semanticMatchingService, artifactManager);
+  return new SemanticIntegrationService(
+    semanticMatchingService,
+    artifactManager
+  );
 }

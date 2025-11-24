@@ -245,7 +245,7 @@ export class ConflictDetectionService {
       const spec = ucDataLayer.getSpecification(specId);
       if (!spec) return conflicts;
 
-      alert('!!! detectConstraintViolations should be re-implemented')
+      alert("!!! detectConstraintViolations should be re-implemented");
 
       // Check if value violates UC constraints
       // const validation = this.ucEngine.validateSpecification(

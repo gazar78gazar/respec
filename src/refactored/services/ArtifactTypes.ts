@@ -9,7 +9,7 @@
  */
 
 import { FieldPayloadData } from "../types/mas";
-import { UCDomain, UCRequirement, UCSpecification } from "./UCDataTypes";
+import { UCSpecification } from "./UCDataTypes";
 
 // ============= BASE INTERFACES =============
 
@@ -27,36 +27,18 @@ export interface ArtifactMetadata {
   validationStatus: "valid" | "pending" | "invalid" | "conflicts";
 }
 
-export type Source = "user" | "llm" | "system" | "migration" | "autofill";
+export type Source = "user" | "llm" | "system" | "migration" | "autofill" | "conflict_resolution" | "dependency";
 
-// ============= UC COMPLIANT STRUCTURE =============
+// ============= SPECIFICATION STORAGE =============
 
-interface UCCompliantStructure {
-  domains: {
-    [domainId: string]: UCArtifactDomain;
-  };
-}
+export type SpecificationId = string;
 
-interface UCArtifactDomain {
-  id: string;
-  name: string;
-  ucSource: UCDomain;
-  requirements: {
-    [reqId: string]: UCArtifactRequirement;
-  };
-}
-
-export interface UCArtifactRequirement {
-  id: string;
-  name: string;
-  ucSource: UCRequirement;
-  specifications: {
-    [specId: string]: UCArtifactSpecification;
-  };
+export interface SpecificationStore {
+  [specId: SpecificationId]: UCArtifactSpecification;
 }
 
 export interface UCArtifactSpecification {
-  id: string;
+  id: SpecificationId;
   name: string;
   value: any;
   ucSource: UCSpecification;
@@ -66,12 +48,21 @@ export interface UCArtifactSpecification {
   originalRequest?: string;
   substitutionNote?: string;
   timestamp: Date;
+  dependencyOf?: SpecificationId;
+}
+
+export interface DependencyContext {
+  visited: Set<SpecificationId>;
+  parentSpecId: SpecificationId;
+  depth: number;
+  skipConflictPlaceholder?: boolean;
 }
 
 // ============= RESPEC ARTIFACT =============
 
-export interface RespecArtifact extends BaseArtifact, UCCompliantStructure {
+export interface RespecArtifact extends BaseArtifact {
   type: "respec";
+  specifications: SpecificationStore;
   metadata: RespecMetadata;
 }
 
@@ -87,8 +78,9 @@ export type FormSyncStatus = "synced" | "pending" | "diverged";
 
 // ============= MAPPED ARTIFACT =============
 
-export interface MappedArtifact extends BaseArtifact, UCCompliantStructure {
+export interface MappedArtifact extends BaseArtifact {
   type: "mapped";
+  specifications: SpecificationStore;
   metadata: MappedMetadata;
 }
 
@@ -166,7 +158,7 @@ export interface ResolvedConflict extends ActiveConflict {
 
 export interface EscalatedConflict extends ActiveConflict {
   escalatedAt: Date;
-  escalationReason: "max_cycles" | "complexity" | "user_request";
+  escalationReason: "max_cycles" | "complexity" | "user";
 }
 
 export interface ConflictMetadata extends ArtifactMetadata {
@@ -175,40 +167,6 @@ export interface ConflictMetadata extends ArtifactMetadata {
   escalatedCount: number;
   systemBlocked: boolean;
   blockingConflicts: string[];
-}
-
-// ============= BRANCH MANAGEMENT =============
-
-
-export interface Movement {
-  id: string;
-  timestamp: Date;
-  sourceArtifact: "mapped" | "conflicts" | "unmapped";
-  targetArtifact: "respec" | "conflicts" | "unmapped";
-  nodes: string[];
-  trigger:
-    | "validation_passed"
-    | "conflict_resolved"
-    | "timeout"
-    | "user_action";
-  partial: boolean;
-  reason?: string;
-}
-
-export interface PartialMovement extends Movement {
-  originalBranch: string;
-  movedNodes: string[];
-  remainingNodes: string[];
-  conflictNodes: string[];
-  splitReason: string;
-}
-
-export interface PendingMerge {
-  id: string;
-  sourceNodes: string[];
-  targetArtifact: "respec" | "mapped";
-  readyAt: Date;
-  dependencies: string[]; // Node IDs that must be resolved first
 }
 
 // ============= PRIORITY QUEUE =============
@@ -239,7 +197,6 @@ export interface ArtifactState {
   conflicts: ConflictList;
   priorityQueue: PriorityQueueState;
   initialized: boolean;
-  // lastSyncWithForm: Date;
 }
 
 // ============= VALIDATION RESULTS =============
@@ -270,12 +227,7 @@ export interface ArtifactValidationWarning {
 // ============= HELPER TYPES =============
 
 export type ArtifactType = "respec" | "mapped" | "unmapped" | "conflicts";
-export type NodeType = "domain" | "requirement" | "specification";
-export type MovementTrigger =
-  | "validation_passed"
-  | "conflict_resolved"
-  | "timeout"
-  | "user_action";
+
 export type ConflictType =
   | "constraint"
   | "dependency"
@@ -288,20 +240,6 @@ export interface SyncResult {
   updated: string[]; // Field paths that were updated
   errors: string[];
   warnings: string[];
-}
-
-export interface LegacyRequirements {
-  // TODO zeev reimplement correctly, check real data structure, fix currently used types
-  [section: string]: {
-    [field: string]: {
-      value: any;
-      isAssumption?: boolean;
-      dataSource?: string;
-      priority?: number;
-      toggleHistory?: any[];
-      lastUpdated?: string;
-    };
-  };
 }
 
 export interface FieldsUpdatesData {
@@ -317,7 +255,7 @@ export function createEmptyRespecArtifact(): RespecArtifact {
     type: "respec",
     timestamp: new Date(),
     version: "1.0.0",
-    domains: {},
+    specifications: {},
     metadata: {
       totalNodes: 0,
       lastModified: new Date(),
@@ -337,7 +275,7 @@ export function createEmptyMappedArtifact(): MappedArtifact {
     type: "mapped",
     timestamp: new Date(),
     version: "1.0.0",
-    domains: {},
+    specifications: {},
     metadata: {
       totalNodes: 0,
       lastModified: new Date(),
@@ -409,6 +347,5 @@ export function createEmptyArtifactState(): ArtifactState {
     conflicts: createEmptyConflictList(),
     priorityQueue: createEmptyPriorityQueue(),
     initialized: false,
-    // lastSyncWithForm: new Date(),
   };
 }

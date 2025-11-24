@@ -2,16 +2,6 @@
  * TypeScript interfaces for UC v8.0 dataset
  */
 
-// TODO zeev how is it being used really?
-export interface UCDomain {
-  id: string;
-  name: string;
-  parent: string[];
-  child: string[];
-  required_areas: string[];
-  dependencies: any[];
-}
-
 export interface UCMetadata {
   schema_version: string;
   dataset_version: string;
@@ -60,33 +50,10 @@ export interface UCSpecification {
   name: string;
   parent_requirements: string[];
   field_name: string;
-  requires?: USFormRequirement;
+  requires?: UCSpecificationDependency;
   description?: string;
   technical_details?: any;
 }
-
-// type UCUISection =
-//   | "IOConnectivity"
-//   | "formFactor"
-//   | "computePerformance"
-//   | "environmentStandards";
-
-// type UCUIFieldCategory =
-//   | "core_io"
-//   | "physical_design"
-//   | "ethernet"
-//   | "gpu_acceleration"
-//   | "environment"
-//   | "memory"
-//   | "software"
-//   | "power_requirements"
-//   | "processing"
-//   | "response_time"
-//   | "serial_protocols"
-//   | "storage"
-//   | "serial_usb"
-//   | "utility_protocols"
-//   | "wireless";
 
 type UCUIType = "dropdown" | "multi_select";
 type UCSelectionType = "single_choice" | "multi_choice";
@@ -102,7 +69,7 @@ export interface UCUIField {
 
 export type Maybe<T> = T | undefined;
 
-export interface USFormRequirement {
+export interface UCSpecificationDependency {
   [category: string]: string[]; // OR within category, AND across
 }
 
