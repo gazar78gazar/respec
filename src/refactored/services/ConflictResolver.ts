@@ -3,13 +3,13 @@
  * Replaces old ExclusionEngine and integrates with existing conflict logging
  */
 
-import { ucDataLayer } from "./UCDataLayer";
+import { ucDataLayer } from "./DataLayer";
 import {
   Conflict,
   ConflictType,
   ResolutionOption,
   ConflictResolution,
-} from "./UCDataTypes";
+} from "../types/UCDataTypes";
 
 export class ConflictResolver {
   private conflictHistory: Map<string, Conflict> = new Map();

@@ -16,7 +16,7 @@ import {
   // UCSpecificationDependency,
   Maybe,
   UCUIField,
-} from "./UCDataTypes";
+} from "../types/UCDataTypes";
 
 export class UCDataLayer {
   private dataset: Maybe<UCDataset>;

@@ -6,11 +6,11 @@ import {
   ChatResult,
   StructuredConflicts,
   AutofillResult,
-} from "./services/SimplifiedRespecService";
+} from "./services/RespecService";
 import { dataServices } from "./services/dataServices";
 import { FieldConflict } from "./services/ConflictDetectionService";
 import { ArtifactManager } from "./services/ArtifactManager";
-import { ucDataLayer } from "./services/UCDataLayer";
+import { ucDataLayer } from "./services/DataLayer";
 
 import * as uiUtils from "./utils/ui-utils";
 import "../styles/animations.css"; // TODO zeev - to move
@@ -48,7 +48,7 @@ import {
   resolveFieldLocation,
   focusAndScrollField,
 } from "./utils/fields-utils";
-import { FieldsUpdatesData } from "./services/ArtifactTypes";
+import { FieldsUpdatesData } from "./types/ArtifactTypes";
 
 // Safe index helpers for dynamic section keys (string index access)
 type FieldDefExt = FieldDef & { group?: string };

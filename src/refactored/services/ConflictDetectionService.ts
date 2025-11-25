@@ -9,7 +9,7 @@
  * and intelligent resolution suggestions for form field updates.
  */
 
-import { ucDataLayer } from "./UCDataLayer";
+import { ucDataLayer } from "./DataLayer";
 
 // TODO zeev to fix type issues
 

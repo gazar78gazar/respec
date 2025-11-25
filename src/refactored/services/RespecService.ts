@@ -20,7 +20,7 @@ import {
 } from "./ConflictDetectionService";
 
 // Sprint 1: Import UC8 Data Layer
-import { ucDataLayer } from "./UCDataLayer";
+import { ucDataLayer } from "./DataLayer";
 
 // Simplified interfaces for the browser-only service
 export interface ChatResult {

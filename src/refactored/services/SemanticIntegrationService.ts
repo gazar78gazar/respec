@@ -18,9 +18,9 @@ import {
   ExtractedNode,
   MatchResult,
 } from "./SemanticMatchingService";
-import { EnhancedFormUpdate, ChatResult } from "./SimplifiedRespecService";
+import { EnhancedFormUpdate, ChatResult } from "./RespecService";
 import { ArtifactManager } from "./ArtifactManager";
-import { ucDataLayer } from "./UCDataLayer";
+import { ucDataLayer } from "./DataLayer";
 
 // ============= INTEGRATION TYPES =============
 

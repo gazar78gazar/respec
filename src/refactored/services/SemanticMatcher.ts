@@ -9,8 +9,8 @@
  */
 
 import { ArtifactManager } from "./ArtifactManager";
-import { ucDataLayer } from "./UCDataLayer";
-import { Maybe, UCSpecification } from "./UCDataTypes";
+import { ucDataLayer } from "./DataLayer";
+import { Maybe, UCSpecification } from "../types/UCDataTypes";
 
 // ============= SEMANTIC MATCHING TYPES =============
 

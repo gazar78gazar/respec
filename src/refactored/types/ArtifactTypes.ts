@@ -8,7 +8,7 @@
  * 4. Conflict List: Isolated conflicting nodes
  */
 
-import { FieldPayloadData } from "../types/mas";
+import { FieldPayloadData } from "./mas";
 import { UCSpecification } from "./UCDataTypes";
 
 // ============= BASE INTERFACES =============

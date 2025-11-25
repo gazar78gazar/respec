@@ -11,8 +11,8 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk";
-import { ucDataLayer } from "./UCDataLayer";
-import { UCUIField } from "./UCDataTypes";
+import { ucDataLayer } from "./DataLayer";
+import { UCUIField } from "../types/UCDataTypes";
 
 // ============= TYPES =============
 

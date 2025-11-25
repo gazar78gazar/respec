@@ -24,11 +24,11 @@ import {
   DependencyContext,
   Source,
   SpecificationId,
-} from "./ArtifactTypes";
+} from "../types/ArtifactTypes";
 
 // Sprint 1: Import UC8 Data Layer (full integration in Sprint 2)
-import { ucDataLayer } from "./UCDataLayer";
-import { UCSpecification, ConflictResult } from "./UCDataTypes";
+import { ucDataLayer } from "./DataLayer";
+import { UCSpecification, ConflictResult } from "../types/UCDataTypes";
 
 // ============= MAIN ARTIFACT MANAGER =============
 
