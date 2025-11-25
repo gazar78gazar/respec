@@ -53,6 +53,7 @@ export interface UCSpecification {
   requires?: UCSpecificationDependency;
   description?: string;
   technical_details?: any;
+  selected_value?: string; // TODO zeev to be removed when all the ui is defined by the dataset
 }
 
 type UCUIType = "dropdown" | "multi_select";

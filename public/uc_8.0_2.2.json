@@ -504,6 +504,7 @@
       "type": "specification",
       "name": "Intel Atom Processor",
       "parent_requirements": ["R04"],
+      "selected_value": "Entry (Intel Atom)",
       "description": "Low-power processor for battery operation",
       "requires": {
         "storageCapacity": ["P08"],
@@ -516,6 +517,7 @@
       "type": "specification",
       "name": "Intel Core i3 Processor",
       "parent_requirements": ["R01"],
+      "selected_value": "Standard (Intel Core i3)",
       "description": "Entry-level processor for basic tasks",
       "requires": {
         "memoryCapacity": ["P05", "P06"],
@@ -528,6 +530,7 @@
       "type": "specification",
       "name": "Intel Core i5 Processor",
       "parent_requirements": ["R02"],
+      "selected_value": "Performance (Intel Core i5)",
       "description": "Standard industrial processor",
       "requires": {
         "memoryCapacity": ["P06", "P07"],
@@ -540,6 +543,7 @@
       "type": "specification",
       "name": "Intel Core i7 Processor",
       "parent_requirements": ["R03"],
+      "selected_value": "Premium (Intel Core i7)",
       "description": "High-performance processor",
       "requires": {
         "memoryCapacity": ["P07"],
@@ -553,6 +557,7 @@
       "type": "specification",
       "name": "8GB RAM",
       "parent_requirements": ["R01"],
+      "selected_value": "8GB",
       "description": "Basic memory capacity",
       "field_name": "memoryCapacity"
     },
@@ -561,6 +566,7 @@
       "type": "specification",
       "name": "16GB RAM",
       "parent_requirements": ["R02"],
+      "selected_value": "16GB",
       "description": "Standard memory capacity",
       "field_name": "memoryCapacity"
     },
@@ -569,6 +575,7 @@
       "type": "specification",
       "name": "32GB RAM",
       "parent_requirements": ["R03"],
+      "selected_value": "32GB",
       "description": "High memory capacity",
       "field_name": "memoryCapacity"
     },
@@ -577,6 +584,7 @@
       "type": "specification",
       "name": "256GB Storage",
       "parent_requirements": ["R01"],
+      "selected_value": "256GB",
       "description": "Basic storage capacity",
       "field_name": "storageCapacity"
     },
@@ -585,6 +593,7 @@
       "type": "specification",
       "name": "512GB Storage",
       "parent_requirements": ["R02"],
+      "selected_value": "512GB",
       "description": "Standard industrial storage",
       "field_name": "storageCapacity"
     },
@@ -593,6 +602,7 @@
       "type": "specification",
       "name": "1TB Storage",
       "parent_requirements": ["R03", "R21", "R30"],
+      "selected_value": "1TB",
       "description": "Large storage for data logging",
       "field_name": "storageCapacity"
     },
@@ -601,6 +611,7 @@
       "type": "specification",
       "name": "RAID Storage",
       "parent_requirements": ["R22"],
+      "selected_value": "NVMe",
       "description": "Redundant storage for data integrity with RAID configuration",
       "requires": {
         "powerInput": ["P13"]
@@ -612,6 +623,7 @@
       "type": "specification",
       "name": "Under 20W Power",
       "parent_requirements": ["R04"],
+      "selected_value": "10-20W (Low)",
       "description": "Low power consumption for battery operation",
       "requires": {
         "processorType": ["P01"],
@@ -624,6 +636,7 @@
       "type": "specification",
       "name": "Redundant Power Supply",
       "parent_requirements": ["R20"],
+      "selected_value": "Redundant Power",
       "description": "Dual power inputs for high availability",
       "field_name": "powerInput"
     },
@@ -632,6 +645,7 @@
       "type": "specification",
       "name": "Extended Temperature",
       "parent_requirements": ["R07", "R06"],
+      "selected_value": "Extended (-40°C to 70°C)",
       "description": "Wide temperature range for outdoor installations",
       "field_name": "operatingTemperature"
     },
@@ -640,6 +654,7 @@
       "type": "specification",
       "name": "Extreme Temperature",
       "parent_requirements": ["R09"],
+      "selected_value": "Extreme (-40°C to 85°C)",
       "description": "Extreme temperature range for harsh environments",
       "requires": {
         "coolingMethod": ["P57"],
@@ -652,6 +667,7 @@
       "type": "specification",
       "name": "IP54 Protection",
       "parent_requirements": ["R07", "R06"],
+      "selected_value": "IP54 (Dust/Splash)",
       "description": "Industrial dust and splash protection",
       "field_name": "ingressProtection"
     },
@@ -660,6 +676,7 @@
       "type": "specification",
       "name": "IP65 Protection",
       "parent_requirements": ["R09"],
+      "selected_value": "IP65 (Dust/Water Jets)",
       "description": "Complete dust protection and water jet resistance",
       "requires": {
         "coolingMethod": ["P57"]
@@ -671,6 +688,7 @@
       "type": "specification",
       "name": "IP69K Protection",
       "parent_requirements": ["R08"],
+      "selected_value": "IP69K (High Pressure)",
       "description": "High-pressure washdown protection",
       "requires": {
         "coolingMethod": ["P57"]
@@ -682,6 +700,7 @@
       "type": "specification",
       "name": "DIN Rail Mount",
       "parent_requirements": ["R07"],
+      "selected_value": "DIN Rail",
       "description": "Standard DIN rail mounting",
       "field_name": "mountingType"
     },
@@ -690,6 +709,7 @@
       "type": "specification",
       "name": "Panel Mount with Touch",
       "parent_requirements": ["R24"],
+      "selected_value": "Panel/Wall Mount",
       "description": "Panel mount with integrated touchscreen",
       "field_name": "mountingType"
     },
@@ -698,6 +718,7 @@
       "type": "specification",
       "name": "Modbus TCP Protocol",
       "parent_requirements": ["R10", "R11", "R12"],
+      "selected_value": "Modbus TCP",
       "description": "Modbus TCP ethernet protocol",
       "requires": {
         "network_ports": ["P35", "P78"]
@@ -709,6 +730,7 @@
       "type": "specification",
       "name": "Modbus RTU Protocol",
       "parent_requirements": ["R10", "R11", "R12"],
+      "selected_value": "Modbus RTU",
       "description": "Modbus RTU serial protocol",
       "field_name": "serialProtocols"
     },
@@ -717,6 +739,7 @@
       "type": "specification",
       "name": "OPC UA Protocol",
       "parent_requirements": ["R11", "R23"],
+      "selected_value": "OPC UA",
       "description": "OPC UA protocol for industrial connectivity",
       "requires": {
         "network_ports": ["P35", "P78"]
@@ -728,6 +751,7 @@
       "type": "specification",
       "name": "MQTT Protocol",
       "parent_requirements": ["R11", "R23"],
+      "selected_value": "MQTT",
       "description": "MQTT protocol for IoT messaging",
       "requires": {
         "network_ports": ["P35", "P78"]
@@ -739,6 +763,7 @@
       "type": "specification",
       "name": "Ethernet/IP Protocol",
       "parent_requirements": ["R11"],
+      "selected_value": "Ethernet/IP",
       "description": "Ethernet/IP protocol support",
       "requires": {
         "network_ports": ["P35", "P78"]
@@ -750,6 +775,7 @@
       "type": "specification",
       "name": "PROFINET Protocol",
       "parent_requirements": ["R11"],
+      "selected_value": "PROFINET",
       "description": "PROFINET industrial ethernet protocol",
       "requires": {
         "network_ports": ["P35", "P78"]
@@ -761,6 +787,7 @@
       "type": "specification",
       "name": "EtherCAT Protocol",
       "parent_requirements": ["R25"],
+      "selected_value": "EtherCAT",
       "description": "EtherCAT real-time ethernet protocol",
       "requires": {
         "processorType": ["P03", "P04"],
@@ -774,6 +801,7 @@
       "type": "specification",
       "name": "DNP3 Protocol",
       "parent_requirements": ["R12", "R13"],
+      "selected_value": "DNP3",
       "description": "DNP3 protocol for SCADA systems",
       "requires": {
         "network_ports": ["P35", "P78"]
@@ -785,6 +813,7 @@
       "type": "specification",
       "name": "IEC 61850 Protocol",
       "parent_requirements": ["R13"],
+      "selected_value": "IEC 61850",
       "description": "IEC 61850 substation automation protocol",
       "requires": {
         "network_ports": ["P35", "P78"]
@@ -796,6 +825,7 @@
       "type": "specification",
       "name": "BACnet MS/TP",
       "parent_requirements": ["R14"],
+      "selected_value": "BACnet MS/TP",
       "description": "BACnet MS/TP serial protocol",
       "field_name": "serialProtocols"
     },
@@ -804,6 +834,7 @@
       "type": "specification",
       "name": "BACnet/IP",
       "parent_requirements": ["R14"],
+      "selected_value": "BACnet/IP",
       "description": "BACnet/IP protocol support",
       "requires": {
         "network_ports": ["P35", "P78"]
@@ -815,6 +846,7 @@
       "type": "specification",
       "name": "Quad Ethernet Ports",
       "parent_requirements": ["R19"],
+      "selected_value": "4",
       "description": "Four isolated ethernet ports",
       "requires": {
         "memoryCapacity": ["P06"]
@@ -826,6 +858,7 @@
       "type": "specification",
       "name": "16-Channel Analog I/O",
       "parent_requirements": ["R16"],
+      "selected_value": "16",
       "description": "16 analog input channels",
       "requires": {
         "memoryCapacity": ["P06"]
@@ -837,6 +870,7 @@
       "type": "specification",
       "name": "16-Channel Digital I/O",
       "parent_requirements": ["R16"],
+      "selected_value": "16",
       "description": "16 digital I/O channels",
       "field_name": "digitalIO"
     },
@@ -845,6 +879,7 @@
       "type": "specification",
       "name": "100kHz Analog Sampling",
       "parent_requirements": ["R17"],
+      "selected_value": "100 kHz",
       "description": "High-speed analog sampling for vibration",
       "requires": {
         "processorType": ["P03", "P04"],
@@ -858,6 +893,7 @@
       "type": "specification",
       "name": "2x USB3 Ports",
       "parent_requirements": ["R18"],
+      "selected_value": "2",
       "description": "Two USB3 ports for cameras",
       "requires": {
         "memoryCapacity": ["P06", "P07"]
@@ -869,6 +905,7 @@
       "type": "specification",
       "name": "4G LTE Modem",
       "parent_requirements": ["R05"],
+      "selected_value": "LTE",
       "description": "4G LTE cellular modem",
       "field_name": "wirelessExtension"
     },
@@ -877,6 +914,7 @@
       "type": "specification",
       "name": "1 Gbps Ethernet Speed",
       "parent_requirements": ["R26"],
+      "selected_value": "1 Gbps (Gigabit Ethernet)",
       "description": "Gigabit ethernet for standard industrial applications",
       "field_name": "ethernetSpeed"
     },
@@ -885,6 +923,7 @@
       "type": "specification",
       "name": "10 Gbps Ethernet Speed",
       "parent_requirements": ["R26"],
+      "selected_value": "10 Gbps (10-Gigabit)",
       "description": "10 Gigabit ethernet for high-speed data transfer",
       "requires": {
         "processorType": ["P03", "P04"],
@@ -898,6 +937,7 @@
       "type": "specification",
       "name": "TSN Support",
       "parent_requirements": ["R25"],
+      "selected_value": "TSN (Time-Sensitive Networking)",
       "description": "Time-Sensitive Networking for deterministic communication",
       "requires": {
         "processorType": ["P03", "P04"],
@@ -910,6 +950,7 @@
       "type": "specification",
       "name": "IEEE 1588 PTP",
       "parent_requirements": ["R25"],
+      "selected_value": "IEEE 1588 PTP",
       "description": "Precision Time Protocol for sub-microsecond synchronization",
       "requires": {
         "processorType": ["P03", "P04"],
@@ -922,6 +963,7 @@
       "type": "specification",
       "name": "Real-time Latency (<10ms)",
       "parent_requirements": ["R25"],
+      "selected_value": "< 10ms (Real-time)",
       "description": "Real-time response for industrial control",
       "field_name": "responseLatency"
     },
@@ -930,6 +972,7 @@
       "type": "specification",
       "name": "Windows 11 IoT Enterprise",
       "parent_requirements": ["R27"],
+      "selected_value": "Windows 11 IoT Enterprise",
       "description": "Windows 11 IoT for industrial applications",
       "field_name": "operatingSystem"
     },
@@ -938,6 +981,7 @@
       "type": "specification",
       "name": "Ubuntu 22.04 LTS",
       "parent_requirements": ["R27"],
+      "selected_value": "Ubuntu Linux 22.04 LTS",
       "description": "Ubuntu LTS for long-term support",
       "field_name": "operatingSystem"
     },
@@ -946,6 +990,7 @@
       "type": "specification",
       "name": "Fanless Cooling",
       "parent_requirements": ["R28", "R08"],
+      "selected_value": "Fanless (Passive)",
       "description": "Passive cooling for dusty/wet environments",
       "field_name": "coolingMethod"
     },
@@ -954,6 +999,7 @@
       "type": "specification",
       "name": "Active Fan Cooling",
       "parent_requirements": ["R28"],
+      "selected_value": "Fan Cooled (Active)",
       "description": "Active cooling for high-performance systems",
       "field_name": "coolingMethod"
     },
@@ -962,6 +1008,7 @@
       "type": "specification",
       "name": "Industrial Vibration Resistance",
       "parent_requirements": ["R29"],
+      "selected_value": "Industrial (2G, 5-500Hz)",
       "description": "Standard industrial vibration resistance",
       "field_name": "vibrationResistance"
     },
@@ -970,6 +1017,7 @@
       "type": "specification",
       "name": "Mobile/Vehicle Vibration Resistance",
       "parent_requirements": ["R29"],
+      "selected_value": "Mobile/Vehicle (5G, 5-500Hz)",
       "description": "Enhanced vibration resistance for mobile installations",
       "requires": {
         "coolingMethod": ["P57"]
@@ -981,6 +1029,7 @@
       "type": "specification",
       "name": "Industrial Shock Protection",
       "parent_requirements": ["R29"],
+      "selected_value": "Industrial (30G, 11ms)",
       "description": "Industrial-grade shock protection",
       "field_name": "shockProtection"
     },
@@ -989,6 +1038,7 @@
       "type": "specification",
       "name": "LoRa Connectivity",
       "parent_requirements": ["R31"],
+      "selected_value": "LoRa",
       "description": "LoRaWAN for long-range IoT sensors",
       "field_name": "wirelessExtension"
     },
@@ -997,6 +1047,7 @@
       "type": "specification",
       "name": "8-Channel Digital I/O",
       "parent_requirements": ["R18"],
+      "selected_value": "8",
       "description": "8 digital I/O channels for basic control",
       "field_name": "digitalIO"
     },
@@ -1005,6 +1056,7 @@
       "type": "specification",
       "name": "8-Channel Analog I/O",
       "parent_requirements": ["R18"],
+      "selected_value": "8",
       "description": "8 analog input channels for basic measurements",
       "field_name": "analogIO"
     },
@@ -1013,6 +1065,7 @@
       "type": "specification",
       "name": "32-Channel Analog I/O",
       "parent_requirements": ["R17"],
+      "selected_value": "32",
       "description": "32 analog channels for multi-point vibration monitoring",
       "requires": {
         "processorType": ["P03", "P04"],
@@ -1026,6 +1079,7 @@
       "type": "specification",
       "name": "32-Channel Digital I/O",
       "parent_requirements": ["R16"],
+      "selected_value": "32",
       "description": "32 digital I/O for production line control",
       "requires": {
         "processorType": ["P02", "P03", "P04"],
@@ -1038,6 +1092,7 @@
       "type": "specification",
       "name": "DDR5 Memory",
       "parent_requirements": ["R03"],
+      "selected_value": "DDR5",
       "description": "Latest DDR5 memory for maximum performance",
       "requires": {
         "processorType": ["P03", "P04"]
@@ -1049,6 +1104,7 @@
       "type": "specification",
       "name": "NVMe Gen4 Storage",
       "parent_requirements": ["R03", "R30"],
+      "selected_value": "NVMe Gen4",
       "description": "Ultra-fast NVMe Gen4 storage for high-speed data",
       "requires": {
         "processorType": ["P03", "P04"]
@@ -1060,6 +1116,7 @@
       "type": "specification",
       "name": "WiFi Connectivity",
       "parent_requirements": ["R31"],
+      "selected_value": "WiFi",
       "description": "WiFi 6 for local wireless connectivity",
       "field_name": "wirelessExtension"
     },
@@ -1068,6 +1125,7 @@
       "type": "specification",
       "name": "5G Connectivity",
       "parent_requirements": ["R31"],
+      "selected_value": "5G",
       "description": "5G cellular for high-speed mobile data",
       "requires": {
         "processorType": ["P03", "P04"]
@@ -1079,6 +1137,7 @@
       "type": "specification",
       "name": "24-bit ADC Resolution",
       "parent_requirements": ["R17"],
+      "selected_value": "24-bit",
       "description": "High-resolution 24-bit ADC for precision measurements",
       "requires": {
         "processorType": ["P03", "P04"],
@@ -1091,6 +1150,7 @@
       "type": "specification",
       "name": "8 Network Ports",
       "parent_requirements": ["R19"],
+      "selected_value": "8",
       "description": "8 ethernet ports for complex multi-network setups",
       "requires": {
         "processorType": ["P03", "P04"],
@@ -1103,6 +1163,7 @@
       "type": "specification",
       "name": "Intel Xe Graphics",
       "parent_requirements": ["R02"],
+      "selected_value": "Intel Xe Graphics",
       "description": "Integrated Intel Xe graphics for basic GPU acceleration",
       "field_name": "gpuAcceleration"
     },
@@ -1111,6 +1172,7 @@
       "type": "specification",
       "name": "Dedicated GPU Required",
       "parent_requirements": ["R03"],
+      "selected_value": "Dedicated GPU Required",
       "description": "Discrete GPU for high-performance computing",
       "requires": {
         "power_consumption": ["P13"],
@@ -1123,6 +1185,7 @@
       "type": "specification",
       "name": "AI Accelerator (NPU/TPU)",
       "parent_requirements": ["R03"],
+      "selected_value": "AI Accelerator (NPU/TPU)",
       "description": "Specialized AI acceleration hardware",
       "requires": {
         "processorType": ["P03", "P04", "P82"],
@@ -1135,6 +1198,7 @@
       "type": "specification",
       "name": "Intel Core i9",
       "parent_requirements": ["R03"],
+      "selected_value": "Extreme (Intel Core i9)",
       "description": "Extreme performance processor",
       "requires": {
         "memoryCapacity": ["P07"],
@@ -1149,6 +1213,7 @@
       "type": "specification",
       "name": "Ultra Low Power (<10W)",
       "parent_requirements": ["R04"],
+      "selected_value": "< 10W (Ultra Low)",
       "description": "Ultra low power consumption for battery/solar operation",
       "requires": {
         "processorType": ["P01"],

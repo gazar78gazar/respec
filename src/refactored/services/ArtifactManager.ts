@@ -196,7 +196,7 @@ export class ArtifactManager {
           continue;
         }
 
-        const dependencyValue = dependencySpec.name;
+        const dependencyValue = dependencySpec?.selected_value || dependencySpec.name;
         if (!dependencyValue) {
           console.warn("[ArtifactManager] No default value for dependency ");
           continue;
