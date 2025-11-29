@@ -9,7 +9,7 @@
  */
 
 import { FieldPayloadData } from "./mas";
-import { UCSpecification } from "./UCDataTypes";
+import { ConflictType, ResolutionOption, UCSpecification } from "./UCDataTypes";
 
 // ============= BASE INTERFACES =============
 
@@ -55,7 +55,6 @@ export interface DependencyContext {
   visited: Set<SpecificationId>;
   parentSpecId: SpecificationId;
   depth: number;
-  skipConflictPlaceholder?: boolean;
 }
 
 // ============= RESPEC ARTIFACT =============

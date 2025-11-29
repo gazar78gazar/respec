@@ -24,9 +24,6 @@ export interface UCScenario {
   description: string;
   use_case_tags: string[];
   requirement_ids: string[];
-  conflicts_with?: string[];
-  conflict_reason?: string;
-  compatible_scenarios?: string[];
   metadata?: {
     implementation_percentage?: string;
     typical_application?: string;
@@ -110,17 +107,15 @@ export interface UCDataset {
 
 // ============= CONFLICT TYPES (EXTENDED) =============
 
-export enum ConflictType {
-  FIELD_OVERWRITE = "field_overwrite", // Need to change existing value
-  EXCLUSION = "exclusion", // Direct exclusion between specs
-  CASCADE = "cascade", // Dependencies cause overwrites
-  FIELD_CONSTRAINT = "field_constraint", // Field has zero valid options
-}
+export type ConflictType =
+  | "field_overwrite" // Need to change existing value
+  | "exclusion" // Direct exclusion between specs
+  | "cascade" // Dependencies cause overwrites
+  | "field_constraint"; // Field has zero valid options
 
-export interface Conflict {
-  id?: string;
-  type: ConflictType;
-  conflictingNodes: string[];
+interface GenericConflict {
+  id: string;
+  affectedNodes: string[];
   description: string;
   resolution?: string;
   resolutionOptions?: ResolutionOption[];

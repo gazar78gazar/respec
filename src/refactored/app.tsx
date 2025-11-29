@@ -1,14 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
 import {
-  SimplifiedRespecService,
+  RespecService,
   EnhancedFormUpdate,
   ChatResult,
   StructuredConflicts,
   AutofillResult,
 } from "./services/RespecService";
 import { dataServices } from "./services/dataServices";
-import { FieldConflict } from "./services/ConflictDetectionService";
+import { FieldConflict } from "./services/ConflictDetector";
 import { ArtifactManager } from "./services/ArtifactManager";
 import { ucDataLayer } from "./services/DataLayer";
 
@@ -82,8 +82,8 @@ export default function App() {
   const [activeConflicts, setActiveConflicts] = useState<FieldConflict[]>([]);
   const [showConflicts, setShowConflicts] = useState(true);
 
-  const [simplifiedRespecService] = useState(
-    () => new SimplifiedRespecService()
+  const [respecService] = useState(
+    () => new RespecService()
   );
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingMessage, setProcessingMessage] = useState("");
@@ -170,7 +170,7 @@ export default function App() {
     newValue?: string
   ): Promise<void> => {
     try {
-      const resolution = await simplifiedRespecService.resolveConflict(
+      const resolution = await respecService.resolveConflict(
         conflictId,
         action,
         newValue
@@ -286,11 +286,11 @@ Please respond with A or B.`;
           setProcessingMessage("Processing your message...");
           addTrace("chat_message", { message: d.message }, "SUCCESS");
 
-          chatResult = await simplifiedRespecService.processChatMessage(
+          chatResult = await respecService.processChatMessage(
             d.message
           );
 
-          conflictStatus = simplifiedRespecService.getActiveConflictsForAgent();
+          conflictStatus = respecService.getActiveConflictsForAgent();
 
           if (conflictStatus.hasConflicts) return handleConflicts();
 
@@ -446,7 +446,7 @@ Please respond with A or B.`;
               { section: d.section, field: d.field, value: d.value },
               "SUCCESS"
             );
-            const formResult = await simplifiedRespecService.processFormUpdate(
+            const formResult = await respecService.processFormUpdate(
               d.section,
               d.field,
               d.value
@@ -463,7 +463,7 @@ Please respond with A or B.`;
           const d = data as PayloadMap["trigger_autofill"];
           setProcessingMessage("Generating defaults...");
           addTrace("trigger_autofill", { trigger: d.trigger }, "SUCCESS");
-          autofillResult = await simplifiedRespecService.triggerAutofill(
+          autofillResult = await respecService.triggerAutofill(
             d.trigger
           );
           addChatMessage("assistant", autofillResult.message);
@@ -876,7 +876,6 @@ Please respond with A or B.`;
         console.log("[APP] Loading UC8 Data Layer...");
         await ucDataLayer.load();
         console.log("[APP] ✅ UC8 Data Layer loaded successfully");
-        console.log("[APP] UC8 Version:", ucDataLayer.getVersion());
         console.log("[APP] UC8 Metadata:", ucDataLayer.getMetadata());
       } catch (uc8Error) {
         console.warn(
@@ -888,10 +887,10 @@ Please respond with A or B.`;
       try {
         setProcessingMessage("Initializing...");
         setIsProcessing(true);
-        await simplifiedRespecService.initialize(
+        await respecService.initialize(
           formFieldsData.field_definitions
         );
-        const sessionId = simplifiedRespecService.getSessionId();
+        const sessionId = respecService.getSessionId();
         console.log("[APP] Simplified Respec initialized:", sessionId);
       } catch (err) {
         console.error("[APP] Simplified Respec init failed:", err);
@@ -907,9 +906,9 @@ Please respond with A or B.`;
         await artifactManager.initialize();
         setArtifactManager(artifactManager);
 
-        simplifiedRespecService.initializeSemanticMatching(artifactManager);
+        respecService.initializeSemanticMatching(artifactManager);
 
-        const unsubscribeConflicts = simplifiedRespecService.onConflictChange(
+        const unsubscribeConflicts = respecService.onConflictChange(
           (conflicts) => {
             setActiveConflicts(conflicts);
             const hasCriticalConflicts = conflicts.some(
@@ -928,7 +927,7 @@ Please respond with A or B.`;
     };
 
     initializeApp();
-  }, [simplifiedRespecService]);
+  }, [respecService]);
 
   useEffect(() => {
     const syncInterval = setInterval(() => {
@@ -1080,10 +1079,10 @@ Please respond with A or B.`;
       }
 
       if (source !== "system") {
-        simplifiedRespecService
+        respecService
           .detectFieldConflicts(
             `${section}.${field}`,
-            value,
+            value as string,
             requirements,
             source === "user" ? "manual" : "semantic"
           )

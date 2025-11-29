@@ -14,7 +14,7 @@ import {
   ConflictDetectionService,
   createConflictDetectionService,
   FieldConflict,
-} from "./ConflictDetectionService";
+} from "./ConflictDetector";
 
 // Sprint 1: Import UC8 Data Layer
 import { ucDataLayer } from "./DataLayer";
@@ -91,7 +91,7 @@ export interface StructuredConflicts {
   conflicts: StrucureConflictEntry[]; // ALL conflicts for agent aggregation
 }
 
-export class SimplifiedRespecService {
+export class RespecService {
   private sessionId: string;
   private conversationHistory: Array<{
     role: "user" | "assistant";

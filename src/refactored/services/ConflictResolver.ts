@@ -2,13 +2,14 @@
  * ConflictResolver - Unified conflict detection & resolution for UC8
  * Replaces old ExclusionEngine and integrates with existing conflict logging
  */
-
+import { v4 as uuidv4 } from "uuid";
 import { ucDataLayer } from "./DataLayer";
 import {
   Conflict,
   ConflictType,
   ResolutionOption,
   ConflictResolution,
+  OverwriteConflict,
 } from "../types/UCDataTypes";
 
 export class ConflictResolver {

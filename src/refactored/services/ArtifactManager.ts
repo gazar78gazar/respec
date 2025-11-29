@@ -15,7 +15,6 @@ import {
   RespecArtifact,
   MappedArtifact,
   UnmappedList,
-  ConflictList,
   UCArtifactSpecification,
   ActiveConflict,
   ArtifactValidationResult,
@@ -32,7 +31,10 @@ import type {
   UCSpecification,
   ConflictResult,
   Maybe,
+  Conflict,
+  ConflictType,
 } from "../types/UCDataTypes";
+import { conflictResolver } from "./ConflictResolver";
 
 // ============= MAIN ARTIFACT MANAGER =============
 
@@ -40,7 +42,7 @@ export class ArtifactManager {
   private state: ArtifactState;
   private listeners: Map<string, Function> = new Map();
   // Sprint 2: Store UC8 conflict data for resolution options
-  private uc8ConflictData: Map<string, any> = new Map();
+  private conflictData: Map<string, Conflict> = new Map();
 
   constructor() {
     this.state = createEmptyArtifactState();
@@ -149,7 +151,7 @@ export class ArtifactManager {
       } to mapped artifact (source: ${source || "user"})`
     );
 
-    await this.fulfillSpecificationDependencies(
+    await this.fillSpecificationDependencies(
       spec,
       visited,
       dependencyContext?.depth ?? 0
@@ -170,7 +172,7 @@ export class ArtifactManager {
     });
   }
 
-  private async fulfillSpecificationDependencies(
+  private async fillSpecificationDependencies(
     spec: UCSpecification,
     visited: Set<SpecificationId>,
     depth: number = 0
@@ -229,7 +231,6 @@ export class ArtifactManager {
             parentSpecId: spec.id,
             visited,
             depth: depth + 1,
-            skipConflictPlaceholder: true,
           }
         );
       }
@@ -238,7 +239,7 @@ export class ArtifactManager {
 
   // ============= CONFLICT DETECTION =============
 
-  async detectConflicts(): Promise<ConflictResult> {
+  async triggerConflictDetection(): Promise<ConflictResult> {
     // TODO zeev implement
     console.log("[ArtifactManager] Conflict detection placeholder invoked");
     return { hasConflict: false, conflicts: [] };
@@ -375,15 +376,15 @@ export class ArtifactManager {
     // return result;
   }
 
-  private async triggerConflictPlaceholder(
-    specId: SpecificationId
-  ): Promise<void> {
-    // TODO zeev implement
-    console.log(
-      `[ArtifactManager] Conflict pipeline placeholder triggered for ${specId}`,
-      { state: this.state }
-    );
-  }
+  // private async triggerConflictPlaceholder(
+  //   specId: SpecificationId
+  // ): Promise<void> {
+  //   // TODO zeev implement
+  //   console.log(
+  //     `[ArtifactManager] Conflict pipeline placeholder triggered for ${specId}`,
+  //     { state: this.state }
+  //   );
+  // }
 
   /**
    * Check for cross-artifact conflicts (mapped vs respec)
