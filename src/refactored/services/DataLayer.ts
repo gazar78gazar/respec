@@ -19,7 +19,7 @@ import {
 } from "../types/UCDataTypes";
 
 export class UCDataLayer {
-  private dataset: Maybe<UCDataset>;
+  private dataset: Maybe<UCDataset> = null;
   private readonly version: "UC8" = "UC8"; // FIXED to UC8 only
 
   // ============= INITIALIZATION =============
@@ -45,7 +45,7 @@ export class UCDataLayer {
   }
 
   isLoaded(): boolean {
-    return this.dataset !== null;
+    return !!this.dataset;
   }
 
   getVersion(): "UC8" {
@@ -198,7 +198,7 @@ export class UCDataLayer {
   /**
    * Get the exclusion object between two nodes (if exists)
    */
-  getExclusionBetween(nodeId1: string, nodeId2: string): UCExclusion | null {
+  getExclusionBetween(nodeId1: string, nodeId2: string): Maybe<UCExclusion> {
     const exclusions = Object.values(this.dataset!.exclusions || {});
 
     return (

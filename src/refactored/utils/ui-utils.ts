@@ -1,3 +1,5 @@
+import type { Maybe } from "../types/UCDataTypes";
+
 // TypeScript interfaces and types
 export interface Requirements {
   [fieldName: string]: {
@@ -208,7 +210,7 @@ export function getMustFieldsStatus(
 
 export function getNextPriorityField(
   requirements: Requirements
-): string | null {
+): Maybe<string> {
   const emptyFields = Object.entries(requirements)
     .filter(
       ([_, requirement]) =>
@@ -253,12 +255,12 @@ export function getSectionProgress(
 }
 
 // 5. Field Helper Functions
-export function findFieldSection(fieldName: string): SectionKey | null {
-  return FIELD_SECTIONS[fieldName] || null;
+export function findFieldSection(fieldName: string): Maybe<SectionKey> {
+  return FIELD_SECTIONS[fieldName];
 }
 
-export function getFieldPriority(fieldName: string): 1 | 2 | 3 | 4 | null {
-  return FIELD_PRIORITIES[fieldName] || null;
+export function getFieldPriority(fieldName: string): Maybe<1 | 2 | 3 | 4> {
+  return FIELD_PRIORITIES[fieldName];
 }
 
 export function isFieldRequired(fieldName: string): boolean {

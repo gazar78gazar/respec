@@ -12,7 +12,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { ucDataLayer } from "./DataLayer";
-import { UCUIField } from "../types/UCDataTypes";
+import type { Maybe, UCUIField } from "../types/UCDataTypes";
 
 // ============= TYPES =============
 
@@ -60,7 +60,7 @@ interface UCSchemaContext {
 // ============= MAIN SERVICE =============
 
 export class SemanticMatchingService {
-  private client: Anthropic | null = null;
+  private client: Maybe<Anthropic> = null;
   private apiKey: string;
 
   constructor(apiKey?: string) {

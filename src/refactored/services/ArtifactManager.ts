@@ -28,7 +28,11 @@ import {
 
 // Sprint 1: Import UC8 Data Layer (full integration in Sprint 2)
 import { ucDataLayer } from "./DataLayer";
-import { UCSpecification, ConflictResult } from "../types/UCDataTypes";
+import type {
+  UCSpecification,
+  ConflictResult,
+  Maybe,
+} from "../types/UCDataTypes";
 
 // ============= MAIN ARTIFACT MANAGER =============
 
@@ -196,7 +200,8 @@ export class ArtifactManager {
           continue;
         }
 
-        const dependencyValue = dependencySpec?.selected_value || dependencySpec.name;
+        const dependencyValue =
+          dependencySpec?.selected_value || dependencySpec.name;
         if (!dependencyValue) {
           console.warn("[ArtifactManager] No default value for dependency ");
           continue;
@@ -880,7 +885,7 @@ export class ArtifactManager {
   findSpecificationInArtifact(
     artifactName: "mapped" | "respec",
     specId: SpecificationId
-  ): any | null {
+  ): Maybe<UCArtifactSpecification> {
     const artifact =
       artifactName === "mapped" ? this.state.mapped : this.state.respec;
     return artifact.specifications[specId] || null;
@@ -890,7 +895,9 @@ export class ArtifactManager {
    * Find specification in mapped artifact (internal helper)
    * Sprint 3 Week 1: Helper for resolution operations
    */
-  private findSpecificationInMapped(specId: SpecificationId): any | null {
+  private findSpecificationInMapped(
+    specId: SpecificationId
+  ): Maybe<UCArtifactSpecification> {
     return this.findSpecificationInArtifact("mapped", specId);
   }
 

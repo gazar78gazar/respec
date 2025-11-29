@@ -68,7 +68,7 @@ export interface UCUIField {
   options: string[];
 }
 
-export type Maybe<T> = T | undefined;
+export type Maybe<T> = T | null;
 
 export interface UCSpecificationDependency {
   [category: string]: string[]; // OR within category, AND across

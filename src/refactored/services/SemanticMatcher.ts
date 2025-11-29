@@ -10,7 +10,7 @@
 
 import { ArtifactManager } from "./ArtifactManager";
 import { ucDataLayer } from "./DataLayer";
-import { Maybe, UCSpecification } from "../types/UCDataTypes";
+import type { Maybe, UCSpecification } from "../types/UCDataTypes";
 
 // ============= SEMANTIC MATCHING TYPES =============
 
@@ -56,7 +56,7 @@ export interface SemanticMatchingContext {
 // ============= MAIN SEMANTIC MATCHER CLASS =============
 
 export class SemanticMatcher {
-  private artifactManager: ArtifactManager | null = null;
+  private artifactManager: Maybe<ArtifactManager> = null;
 
   // ============= INITIALIZATION =============
 

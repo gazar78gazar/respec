@@ -1,6 +1,7 @@
 import type { Requirements } from "../types/requirements.types";
 import { formFieldsData, SECTION_MAPPING } from "../config/uiConfig";
 import * as uiUtils from "../../utils/uiUtilities";
+import type { Maybe } from "../types/UCDataTypes";
 
 export const autoCalculateFields = (
   changedField: string,
@@ -57,8 +58,6 @@ export const mapValueToFormField = (
         return value;
     }
   }
-
-  type Maybe<InternalType> = InternalType | null;
 
   if (typeof value === "string") {
     const lowerValue = value.toLowerCase();
@@ -314,7 +313,7 @@ export type FieldLocation = { section: string; tab: string; group?: string };
 
 export const resolveFieldLocation = (
   fieldKey: string
-): FieldLocation | null => {
+): Maybe<FieldLocation> => {
   for (const [section, fields] of Object.entries(
     (formFieldsData as any).field_definitions
   )) {

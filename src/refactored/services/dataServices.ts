@@ -1,3 +1,5 @@
+import type { Maybe } from "../types/UCDataTypes";
+
 // TypeScript interfaces and types
 export interface Requirements {
   [fieldName: string]: {
@@ -233,9 +235,7 @@ class ExportService {
     }
   }
 
-  // TODO zeev refactor - seems to be not used at all
-
-  private getFieldSection(fieldName: string): string | null {
+  private getFieldSection(fieldName: string): Maybe<string> {
     const fieldSections: Record<string, string> = {
       cpuType: "performanceComputing",
       cpuCores: "performanceComputing",
@@ -568,7 +568,7 @@ class ImportService {
 // Project Management Class
 class ProjectManagement {
   private readonly STORAGE_KEY = "saved_projects";
-  private autoSaveTimeout: NodeJS.Timeout | null = null;
+  private autoSaveTimeout: Maybe<NodeJS.Timeout> = null;
 
   /**
    * Saves project to localStorage
@@ -610,7 +610,7 @@ class ProjectManagement {
    * @param name - Project name
    * @returns Promise<SavedProject | null> - Project data or null if not found
    */
-  async loadProject(name: string): Promise<SavedProject | null> {
+  async loadProject(name: string): Promise<Maybe<SavedProject>> {
     try {
       const projects = this.getStoredProjects();
       const project = projects[name];
@@ -867,7 +867,7 @@ class HelperUtilities {
     );
   }
 
-  private getFieldSection(fieldName: string): string | null {
+  private getFieldSection(fieldName: string): Maybe<string> {
     const fieldSections: Record<string, string> = {
       cpuType: "performanceComputing",
       cpuCores: "performanceComputing",

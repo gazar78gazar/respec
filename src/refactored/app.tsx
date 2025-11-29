@@ -48,7 +48,7 @@ import {
   resolveFieldLocation,
   focusAndScrollField,
 } from "./utils/fields-utils";
-import { FieldsUpdatesData } from "./types/ArtifactTypes";
+import type { Maybe } from "./types/UCDataTypes";
 
 // Safe index helpers for dynamic section keys (string index access)
 type FieldDefExt = FieldDef & { group?: string };
@@ -67,7 +67,7 @@ export default function App() {
   const [expandedGroups, setExpandedGroups] = useState({});
 
   const [artifactManager, setArtifactManager] =
-    useState<ArtifactManager | null>(null);
+    useState<Maybe<ArtifactManager>>(null);
   const [projectName] = useState("Untitled Project");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {

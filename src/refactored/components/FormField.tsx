@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { AlertCircle, AlertTriangle, Check, Info } from "lucide-react";
+import type { Maybe } from "../types/UCDataTypes";
 
 export type FieldValue =
   | string
@@ -31,7 +32,7 @@ export interface FormFieldProps {
   data?: { value?: FieldValue; isAssumption?: boolean };
   section: string;
   required?: boolean;
-  validation?: ValidationMsg | null;
+  validation?: Maybe<ValidationMsg>;
   onChange: (value: FieldValue, isAssumption: boolean) => void;
 }
 

@@ -21,6 +21,7 @@ import {
 import { EnhancedFormUpdate, ChatResult } from "./RespecService";
 import { ArtifactManager } from "./ArtifactManager";
 import { ucDataLayer } from "./DataLayer";
+import type { Maybe } from "../types/UCDataTypes";
 
 // ============= INTEGRATION TYPES =============
 
@@ -40,7 +41,7 @@ export interface SemanticProcessingOptions {
 
 export class SemanticIntegrationService {
   private semanticMatchingService: SemanticMatchingService;
-  private artifactManager: ArtifactManager | null = null;
+  private artifactManager: Maybe<ArtifactManager> = null;
   private processingOptions: SemanticProcessingOptions;
 
   constructor(

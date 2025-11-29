@@ -1,9 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import { AnthropicService } from "../../services/respec/AnthropicService";
-import {
-  SemanticMatcher,
-  createSemanticMatcher,
-} from "./SemanticMatcher";
+import { SemanticMatcher, createSemanticMatcher } from "./SemanticMatcher";
 import {
   SemanticMatchingService,
   createSemanticMatchingService,
@@ -21,6 +18,7 @@ import {
 
 // Sprint 1: Import UC8 Data Layer
 import { ucDataLayer } from "./DataLayer";
+import type { Maybe } from "../types/UCDataTypes";
 
 // Simplified interfaces for the browser-only service
 export interface ChatResult {
@@ -107,16 +105,16 @@ export class SimplifiedRespecService {
   private fieldOptionsMap: FieldOptionsMap = {};
 
   // New semantic matching system (Sprint 2)
-  private semanticMatcher: SemanticMatcher | null = null;
-  private semanticMatchingService: SemanticMatchingService | null = null;
-  private semanticIntegrationNew: SemanticIntegrationServiceNew | null = null;
+  private semanticMatcher: Maybe<SemanticMatcher> = null;
+  private semanticMatchingService: Maybe<SemanticMatchingService> = null;
+  private semanticIntegrationNew: Maybe<SemanticIntegrationServiceNew> = null;
   private useSemanticMatching: boolean = true; // TODO zeev how to use it?
 
   // Sprint 3 Week 1: Core services for conflict detection and resolution
   private artifactManager?: ArtifactManager;
 
   // Conflict detection system
-  private conflictDetection: ConflictDetectionService | null = null;
+  private conflictDetection: Maybe<ConflictDetectionService> = null;
 
   // Sprint 3: Pending form updates from RESPEC artifact changes
   // private pendingFormUpdates: EnhancedFormUpdate[] = []; // TODO zeev how is it being used?
@@ -210,7 +208,7 @@ export class SimplifiedRespecService {
 
   // Initialize semantic matching system (called externally with dependencies)
   async initializeSemanticMatching(
-    artifactManager?: ArtifactManager,
+    artifactManager?: ArtifactManager
   ): Promise<void> {
     try {
       // Sprint 3 Week 1: Store core services for conflict detection
@@ -325,13 +323,15 @@ export class SimplifiedRespecService {
 
     const specifications = ucDataLayer.getAllSpecifications();
     console.log(
-      `[SimplifiedRespec] Found ${specifications.length} specifications in UC8`, {specifications}
+      `[SimplifiedRespec] Found ${specifications.length} specifications in UC8`,
+      { specifications }
     );
 
     specifications.forEach((spec) => {
       if (spec.field_name) {
         const mapping = {
-          section: ucDataLayer.getUiFieldByFieldName(spec.field_name)?.section || "",
+          section:
+            ucDataLayer.getUiFieldByFieldName(spec.field_name)?.section || "",
           field: spec.field_name,
         };
 
@@ -854,13 +854,13 @@ export class SimplifiedRespecService {
   // private handleRespecUpdate(data: any): void {
   //   console.log("[SimplifiedRespec] 🔔 Respec artifact updated:", data);
 
-    // TODO: For now, this logs the update. In async conflict resolution scenarios,
-    // we'll need to generate form updates and push them to the UI through a callback
-    // or event mechanism. For the current flow (same-request updates), the form
-    // updates are already generated from respec in SemanticIntegrationService.
+  // TODO: For now, this logs the update. In async conflict resolution scenarios,
+  // we'll need to generate form updates and push them to the UI through a callback
+  // or event mechanism. For the current flow (same-request updates), the form
+  // updates are already generated from respec in SemanticIntegrationService.
 
-    // Future enhancement: Store pending form updates and return them on next poll
-    // or emit events that app.tsx listens to for real-time updates
+  // Future enhancement: Store pending form updates and return them on next poll
+  // or emit events that app.tsx listens to for real-time updates
   // }
 
   async triggerAutofill(trigger: string): Promise<AutofillResult> {
