@@ -109,9 +109,17 @@ export class ArtifactManager {
     source: Source,
     dependencyContext?: DependencyContext
   ): Promise<void> {
-    if (!this.state.initialized) {
+    if (!this.state.initialized)
       throw new Error("ArtifactManager not initialized");
-    }
+
+    console.log(`[addSpecificationToMapped] started for ${spec.id}`, {
+      state: this.state,
+      spec,
+      originalRequest,
+      substitutionNote,
+      source,
+      dependencyContext,
+    });
 
     const visited = dependencyContext?.visited ?? new Set<SpecificationId>();
     if (!visited.has(spec.id)) visited.add(spec.id);
@@ -156,6 +164,10 @@ export class ArtifactManager {
 
     if (!dependencyContext?.skipConflictPlaceholder)
       await this.triggerConflictPlaceholder(spec.id);
+
+    console.log(`[addSpecificationToMapped] finished for ${spec.id}`, {
+      state: this.state,
+    });
   }
 
   private async fulfillSpecificationDependencies(
@@ -368,7 +380,8 @@ export class ArtifactManager {
   ): Promise<void> {
     // TODO zeev implement
     console.log(
-      `[ArtifactManager] Conflict pipeline placeholder triggered for ${specId}`
+      `[ArtifactManager] Conflict pipeline placeholder triggered for ${specId}`,
+      { state: this.state }
     );
   }
 
