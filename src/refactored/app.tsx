@@ -82,9 +82,7 @@ export default function App() {
   const [activeConflicts, setActiveConflicts] = useState<FieldConflict[]>([]);
   const [showConflicts, setShowConflicts] = useState(true);
 
-  const [respecService] = useState(
-    () => new RespecService()
-  );
+  const [respecService] = useState(() => new RespecService());
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingMessage, setProcessingMessage] = useState("");
 
@@ -116,7 +114,7 @@ export default function App() {
       const constrainedWidth = Math.min(600, Math.max(320, newWidth));
       setChatWidth(constrainedWidth);
     },
-    [isResizing]
+    [isResizing],
   );
 
   const handleMouseUp = useCallback(() => {
@@ -146,7 +144,7 @@ export default function App() {
     (
       action: string,
       details: unknown,
-      status: "SUCCESS" | "FAILED" | "BLOCKED" | "WARNING"
+      status: "SUCCESS" | "FAILED" | "BLOCKED" | "WARNING",
     ) => {
       const entry = {
         timestamp: new Date().toISOString(),
@@ -158,22 +156,22 @@ export default function App() {
 
       console.log(
         `[TRACE] ${entry.timestamp} | ${action} | ${status}`,
-        details
+        details,
       );
     },
-    []
+    [],
   );
 
   const handleConflictResolve = async (
     conflictId: string,
     action: "accept" | "reject" | "modify",
-    newValue?: string
+    newValue?: string,
   ): Promise<void> => {
     try {
       const resolution = await respecService.resolveConflict(
         conflictId,
         action,
-        newValue
+        newValue,
       );
 
       if (resolution.applied && action === "accept") {
@@ -183,13 +181,13 @@ export default function App() {
             conflict.section,
             conflict.field.split(".")[1],
             resolution.newValue || conflict.newValue,
-            false
+            false,
           );
         }
       }
 
       console.log(
-        `[APP] Conflict ${conflictId} resolved with action: ${action}`
+        `[APP] Conflict ${conflictId} resolved with action: ${action}`,
       );
     } catch (error) {
       console.error("[APP] Failed to resolve conflict:", error);
@@ -197,7 +195,7 @@ export default function App() {
   };
 
   const sendMessageWrapper = async (
-    message: string
+    message: string,
   ): Promise<MASCommunicationResult> => {
     if (isLoading) return { success: false, error: "loading" };
 
@@ -216,7 +214,7 @@ export default function App() {
 
       addChatMessage(
         "assistant",
-        "Sorry, I encountered an error processing your message. Please try again."
+        "Sorry, I encountered an error processing your message. Please try again.",
       );
 
       return { success: false, error: "Processing failed" };
@@ -229,7 +227,7 @@ export default function App() {
     role: UserRole,
     content: string,
     id?: string,
-    metadata?: ChatMessage["metadata"]
+    metadata?: ChatMessage["metadata"],
   ) => {
     setChatMessages((prev) => [
       ...prev,
@@ -245,7 +243,7 @@ export default function App() {
 
   async function communicateWithMAS<A extends MASAction>(
     action: A,
-    data: PayloadMap[A]
+    data: PayloadMap[A],
   ): Promise<MASCommunicationResult> {
     console.log(`[UI-RESPEC] ${action}:`, data);
 
@@ -273,7 +271,7 @@ Please respond with A or B.`;
       addChatMessage(
         "assistant",
         binaryQuestion,
-        `conflict-question-${Date.now()}`
+        `conflict-question-${Date.now()}`,
       );
 
       return { success: true };
@@ -286,9 +284,7 @@ Please respond with A or B.`;
           setProcessingMessage("Processing your message...");
           addTrace("chat_message", { message: d.message }, "SUCCESS");
 
-          chatResult = await respecService.processChatMessage(
-            d.message
-          );
+          chatResult = await respecService.processChatMessage(d.message);
 
           conflictStatus = respecService.getActiveConflictsForAgent();
 
@@ -299,7 +295,7 @@ Please respond with A or B.`;
           if (chatResult.formUpdates && chatResult.formUpdates.length) {
             console.log(
               `[DEBUG] Chat message returned ${chatResult.formUpdates.length} form updates:`,
-              chatResult.formUpdates
+              chatResult.formUpdates,
             );
             addTrace(
               "chat_form_updates",
@@ -307,7 +303,7 @@ Please respond with A or B.`;
                 count: chatResult.formUpdates.length,
                 updates: chatResult.formUpdates,
               },
-              "SUCCESS"
+              "SUCCESS",
             );
 
             chatResult.formUpdates.forEach((update: EnhancedFormUpdate) => {
@@ -321,10 +317,10 @@ Please respond with A or B.`;
               const mappedValue = mapValueToFormField(
                 update.section,
                 update.field,
-                update.value
+                update.value,
               );
               console.log(
-                `[DEBUG] Value mapped from ${update.value} to ${mappedValue}`
+                `[DEBUG] Value mapped from ${update.value} to ${mappedValue}`,
               );
 
               setRequirements((prev) => {
@@ -369,7 +365,7 @@ Please respond with A or B.`;
 
                   if (actualValue !== expectedValue) {
                     console.error(
-                      `[CHAT VALIDATION FAILED] Field ${update.section}.${update.field}: expected "${expectedValue}", got "${actualValue}"`
+                      `[CHAT VALIDATION FAILED] Field ${update.section}.${update.field}: expected "${expectedValue}", got "${actualValue}"`,
                     );
                     addTrace(
                       "chat_field_verification",
@@ -380,11 +376,11 @@ Please respond with A or B.`;
                         actual: actualValue,
                         source: "chat_message",
                       },
-                      "FAILED"
+                      "FAILED",
                     );
                   } else {
                     console.log(
-                      `[CHAT VALIDATION OK] Field ${update.section}.${update.field} = "${actualValue}"`
+                      `[CHAT VALIDATION OK] Field ${update.section}.${update.field} = "${actualValue}"`,
                     );
                     addTrace(
                       "chat_field_verification",
@@ -394,7 +390,7 @@ Please respond with A or B.`;
                         value: actualValue,
                         source: "chat_message",
                       },
-                      "SUCCESS"
+                      "SUCCESS",
                     );
                   }
 
@@ -414,11 +410,11 @@ Please respond with A or B.`;
                   "system",
                   `📝 ${update.substitutionNote}`,
                   id,
-                  metadata
+                  metadata,
                 );
                 console.log(
                   `[DEBUG] Added substitution note for ${update.section}.${update.field}:`,
-                  update.substitutionNote
+                  update.substitutionNote,
                 );
                 addTrace(
                   "substitution_note",
@@ -428,7 +424,7 @@ Please respond with A or B.`;
                     originalRequest: update.originalRequest,
                     substitutionNote: update.substitutionNote,
                   },
-                  "SUCCESS"
+                  "SUCCESS",
                 );
               }
             });
@@ -444,12 +440,12 @@ Please respond with A or B.`;
             addTrace(
               "form_update",
               { section: d.section, field: d.field, value: d.value },
-              "SUCCESS"
+              "SUCCESS",
             );
             const formResult = await respecService.processFormUpdate(
               d.section,
               d.field,
-              d.value
+              d.value,
             );
 
             if (formResult.acknowledgment) {
@@ -463,9 +459,7 @@ Please respond with A or B.`;
           const d = data as PayloadMap["trigger_autofill"];
           setProcessingMessage("Generating defaults...");
           addTrace("trigger_autofill", { trigger: d.trigger }, "SUCCESS");
-          autofillResult = await respecService.triggerAutofill(
-            d.trigger
-          );
+          autofillResult = await respecService.triggerAutofill(d.trigger);
           addChatMessage("assistant", autofillResult.message);
 
           autofillResult.fields.forEach((field) => {
@@ -512,7 +506,7 @@ Please respond with A or B.`;
                 fieldPermissions,
                 d.section,
                 d.field,
-                d.value
+                d.value,
               )
             ) {
               addTrace(
@@ -523,7 +517,7 @@ Please respond with A or B.`;
                   value: d.value,
                   reason: "validation_failed",
                 },
-                "FAILED"
+                "FAILED",
               );
               return { success: false, error: "Field validation failed" };
             }
@@ -531,7 +525,7 @@ Please respond with A or B.`;
             addTrace(
               "system_populate_field",
               { section: d.section, field: d.field, value: d.value },
-              "SUCCESS"
+              "SUCCESS",
             );
             console.log(`[DEBUG] system_populate_field called with:`, {
               section: d.section,
@@ -544,10 +538,10 @@ Please respond with A or B.`;
             const mappedValue = mapValueToFormField(
               d.section,
               d.field,
-              d.value
+              d.value,
             );
             console.log(
-              `[DEBUG] System populate value mapped from ${d.value} to ${mappedValue}`
+              `[DEBUG] System populate value mapped from ${d.value} to ${mappedValue}`,
             );
 
             setProcessingMessage("Updating field...");
@@ -580,7 +574,7 @@ Please respond with A or B.`;
                   oldValue: prev[d.section]?.[d.field],
                   newValue: newValue[d.section][d.field],
                   fullSection: newValue[d.section],
-                }
+                },
               );
 
               return newValue;
@@ -593,7 +587,7 @@ Please respond with A or B.`;
 
                 if (actualValue !== expectedValue) {
                   console.error(
-                    `[VALIDATION FAILED] Field ${d.section}.${d.field}: expected "${expectedValue}", got "${actualValue}"`
+                    `[VALIDATION FAILED] Field ${d.section}.${d.field}: expected "${expectedValue}", got "${actualValue}"`,
                   );
                   addTrace(
                     "system_populate_field_verification",
@@ -603,11 +597,11 @@ Please respond with A or B.`;
                       expected: expectedValue,
                       actual: actualValue,
                     },
-                    "FAILED"
+                    "FAILED",
                   );
                 } else {
                   console.log(
-                    `[VALIDATION OK] Field ${d.section}.${d.field} = "${actualValue}"`
+                    `[VALIDATION OK] Field ${d.section}.${d.field} = "${actualValue}"`,
                   );
                   addTrace(
                     "system_populate_field_verification",
@@ -616,7 +610,7 @@ Please respond with A or B.`;
                       field: d.field,
                       value: actualValue,
                     },
-                    "SUCCESS"
+                    "SUCCESS",
                   );
                 }
 
@@ -634,7 +628,7 @@ Please respond with A or B.`;
                 field: d.field,
                 error: (error as Error).message,
               },
-              "FAILED"
+              "FAILED",
             );
             return { success: false, error: String(error) };
           }
@@ -645,7 +639,7 @@ Please respond with A or B.`;
             addTrace(
               "system_populate_multiple",
               { count: d.updates?.length || 0 },
-              "SUCCESS"
+              "SUCCESS",
             );
             setProcessingMessage("Updating multiple fields...");
             setRequirements((prev) => {
@@ -698,7 +692,7 @@ Please respond with A or B.`;
 
             if (!currentField) {
               console.error(
-                `[TOGGLE FAILED] Field not found: ${section}.${field}`
+                `[TOGGLE FAILED] Field not found: ${section}.${field}`,
               );
               addTrace("toggle_assumption", { section, field }, "FAILED");
               return { success: false };
@@ -734,12 +728,12 @@ Please respond with A or B.`;
             }));
 
             console.log(
-              `[TOGGLE] ${section}.${field}: ${previousState} -> ${newState}`
+              `[TOGGLE] ${section}.${field}: ${previousState} -> ${newState}`,
             );
             addTrace(
               "toggle_assumption",
               { section, field, from: previousState, to: newState },
-              "SUCCESS"
+              "SUCCESS",
             );
 
             return { success: true, newState };
@@ -748,7 +742,7 @@ Please respond with A or B.`;
             addTrace(
               "toggle_assumption",
               { error: (error as Error).message },
-              "FAILED"
+              "FAILED",
             );
             return { success: false, error: String(error) };
           }
@@ -772,7 +766,7 @@ Please respond with A or B.`;
             addTrace(
               "permission_granted",
               { section: d.section, field: d.field },
-              "SUCCESS"
+              "SUCCESS",
             );
 
             return { success: true };
@@ -781,7 +775,7 @@ Please respond with A or B.`;
             addTrace(
               "permission_granted",
               { error: (error as Error).message },
-              "FAILED"
+              "FAILED",
             );
             return { success: false, error: String(error) };
           }
@@ -802,7 +796,7 @@ Please respond with A or B.`;
             addTrace(
               "permission_revoked",
               { section: d.section, field: d.field },
-              "SUCCESS"
+              "SUCCESS",
             );
 
             return { success: true };
@@ -811,7 +805,7 @@ Please respond with A or B.`;
             addTrace(
               "permission_revoked",
               { error: (error as Error).message },
-              "FAILED"
+              "FAILED",
             );
             return { success: false, error: String(error) };
           }
@@ -853,7 +847,7 @@ Please respond with A or B.`;
               toggleHistory: [],
             };
           });
-        }
+        },
       );
 
       Object.entries(formFieldsData.field_definitions).forEach(
@@ -863,10 +857,10 @@ Please respond with A or B.`;
               ([groupKey, groupDef]) => {
                 initialExpanded[section][groupKey] =
                   groupDef.defaultOpen || false;
-              }
+              },
             );
           }
-        }
+        },
       );
 
       setRequirements(initialRequirements);
@@ -880,16 +874,14 @@ Please respond with A or B.`;
       } catch (uc8Error) {
         console.warn(
           "[APP] ⚠️ UC8 Data Layer failed to load (non-blocking):",
-          uc8Error
+          uc8Error,
         );
       }
 
       try {
         setProcessingMessage("Initializing...");
         setIsProcessing(true);
-        await respecService.initialize(
-          formFieldsData.field_definitions
-        );
+        await respecService.initialize(formFieldsData.field_definitions);
         const sessionId = respecService.getSessionId();
         console.log("[APP] Simplified Respec initialized:", sessionId);
       } catch (err) {
@@ -912,12 +904,12 @@ Please respond with A or B.`;
           (conflicts) => {
             setActiveConflicts(conflicts);
             const hasCriticalConflicts = conflicts.some(
-              (c) => c.severity === "critical" || c.severity === "error"
+              (c) => c.severity === "critical" || c.severity === "error",
             );
             if (hasCriticalConflicts) {
               setShowConflicts(true);
             }
-          }
+          },
         );
 
         return unsubscribeConflicts;
@@ -944,7 +936,7 @@ Please respond with A or B.`;
       try {
         console.log(
           "TODO zeev uc implement correct uc8 usage and data layer",
-          JSON.parse(JSON.stringify(requirements))
+          JSON.parse(JSON.stringify(requirements)),
         );
         artifactManager.syncWithFormState(requirements);
 
@@ -1047,10 +1039,10 @@ Please respond with A or B.`;
       field: string,
       value: unknown,
       isAssumption = false,
-      source = "user"
+      source = "user",
     ) => {
       setRequirements((prev) =>
-        applyFieldUpdate(prev, section, field, value, isAssumption, source)
+        applyFieldUpdate(prev, section, field, value, isAssumption, source),
       );
 
       const fieldDef = FIELD_DEFS[section]?.[field];
@@ -1084,7 +1076,7 @@ Please respond with A or B.`;
             `${section}.${field}`,
             value as string,
             requirements,
-            source === "user" ? "manual" : "semantic"
+            source === "user" ? "manual" : "semantic",
           )
           .catch((error) => {
             console.warn("[APP] Conflict detection failed:", error);
@@ -1097,7 +1089,7 @@ Please respond with A or B.`;
         isAssumption,
       });
     },
-    []
+    [],
   );
 
   useEffect(() => {
@@ -1174,7 +1166,7 @@ Please respond with A or B.`;
                 updatedRequirements[section][fieldKey]?.toggleHistory || [],
             };
           }
-        }
+        },
       );
     });
 
@@ -1205,14 +1197,14 @@ Please respond with A or B.`;
 
       const blob = await dataServices.export.exportToPDF(
         formattedRequirements,
-        metadata
+        metadata,
       );
       dataServices.utils.downloadBlob(
         blob,
         dataServices.utils.generateFilename(
           projectName.replace(/\s+/g, "_"),
-          "pdf"
-        )
+          "pdf",
+        ),
       );
     } catch (error: unknown) {
       console.error("Export failed:", error);
@@ -1242,7 +1234,7 @@ Please respond with A or B.`;
                         isAssumption: fieldData.isAssumption,
                         required:
                           formFieldsData.priority_system.must_fields.includes(
-                            fieldKey
+                            fieldKey,
                           ),
                       };
                     }
@@ -1257,7 +1249,7 @@ Please respond with A or B.`;
                 await dataServices.project.saveProject(
                   projectName,
                   formattedRequirements,
-                  metadata
+                  metadata,
                 );
                 uiUtils.flashField("project-header", "success");
               } catch (error: unknown) {
@@ -1367,7 +1359,7 @@ Please respond with A or B.`;
           onResolve={handleConflictResolve}
           onDismiss={(conflictId) =>
             setActiveConflicts((prev) =>
-              prev.filter((c) => c.id !== conflictId)
+              prev.filter((c) => c.id !== conflictId),
             )
           }
         />
@@ -1377,7 +1369,7 @@ Please respond with A or B.`;
         count={activeConflicts.length}
         onToggle={() => setShowConflicts(!showConflicts)}
         hasCritical={activeConflicts.some(
-          (c) => c.severity === "critical" || c.severity === "error"
+          (c) => c.severity === "critical" || c.severity === "error",
         )}
       />
 
@@ -1387,10 +1379,7 @@ Please respond with A or B.`;
         chatWindowWidth={chatWidth}
       />
 
-      <ProcessingPopup
-        visible={isProcessing}
-        message={processingMessage}
-      />
+      <ProcessingPopup visible={isProcessing} message={processingMessage} />
     </div>
   );
 }

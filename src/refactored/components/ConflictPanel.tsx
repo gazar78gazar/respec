@@ -9,7 +9,7 @@ interface ConflictPanelProps {
   onResolveConflict: (
     conflictId: string,
     action: ConflictSuggestion["action"],
-    newValue?: string
+    newValue?: string,
   ) => Promise<void>;
   onDismissConflict?: (conflictId: string) => void;
   className?: string;
@@ -22,11 +22,11 @@ export const ConflictPanel: React.FC<ConflictPanelProps> = ({
   className = "",
 }) => {
   const [expandedConflicts, setExpandedConflicts] = useState<Set<string>>(
-    new Set()
+    new Set(),
   );
   const [customValues, setCustomValues] = useState<Record<string, string>>({});
   const [processingConflicts, setProcessingConflicts] = useState<Set<string>>(
-    new Set()
+    new Set(),
   );
 
   // Auto-expand high severity conflicts
@@ -37,7 +37,7 @@ export const ConflictPanel: React.FC<ConflictPanelProps> = ({
 
     if (highSeverityConflicts.length > 0) {
       setExpandedConflicts(
-        (prev) => new Set([...prev, ...highSeverityConflicts])
+        (prev) => new Set([...prev, ...highSeverityConflicts]),
       );
     }
   }, [conflicts]);
@@ -57,7 +57,7 @@ export const ConflictPanel: React.FC<ConflictPanelProps> = ({
   const handleResolveConflict = async (
     conflictId: string,
     action: ConflictSuggestion["action"],
-    newValue?: string
+    newValue?: string,
   ) => {
     setProcessingConflicts((prev) => new Set([...prev, conflictId]));
 
@@ -138,12 +138,15 @@ export const ConflictPanel: React.FC<ConflictPanelProps> = ({
   }
 
   // Group conflicts by severity
-  const groupedConflicts = conflicts.reduce((groups, conflict) => {
-    const severity = conflict.severity;
-    if (!groups[severity]) groups[severity] = [];
-    groups[severity].push(conflict);
-    return groups;
-  }, {} as Record<FieldConflict["severity"], FieldConflict[]>);
+  const groupedConflicts = conflicts.reduce(
+    (groups, conflict) => {
+      const severity = conflict.severity;
+      if (!groups[severity]) groups[severity] = [];
+      groups[severity].push(conflict);
+      return groups;
+    },
+    {} as Record<FieldConflict["severity"], FieldConflict[]>,
+  );
 
   const severityOrder: FieldConflict["severity"][] = [
     "critical",
@@ -165,12 +168,12 @@ export const ConflictPanel: React.FC<ConflictPanelProps> = ({
                 <span
                   key={severity}
                   className={`px-2 py-1 rounded-full ${getSeverityColor(
-                    severity
+                    severity,
                   )}`}
                 >
                   {getSeverityIcon(severity)} {conflictList.length}
                 </span>
-              )
+              ),
             )}
           </div>
         </div>
@@ -192,7 +195,7 @@ export const ConflictPanel: React.FC<ConflictPanelProps> = ({
                   <div
                     key={conflict.id}
                     className={`border-b border-l-4 ${getSeverityColor(
-                      conflict.severity
+                      conflict.severity,
                     )} last:border-b-0`}
                   >
                     <div
@@ -305,7 +308,7 @@ export const ConflictPanel: React.FC<ConflictPanelProps> = ({
                                     >
                                       {field}
                                     </span>
-                                  )
+                                  ),
                                 )}
                               </div>
                             </div>
@@ -335,7 +338,7 @@ export const ConflictPanel: React.FC<ConflictPanelProps> = ({
                                       </div>
                                       <span className="text-xs bg-gray-100 px-2 py-1 rounded">
                                         {Math.round(
-                                          suggestion.confidence * 100
+                                          suggestion.confidence * 100,
                                         )}
                                         %
                                       </span>
@@ -376,7 +379,7 @@ export const ConflictPanel: React.FC<ConflictPanelProps> = ({
                                           suggestion.action,
                                           suggestion.action === "modify"
                                             ? customValue || suggestion.newValue
-                                            : suggestion.newValue
+                                            : suggestion.newValue,
                                         )
                                       }
                                       disabled={isProcessing}

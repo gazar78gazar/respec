@@ -57,7 +57,7 @@ class ExportService {
    */
   async exportToPDF(
     requirements: Requirements,
-    metadata: ProjectMetadata
+    metadata: ProjectMetadata,
   ): Promise<Blob> {
     try {
       // Import jsPDF dynamically
@@ -75,14 +75,14 @@ class ExportService {
       doc.text(
         `Last Modified: ${metadata.lastModified.toLocaleDateString()}`,
         20,
-        50
+        50,
       );
 
       let yPosition = 70;
 
       // Group requirements by priority
       const groupedRequirements = Object.entries(requirements).sort(
-        ([, a], [, b]) => a.priority - b.priority
+        ([, a], [, b]) => a.priority - b.priority,
       );
 
       groupedRequirements.forEach(([fieldName, requirement]) => {
@@ -95,7 +95,7 @@ class ExportService {
         doc.text(
           `${fieldName} (Priority ${requirement.priority})`,
           20,
-          yPosition
+          yPosition,
         );
         yPosition += 10;
 
@@ -120,7 +120,7 @@ class ExportService {
    */
   async exportToJSON(
     requirements: Requirements,
-    sessionId: string
+    sessionId: string,
   ): Promise<Blob> {
     try {
       const exportData = {
@@ -136,7 +136,7 @@ class ExportService {
       throw new Error(
         `JSON export failed: ${
           error instanceof Error ? error.message : "Unknown error " + error
-        }`
+        }`,
       );
     }
   }
@@ -174,7 +174,7 @@ class ExportService {
       throw new Error(
         `CSV export failed: ${
           error instanceof Error ? error.message : "Unknown error " + error
-        }`
+        }`,
       );
     }
   }
@@ -230,7 +230,7 @@ class ExportService {
       throw new Error(
         `Excel export failed: ${
           error instanceof Error ? error.message : "Unknown error " + error
-        }`
+        }`,
       );
     }
   }
@@ -262,7 +262,7 @@ class ShareService {
    */
   async generateShareableLink(
     sessionId: string,
-    expiryHours: number = 72
+    expiryHours: number = 72,
   ): Promise<string> {
     try {
       const shareToken = this.createShareToken();
@@ -284,7 +284,7 @@ class ShareService {
       throw new Error(
         `Failed to generate shareable link: ${
           error instanceof Error ? error.message : "Unknown error " + error
-        }`
+        }`,
       );
     }
   }
@@ -325,11 +325,11 @@ class ShareService {
   shareViaEmail(
     recipients: string[],
     requirements: Requirements,
-    subject: string
+    subject: string,
   ): string {
     const body = this.formatRequirementsForEmail(requirements);
     const mailto = `mailto:${recipients.join(",")}?subject=${encodeURIComponent(
-      subject
+      subject,
     )}&body=${encodeURIComponent(body)}`;
     return mailto;
   }
@@ -477,12 +477,12 @@ class ImportService {
 
     // Check if it's requirements format
     const isRequirementsFormat = Object.values(data).every(
-      (item) => typeof item === "object" && "priority" in item
+      (item) => typeof item === "object" && "priority" in item,
     );
 
     if (!isRequirementsFormat) {
       errors.push(
-        "Invalid requirements format: each field must have a priority"
+        "Invalid requirements format: each field must have a priority",
       );
     }
 
@@ -493,7 +493,7 @@ class ImportService {
         ![1, 2, 3, 4].includes(requirement.priority)
       ) {
         errors.push(
-          `Invalid priority for field "${fieldName}": must be 1, 2, 3, or 4`
+          `Invalid priority for field "${fieldName}": must be 1, 2, 3, or 4`,
         );
       }
     });
@@ -510,7 +510,7 @@ class ImportService {
 
     if (missingMustFields.length > 0) {
       warnings.push(
-        `Missing must-have fields: ${missingMustFields.join(", ")}`
+        `Missing must-have fields: ${missingMustFields.join(", ")}`,
       );
     }
 
@@ -529,7 +529,7 @@ class ImportService {
    */
   mergeWithExisting(
     imported: Requirements,
-    existing: Requirements
+    existing: Requirements,
   ): Requirements {
     const merged: Requirements = { ...existing };
 
@@ -580,7 +580,7 @@ class ProjectManagement {
   async saveProject(
     name: string,
     requirements: Requirements,
-    metadata: ProjectMetadata
+    metadata: ProjectMetadata,
   ): Promise<boolean> {
     try {
       const projects = this.getStoredProjects();
@@ -671,7 +671,7 @@ class ProjectManagement {
     name: string,
     requirements: Requirements,
     metadata: ProjectMetadata,
-    format: ExportFormat = "json"
+    format: ExportFormat = "json",
   ): Promise<Blob> {
     await this.saveProject(name, requirements, metadata);
 
@@ -751,7 +751,7 @@ class HelperUtilities {
    */
   formatRequirementsForExport(
     requirements: Requirements,
-    format: ExportFormat
+    format: ExportFormat,
   ): any {
     switch (format) {
       case "csv":
@@ -815,7 +815,7 @@ class HelperUtilities {
         }
 
         const compressed = new Uint8Array(
-          chunks.reduce((acc, chunk) => acc + chunk.length, 0)
+          chunks.reduce((acc, chunk) => acc + chunk.length, 0),
         );
         let offset = 0;
         for (const chunk of chunks) {
@@ -835,7 +835,7 @@ class HelperUtilities {
   }
 
   private groupRequirementsBySection(
-    requirements: Requirements
+    requirements: Requirements,
   ): Record<string, any[]> {
     const sections = {
       performanceComputing: [],
@@ -860,10 +860,10 @@ class HelperUtilities {
   }
 
   private sortRequirementsByPriority(
-    requirements: Requirements
+    requirements: Requirements,
   ): [string, any][] {
     return Object.entries(requirements).sort(
-      ([, a], [, b]) => a.priority - b.priority
+      ([, a], [, b]) => a.priority - b.priority,
     );
   }
 

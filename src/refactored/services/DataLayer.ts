@@ -66,7 +66,7 @@ export class UCDataLayer {
       console.log(
         `[UCDataLayer]   ✓ Found: ${node.name} (type: ${
           node.type || "unknown"
-        })`
+        })`,
       );
     } else {
       console.log(`[UCDataLayer]   ✗ Not found: ${id}`);
@@ -78,7 +78,7 @@ export class UCDataLayer {
   getScenario(id: string): Maybe<UCScenario> {
     console.log(
       `[UCDataLayer] 🎬 getScenario(${id})`,
-      this.dataset!.scenarios?.[id]
+      this.dataset!.scenarios?.[id],
     );
     return this.dataset!.scenarios?.[id];
   }
@@ -86,7 +86,7 @@ export class UCDataLayer {
   getRequirement(id: string): Maybe<UCRequirement> {
     console.log(
       `[UCDataLayer] 📋 getRequirement(${id})`,
-      this.dataset!.requirements?.[id]
+      this.dataset!.requirements?.[id],
     );
     return this.dataset!.requirements?.[id];
   }
@@ -94,7 +94,7 @@ export class UCDataLayer {
   getSpecification(id: string): Maybe<UCSpecification> {
     console.log(
       `[UCDataLayer] 🔧 getSpecification(${id})`,
-      this.dataset!.specifications?.[id]
+      this.dataset!.specifications?.[id],
     );
 
     return this.dataset!.specifications?.[id];
@@ -103,14 +103,14 @@ export class UCDataLayer {
   getSpecificationsByRequirement(requirementId: string): UCSpecification[] {
     if (!this.dataset) return [];
     return Object.values(this.dataset.specifications).filter((spec) =>
-      spec.parent_requirements.includes(requirementId)
+      spec.parent_requirements.includes(requirementId),
     );
   }
 
   getComment(id: string): Maybe<UCComment> {
     console.log(
       `[UCDataLayer] 💬 getComment(${id})`,
-      this.dataset!.comments?.[id]
+      this.dataset!.comments?.[id],
     );
     return this.dataset!.comments?.[id];
   }
@@ -118,7 +118,7 @@ export class UCDataLayer {
   getAllSpecifications(): UCSpecification[] {
     console.log(
       `[UCDataLayer] 📦 getAllSpecifications()`,
-      Object.values(this.dataset!.specifications || {})
+      Object.values(this.dataset!.specifications || {}),
     );
     return Object.values(this.dataset!.specifications || {});
   }
@@ -152,13 +152,13 @@ export class UCDataLayer {
     console.log(`[UCDataLayer] ⚠️ getExclusionsForNode(${nodeId})`);
 
     const exclusions = Object.values(this.dataset!.exclusions || {}).filter(
-      (e: UCExclusion) => e.nodes && e.nodes.includes(nodeId)
+      (e: UCExclusion) => e.nodes && e.nodes.includes(nodeId),
     );
 
     console.log(`[UCDataLayer]   → Found ${exclusions.length} exclusions`);
     exclusions.forEach((e: UCExclusion) => {
       console.log(
-        `[UCDataLayer]     • ${e.id}: ${e.nodes.join(" ↔ ")} (${e.type})`
+        `[UCDataLayer]     • ${e.id}: ${e.nodes.join(" ↔ ")} (${e.type})`,
       );
     });
 
@@ -178,12 +178,12 @@ export class UCDataLayer {
 
     const found = exclusions.find(
       (e: UCExclusion) =>
-        e.nodes && e.nodes.includes(nodeId1) && e.nodes.includes(nodeId2)
+        e.nodes && e.nodes.includes(nodeId1) && e.nodes.includes(nodeId2),
     );
 
     if (found) {
       console.log(
-        `[UCDataLayer]   🚫 EXCLUSION: ${nodeId1} ↔ ${nodeId2} (${found.type})`
+        `[UCDataLayer]   🚫 EXCLUSION: ${nodeId1} ↔ ${nodeId2} (${found.type})`,
       );
     }
 
@@ -199,7 +199,7 @@ export class UCDataLayer {
     return (
       exclusions.find(
         (e: UCExclusion) =>
-          e.nodes && e.nodes.includes(nodeId1) && e.nodes.includes(nodeId2)
+          e.nodes && e.nodes.includes(nodeId1) && e.nodes.includes(nodeId2),
       ) || null
     );
   }
@@ -226,13 +226,13 @@ export class UCDataLayer {
         if (Array.isArray(nodes)) {
           allRequired.push(...nodes);
         }
-      }
+      },
     );
 
     console.log(
       `[UCDataLayer]   → Requires ${
         allRequired.length
-      } nodes: ${allRequired.join(", ")}`
+      } nodes: ${allRequired.join(", ")}`,
     );
     return allRequired;
   }
@@ -284,11 +284,11 @@ export class UCDataLayer {
     console.log(`[UCDataLayer] 📋 getSpecificationsForFormField(${fieldName})`);
 
     const specs = Object.values(this.dataset!.specifications || {}).filter(
-      (spec: UCSpecification) => spec.field_name === fieldName
+      (spec: UCSpecification) => spec.field_name === fieldName,
     );
 
     console.log(
-      `[UCDataLayer]   → Found ${specs.length} specs for field "${fieldName}"`
+      `[UCDataLayer]   → Found ${specs.length} specs for field "${fieldName}"`,
     );
     return specs;
   }
@@ -302,7 +302,7 @@ export class UCDataLayer {
     Object.values(this.dataset!.specifications || {}).forEach(
       (spec: UCSpecification) => {
         if (spec.field_name) fields.add(spec.field_name);
-      }
+      },
     );
 
     console.log(`[UCDataLayer] 📋 Found ${fields.size} unique form fields`);
@@ -323,10 +323,10 @@ export class UCDataLayer {
    */
   getValidOptionsForField(
     fieldName: string,
-    currentSelections: string[]
+    currentSelections: string[],
   ): UCSpecification[] {
     console.log(
-      `[UCDataLayer] ✅ getValidOptionsForField("${fieldName}", ${currentSelections.length} selections)`
+      `[UCDataLayer] ✅ getValidOptionsForField("${fieldName}", ${currentSelections.length} selections)`,
     );
     console.log(`[UCDataLayer]   Current: [${currentSelections.join(", ")}]`);
 
@@ -357,7 +357,7 @@ export class UCDataLayer {
 
     if (validOptions.length === 0) {
       console.log(
-        `[UCDataLayer]   🚨 CONFLICT: No valid options left for "${fieldName}"!`
+        `[UCDataLayer]   🚨 CONFLICT: No valid options left for "${fieldName}"!`,
       );
     }
 

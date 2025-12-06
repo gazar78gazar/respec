@@ -8,7 +8,7 @@ export interface ConflictPanelContainerProps {
   onResolve: (
     conflictId: string,
     action: "accept" | "reject" | "modify",
-    newValue?: string
+    newValue?: string,
   ) => Promise<void>;
   onDismiss?: (conflictId: string) => void;
   className?: string;

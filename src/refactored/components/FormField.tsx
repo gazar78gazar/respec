@@ -47,7 +47,7 @@ export const FormField: React.FC<FormFieldProps> = ({
 }) => {
   const [localValue, setLocalValue] = useState<FieldValue>(data?.value ?? "");
   const [localAssumption, setLocalAssumption] = useState<boolean>(
-    !!data?.isAssumption
+    !!data?.isAssumption,
   );
 
   useEffect(() => {
@@ -72,8 +72,8 @@ export const FormField: React.FC<FormFieldProps> = ({
       localAssumption
         ? "border-amber-300 bg-amber-50"
         : !localValue || (Array.isArray(localValue) && localValue.length === 0)
-        ? "border-gray-300 bg-yellow-50"
-        : "border-gray-300 bg-white"
+          ? "border-gray-300 bg-yellow-50"
+          : "border-gray-300 bg-white"
     }
     focus:outline-none focus:ring-2 focus:ring-blue-500
   `;
@@ -117,7 +117,7 @@ export const FormField: React.FC<FormFieldProps> = ({
                       <button
                         onClick={() =>
                           handleValueChange(
-                            selectedValues.filter((v: string) => v !== val)
+                            selectedValues.filter((v: string) => v !== val),
                           )
                         }
                         className="ml-1 text-blue-500 hover:text-blue-700"
@@ -139,7 +139,7 @@ export const FormField: React.FC<FormFieldProps> = ({
                   onClick={() => {
                     if (selectedValues.includes(opt)) {
                       handleValueChange(
-                        selectedValues.filter((v: string) => v !== opt)
+                        selectedValues.filter((v: string) => v !== opt),
                       );
                     } else {
                       handleValueChange([...selectedValues, opt]);
@@ -170,8 +170,8 @@ export const FormField: React.FC<FormFieldProps> = ({
                   handleValueChange(
                     Math.max(
                       (parseInt(String(localValue)) || 0) - 1,
-                      fieldDef.min ?? 0
-                    )
+                      fieldDef.min ?? 0,
+                    ),
                   )
                 }
                 className="px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded"
@@ -208,8 +208,8 @@ export const FormField: React.FC<FormFieldProps> = ({
                   handleValueChange(
                     Math.min(
                       (parseInt(String(localValue)) || 0) + 1,
-                      fieldDef.max ?? 999
-                    )
+                      fieldDef.max ?? 999,
+                    ),
                   )
                 }
                 className="px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded"
@@ -302,8 +302,8 @@ export const FormField: React.FC<FormFieldProps> = ({
             validation.severity === "error"
               ? "text-red-600"
               : validation.severity === "warning"
-              ? "text-amber-600"
-              : "text-blue-600"
+                ? "text-amber-600"
+                : "text-blue-600"
           }`}
         >
           {validation.severity === "error" && (

@@ -17,7 +17,7 @@ export const RequirementsReview: React.FC<RequirementsReviewProps> = ({
       <h2 className="text-xl font-bold text-gray-800">{title}</h2>
       {Object.entries(requirements).map(([section, fields]) => {
         const filledFields = Object.entries(fields || {}).filter(
-          ([, data]: any) => data?.isComplete
+          ([, data]: any) => data?.isComplete,
         );
         if (filledFields.length === 0) return null;
 

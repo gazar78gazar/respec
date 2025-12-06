@@ -208,7 +208,7 @@ export class RespecService {
 
   // Initialize semantic matching system (called externally with dependencies)
   async initializeSemanticMatching(
-    artifactManager?: ArtifactManager
+    artifactManager?: ArtifactManager,
   ): Promise<void> {
     try {
       // Sprint 3 Week 1: Store core services for conflict detection
@@ -230,7 +230,7 @@ export class RespecService {
 
       this.semanticIntegrationNew = createSemanticIntegrationServiceNew(
         this.semanticMatchingService,
-        artifactManager
+        artifactManager,
       );
 
       // Keep old services for backward compatibility (temporarily)
@@ -241,7 +241,7 @@ export class RespecService {
       this.conflictDetection = createConflictDetectionService();
 
       console.log(
-        "[SimplifiedRespec] ✅ Sprint 2 semantic matching initialized"
+        "[SimplifiedRespec] ✅ Sprint 2 semantic matching initialized",
       );
       console.log("[SimplifiedRespec] - SemanticMatchingService: ready");
       console.log("[SimplifiedRespec] - SemanticIntegrationService: ready");
@@ -249,7 +249,7 @@ export class RespecService {
     } catch (error) {
       console.error(
         "[SimplifiedRespec] Failed to initialize semantic matching:",
-        error
+        error,
       );
       this.useSemanticMatching = false;
     }
@@ -267,13 +267,13 @@ export class RespecService {
     try {
       if (ucDataLayer.isLoaded()) {
         console.log(
-          "[SimplifiedRespec] Using UC8 Data Layer for field mappings"
+          "[SimplifiedRespec] Using UC8 Data Layer for field mappings",
         );
         this.extractFieldMappingsFromDataLayer();
         console.log(
           "[SimplifiedRespec] UC8 field mappings extracted:",
           this.fieldMappings.size,
-          "mappings"
+          "mappings",
         );
       } else {
         console.error("[SimplifiedRespec] UC8 not loaded");
@@ -289,7 +289,7 @@ export class RespecService {
     // Load any persisted conversation or settings
     try {
       const savedSession = localStorage.getItem(
-        `respec_session_${this.sessionId}`
+        `respec_session_${this.sessionId}`,
       );
       if (savedSession) {
         const data = JSON.parse(savedSession);
@@ -305,7 +305,7 @@ export class RespecService {
       console.log(
         "[SimplifiedRespec] Field options map built with",
         Object.keys(this.fieldOptionsMap).length,
-        "sections"
+        "sections",
       );
     }
 
@@ -318,13 +318,13 @@ export class RespecService {
    */
   private extractFieldMappingsFromDataLayer(): void {
     console.log(
-      "[SimplifiedRespec] Extracting field mappings from UC8 Data Layer"
+      "[SimplifiedRespec] Extracting field mappings from UC8 Data Layer",
     );
 
     const specifications = ucDataLayer.getAllSpecifications();
     console.log(
       `[SimplifiedRespec] Found ${specifications.length} specifications in UC8`,
-      { specifications }
+      { specifications },
     );
 
     specifications.forEach((spec) => {
@@ -357,7 +357,7 @@ export class RespecService {
     });
 
     console.log(
-      `[SimplifiedRespec] Extracted ${this.fieldMappings.size} field mappings from UC8`
+      `[SimplifiedRespec] Extracted ${this.fieldMappings.size} field mappings from UC8`,
     );
   }
 
@@ -426,16 +426,16 @@ export class RespecService {
               validation: fieldDef.validation,
               label: fieldDef.label,
             };
-          }
+          },
         );
-      }
+      },
     );
 
     console.log("[SimplifiedRespec] Built field options map:", {
       sections: Object.keys(this.fieldOptionsMap).length,
       totalFields: Object.values(this.fieldOptionsMap).reduce(
         (sum, section) => sum + Object.keys(section).length,
-        0
+        0,
       ),
     });
   }
@@ -508,7 +508,7 @@ export class RespecService {
 
   private buildContextPrompt(
     message: string,
-    identifiedFields: string[]
+    identifiedFields: string[],
   ): string {
     let prompt = `User request: "${message}"\n\n`;
 
@@ -525,7 +525,7 @@ export class RespecService {
 
           if (fieldOptions.options && fieldOptions.options.length > 0) {
             prompt += `  Available options: [${fieldOptions.options.join(
-              ", "
+              ", ",
             )}]\n`;
             prompt += `  Instruction: Select the closest matching option from the available list. If substituting, explain why in substitutionNote.\n`;
           } else if (fieldOptions.type === "number") {
@@ -567,7 +567,7 @@ export class RespecService {
 
     if (conflictStatus.hasConflicts && this.artifactManager) {
       console.log(
-        `[SimplifiedRespec] 🎯 Conflict resolution mode - routing to agent`
+        `[SimplifiedRespec] 🎯 Conflict resolution mode - routing to agent`,
       );
 
       // Use AnthropicService to handle conflict resolution (parse A/B, resolve, confirm)
@@ -575,7 +575,7 @@ export class RespecService {
         await this.anthropicService.handleConflictResolution(
           message,
           conflictStatus,
-          this.artifactManager
+          this.artifactManager,
         );
 
       // Add to conversation history
@@ -611,14 +611,14 @@ export class RespecService {
     try {
       // Sprint 2: New flow with Agent extraction + UC matching
       console.log(
-        `[SimplifiedRespec] 🚀 Starting Sprint 2 flow: Agent → Integration → UC Matcher`
+        `[SimplifiedRespec] 🚀 Starting Sprint 2 flow: Agent → Integration → UC Matcher`,
       );
 
       // Identify relevant fields from the message
       const identifiedFields = this.identifyRelevantFields(message);
       console.log(
         `[SimplifiedRespec] Identified relevant fields:`,
-        identifiedFields
+        identifiedFields,
       );
 
       // Build context with available options
@@ -627,19 +627,19 @@ export class RespecService {
 
       // Step 1: Agent extracts requirements (with conversational flow)
       console.log(
-        `[SimplifiedRespec] 📝 Step 1: Agent extracting requirements...`
+        `[SimplifiedRespec] 📝 Step 1: Agent extracting requirements...`,
       );
       const anthropicResult = await this.anthropicService.analyzeRequirements(
         contextPrompt,
         {
           conversationHistory: this.conversationHistory.slice(-5), // Last 5 messages for context
           sessionId: this.sessionId,
-        }
+        },
       );
       console.log(
         `[SimplifiedRespec] ✅ Agent extracted:`,
         anthropicResult.requirements.length,
-        "requirements"
+        "requirements",
       );
 
       // Step 2: Route through new semantic integration (if available and requirements exist)
@@ -648,19 +648,19 @@ export class RespecService {
         anthropicResult.requirements.length > 0
       ) {
         console.log(
-          `[SimplifiedRespec] 🔍 Step 2: Routing to SemanticIntegrationService...`
+          `[SimplifiedRespec] 🔍 Step 2: Routing to SemanticIntegrationService...`,
         );
 
         const enhancedResult =
           await this.semanticIntegrationNew.processExtractedRequirements(
             anthropicResult.requirements,
-            anthropicResult.response
+            anthropicResult.response,
           );
 
         console.log(
           `[SimplifiedRespec] ✅ Sprint 2 processing complete:`,
           enhancedResult.formUpdates?.length || 0,
-          "form updates"
+          "form updates",
         );
 
         // Add assistant response to history
@@ -678,7 +678,7 @@ export class RespecService {
 
       // Fallback: Use legacy flow if semantic integration not available or no requirements
       console.log(
-        `[SimplifiedRespec] ⚠️  No semantic integration or no requirements, using legacy flow`
+        `[SimplifiedRespec] ⚠️  No semantic integration or no requirements, using legacy flow`,
       );
 
       // Convert Anthropic requirements to EnhancedFormUpdate format
@@ -798,7 +798,7 @@ export class RespecService {
     const hierarchy = null;
     const spec = this.artifactManager.findSpecificationInArtifact(
       "mapped",
-      nodeId
+      nodeId,
     );
 
     if (!hierarchy) return { name: nodeId };
@@ -818,17 +818,17 @@ export class RespecService {
   async processFormUpdate(
     section: string,
     field: string,
-    value: any
+    value: any,
   ): Promise<FormProcessingResult> {
     console.log(
-      `[SimplifiedRespec] Form update: ${section}.${field} = ${value}`
+      `[SimplifiedRespec] Form update: ${section}.${field} = ${value}`,
     );
 
     // Generate contextual acknowledgment
     const acknowledgment = this.generateFormAcknowledgment(
       section,
       field,
-      value
+      value,
     );
 
     if (acknowledgment) {
@@ -885,13 +885,13 @@ export class RespecService {
           isAssumption: true,
           confidence: 0.8,
         };
-      }
+      },
     );
 
     const message = this.generateAutofillMessage(
       context,
       trigger,
-      fields.length
+      fields.length,
     );
 
     return {
@@ -904,7 +904,7 @@ export class RespecService {
   private generateFormAcknowledgment(
     section: string,
     field: string,
-    value: any
+    value: any,
   ): string {
     const friendlyName = this.getFriendlyFieldName(section, field);
 
@@ -921,7 +921,7 @@ export class RespecService {
   private generateAutofillMessage(
     context: string,
     trigger: string,
-    fieldCount: number
+    fieldCount: number,
   ): string {
     const contextMessages = {
       substation: `Based on typical substation requirements, I've filled in ${fieldCount} common specifications as assumptions.`,
@@ -1005,7 +1005,7 @@ export class RespecService {
       };
       localStorage.setItem(
         `respec_session_${this.sessionId}`,
-        JSON.stringify(sessionData)
+        JSON.stringify(sessionData),
       );
     } catch (error) {
       console.warn("[SimplifiedRespec] Could not save session:", error);
@@ -1052,7 +1052,7 @@ export class RespecService {
       originalRequest?: string;
       confidence?: number;
       ucSpec?: string;
-    }
+    },
   ): Promise<FieldConflict[]> {
     if (!this.conflictDetection) {
       console.warn("[SimplifiedRespec] Conflict detection not initialized");
@@ -1065,7 +1065,7 @@ export class RespecService {
         newValue,
         currentRequirements,
         source,
-        context
+        context,
       );
     } catch (error) {
       console.error("[SimplifiedRespec] Conflict detection failed:", error);
@@ -1076,7 +1076,7 @@ export class RespecService {
   async resolveConflict(
     conflictId: string,
     action: "accept" | "reject" | "modify",
-    newValue?: string
+    newValue?: string,
   ) {
     if (!this.conflictDetection) {
       throw new Error("Conflict detection not initialized");
@@ -1085,7 +1085,7 @@ export class RespecService {
     return await this.conflictDetection.resolveConflict(
       conflictId,
       action,
-      newValue
+      newValue,
     );
   }
 

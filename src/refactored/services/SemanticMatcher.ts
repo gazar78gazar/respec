@@ -70,7 +70,7 @@ export class SemanticMatcher {
 
   async parseMessage(
     message: string,
-    context?: SemanticMatchingContext
+    context?: SemanticMatchingContext,
   ): Promise<SemanticExtractionResult> {
     const startTime = Date.now();
 
@@ -92,7 +92,7 @@ export class SemanticMatcher {
       // Step 3: Technical Extraction
       const extractions = await this.extractTechnicalRequirements(
         message,
-        context
+        context,
       );
 
       // Step 4: UC Mapping
@@ -101,7 +101,7 @@ export class SemanticMatcher {
       // Step 5: Confidence Scoring
       const overallConfidence = this.calculateOverallConfidence(
         mappedExtractions,
-        intent
+        intent,
       );
 
       return {
@@ -131,7 +131,7 @@ export class SemanticMatcher {
 
   private async detectIntent(
     message: string,
-    context?: SemanticMatchingContext
+    context?: SemanticMatchingContext,
   ): Promise<MessageIntent> {
     const prompt = this.buildIntentDetectionPrompt(message, context);
 
@@ -186,14 +186,14 @@ export class SemanticMatcher {
 
   private async extractTechnicalRequirements(
     message: string,
-    context?: SemanticMatchingContext
+    context?: SemanticMatchingContext,
   ): Promise<TechnicalExtraction[]> {
     // For MVP: Pattern-based extraction with confidence scoring
     const extractions: TechnicalExtraction[] = [];
 
     // Processor extraction
     const processorMatch = message.match(
-      /(intel|amd)[\s-]*(core|ryzen)?[\s-]*(i[3579]|[0-9]+)?|fast\s*cpu/i
+      /(intel|amd)[\s-]*(core|ryzen)?[\s-]*(i[3579]|[0-9]+)?|fast\s*cpu/i,
     );
     if (processorMatch) {
       extractions.push({
@@ -209,7 +209,7 @@ export class SemanticMatcher {
 
     // Memory extraction
     const memoryMatch = message.match(
-      /(\d+)\s*(gb|mb)\s*(?:ram|memory)?|(?:lots of|more)\s*(?:ram|memory)/i
+      /(\d+)\s*(gb|mb)\s*(?:ram|memory)?|(?:lots of|more)\s*(?:ram|memory)/i,
     );
     if (memoryMatch) {
       let value = memoryMatch[0];
@@ -227,7 +227,7 @@ export class SemanticMatcher {
 
     // Power extraction
     const powerMatch = message.match(
-      /(under \d+w|<?\s*\d+w|low power|high performance|battery\s*optimized?)/i
+      /(under \d+w|<?\s*\d+w|low power|high performance|battery\s*optimized?)/i,
     );
     if (powerMatch) {
       extractions.push({
@@ -241,7 +241,7 @@ export class SemanticMatcher {
 
     // Storage extraction
     const storageMatch = message.match(
-      /(\d+\s*(?:gb|tb)|ssd|hdd|fast\s*storage|solid\s*state)/i
+      /(\d+\s*(?:gb|tb)|ssd|hdd|fast\s*storage|solid\s*state)/i,
     );
     if (storageMatch) {
       extractions.push({
@@ -255,7 +255,7 @@ export class SemanticMatcher {
 
     // Performance extraction
     const performanceMatch = message.match(
-      /(high performance|fast|low latency|quick|responsive)/i
+      /(high performance|fast|low latency|quick|responsive)/i,
     );
     if (performanceMatch) {
       extractions.push({
@@ -275,7 +275,7 @@ export class SemanticMatcher {
   // ============= UC MAPPING =============
 
   private async mapToUCSpecifications(
-    extractions: TechnicalExtraction[]
+    extractions: TechnicalExtraction[],
   ): Promise<TechnicalExtraction[]> {
     const mappedExtractions = [...extractions];
 
@@ -287,7 +287,7 @@ export class SemanticMatcher {
   }
 
   private async findUCCandidates(
-    extraction: TechnicalExtraction
+    extraction: TechnicalExtraction,
   ): Promise<UCCandidate[]> {
     const candidates: UCCandidate[] = [];
 
@@ -323,7 +323,7 @@ export class SemanticMatcher {
 
   private calculateOverallConfidence(
     extractions: TechnicalExtraction[],
-    intent: MessageIntent
+    intent: MessageIntent,
   ): number {
     if (extractions.length === 0) return 0.0;
 
@@ -341,7 +341,7 @@ export class SemanticMatcher {
         const bestCandidate = ext.ucCandidates.reduce(
           (best, candidate) =>
             candidate.confidence > best.confidence ? candidate : best,
-          { confidence: 0 }
+          { confidence: 0 },
         );
         return sum + bestCandidate.confidence;
       }, 0) / extractions.length;
@@ -350,7 +350,7 @@ export class SemanticMatcher {
       0.95,
       avgExtractionConfidence * 0.4 +
         mappingConfidence * 0.4 +
-        intentBoost * 0.2
+        intentBoost * 0.2,
     );
   }
 
@@ -358,7 +358,7 @@ export class SemanticMatcher {
 
   private buildIntentDetectionPrompt(
     message: string,
-    context?: SemanticMatchingContext
+    context?: SemanticMatchingContext,
   ): string {
     // TODO: Build sophisticated prompts for LLM intent detection
     return `Analyze this message for technical requirements: "${message}"`;

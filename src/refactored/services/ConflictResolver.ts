@@ -25,7 +25,7 @@ export class ConflictResolver {
     const conflicts: Conflict[] = [];
     const overwriteConflicts = ucDataLayer.detectOverwriteConflicts(
       newSpecId,
-      currentSelections
+      currentSelections,
     );
 
     // Convert data layer conflicts to standard Conflict format
@@ -42,7 +42,7 @@ export class ConflictResolver {
         resolution: oc.resolution,
         resolutionOptions: this.generateResolutionOptions(
           oc,
-          currentSelections
+          currentSelections,
         ),
         cycleCount: 0,
         firstDetected: new Date(),
@@ -62,7 +62,7 @@ export class ConflictResolver {
    */
   private generateResolutionOptions(
     conflict: any,
-    currentSelections: string[]
+    currentSelections: string[],
   ): ResolutionOption[] {
     const existing = ucDataLayer.getNodeName(conflict.existingValue);
     const proposed = ucDataLayer.getNodeName(conflict.proposedValue);
@@ -113,7 +113,7 @@ export class ConflictResolver {
       case "cascade": {
         const impact = ucDataLayer.getConflictImpact(
           conflict,
-          currentSelections
+          currentSelections,
         );
         return [
           {
@@ -140,7 +140,7 @@ export class ConflictResolver {
   private generateDefaultOptions(
     conflict: any,
     existing: string,
-    proposed: string
+    proposed: string,
   ): ResolutionOption[] {
     return [
       {
@@ -166,7 +166,7 @@ export class ConflictResolver {
   async resolveConflict(
     conflictId: string,
     action: "keep_existing" | "apply_new",
-    currentSelections: string[]
+    currentSelections: string[],
   ): Promise<{
     newSelections: string[];
     changes: {
@@ -176,7 +176,7 @@ export class ConflictResolver {
     };
   }> {
     console.log(
-      `[ConflictResolver] ✅ resolveConflict(${conflictId}, ${action})`
+      `[ConflictResolver] ✅ resolveConflict(${conflictId}, ${action})`,
     );
 
     const conflict = this.conflictHistory.get(conflictId);
@@ -208,7 +208,7 @@ export class ConflictResolver {
       if (conflict.type === ConflictType.CASCADE) {
         const impact = ucDataLayer.getConflictImpact(
           { proposedValue: proposedNode, affectedNodes: [existingNode] },
-          currentSelections
+          currentSelections,
         );
 
         impact.toRemove.forEach((node) => {
@@ -248,7 +248,7 @@ export class ConflictResolver {
     });
 
     console.log(
-      `[ConflictResolver]   → Removed: ${changes.removed.length}, Added: ${changes.added.length}`
+      `[ConflictResolver]   → Removed: ${changes.removed.length}, Added: ${changes.added.length}`,
     );
 
     return { newSelections, changes };
@@ -266,13 +266,13 @@ export class ConflictResolver {
    */
   reverseResolution(
     resolutionIndex: number,
-    currentSelections: string[]
+    currentSelections: string[],
   ): string[] {
     const resolution = this.resolutionHistory[resolutionIndex];
     if (!resolution) return currentSelections;
 
     console.log(
-      `[ConflictResolver] ↩️ Reversing resolution from ${resolution.timestamp}`
+      `[ConflictResolver] ↩️ Reversing resolution from ${resolution.timestamp}`,
     );
 
     let newSelections = [...currentSelections];
@@ -282,7 +282,7 @@ export class ConflictResolver {
       // Remove what was added
       if (resolution.nodeToAdd) {
         newSelections = newSelections.filter(
-          (id) => id !== resolution.nodeToAdd
+          (id) => id !== resolution.nodeToAdd,
         );
       }
 

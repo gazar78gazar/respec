@@ -68,7 +68,7 @@ export class SemanticMatchingService {
 
     if (!this.apiKey) {
       console.warn(
-        "[SemanticMatching] No API key - service will fail on calls"
+        "[SemanticMatching] No API key - service will fail on calls",
       );
     }
   }
@@ -86,25 +86,25 @@ export class SemanticMatchingService {
   // ============= MAIN MATCHING METHOD =============
 
   async matchExtractedNodesToUC(
-    extractedNodes: ExtractedNode[]
+    extractedNodes: ExtractedNode[],
   ): Promise<MatchResult[]> {
     if (!this.client) {
       throw new Error(
-        "[SemanticMatching] ❌ Client not initialized. Call initialize() first."
+        "[SemanticMatching] ❌ Client not initialized. Call initialize() first.",
       );
     }
 
     // SPRINT 3 FIX: Check UCDataLayer instead of UCValidationEngine
     if (!ucDataLayer.isLoaded()) {
       throw new Error(
-        "[SemanticMatching] ❌ UCDataLayer not loaded - ensure ucDataLayer.load() is called at startup"
+        "[SemanticMatching] ❌ UCDataLayer not loaded - ensure ucDataLayer.load() is called at startup",
       );
     }
 
     console.log(
       "[SemanticMatching] 🔍 Matching",
       extractedNodes.length,
-      "nodes to UC8 (P## IDs)"
+      "nodes to UC8 (P## IDs)",
     );
 
     // Prepare condensed UC schema (full schema would be too large)
@@ -134,7 +134,7 @@ export class SemanticMatchingService {
       console.log(
         "[SemanticMatching] ⏱️  Matching completed in",
         duration,
-        "ms"
+        "ms",
       );
 
       // Parse response
@@ -146,11 +146,11 @@ export class SemanticMatchingService {
       console.log(
         "[SemanticMatching] ✅ Matched",
         matchResults.length,
-        "nodes"
+        "nodes",
       );
       matchResults.forEach((match) => {
         console.log(
-          `  → ${match.extractedNode.text} → ${match.ucMatch.id} (${match.ucMatch.confidence})`
+          `  → ${match.extractedNode.text} → ${match.ucMatch.id} (${match.ucMatch.confidence})`,
         );
       });
 
@@ -199,7 +199,7 @@ Return ONLY valid JSON with P## IDs, no additional text.`;
 
   private buildMatchingPrompt(
     extractedNodes: ExtractedNode[],
-    ucContext: UCSchemaContext
+    ucContext: UCSchemaContext,
   ): string {
     return `Match these extracted nodes to UC8 schema:
 
@@ -287,7 +287,7 @@ Match ALL provided nodes. If no good match exists, use confidence < 0.5.`;
       context.requirements.length,
       "requirements,",
       context.specifications.length,
-      "specifications"
+      "specifications",
     );
 
     return context;
@@ -327,7 +327,7 @@ Match ALL provided nodes. If no good match exists, use confidence < 0.5.`;
     } catch (error) {
       console.error(
         "[SemanticMatching] ❌ Failed to parse LLM response:",
-        error
+        error,
       );
       console.error("Response was:", responseText);
       throw new Error("Failed to parse matching results from LLM");
@@ -338,7 +338,7 @@ Match ALL provided nodes. If no good match exists, use confidence < 0.5.`;
 // ============= FACTORY FUNCTION =============
 
 export function createSemanticMatchingService(
-  apiKey?: string
+  apiKey?: string,
 ): SemanticMatchingService {
   return new SemanticMatchingService(apiKey);
 }

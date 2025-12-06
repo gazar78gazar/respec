@@ -6,14 +6,14 @@ import type { Maybe } from "../types/UCDataTypes";
 export const autoCalculateFields = (
   changedField: string,
   newValue: string | number,
-  requirements: Requirements
+  requirements: Requirements,
 ): Record<string, string> => {
   const updates: Record<string, string> = {};
 
   if (changedField === "budgetPerUnit" || changedField === "quantity") {
     const commercial = (requirements as any).commercial || {};
     const unitBudget = parseFloat(
-      (commercial.budgetPerUnit?.value || 0).toString().replace(/[$,]/g, "")
+      (commercial.budgetPerUnit?.value || 0).toString().replace(/[$,]/g, ""),
     );
     const quantity = parseInt(String(commercial.quantity?.value || 0));
 
@@ -21,14 +21,14 @@ export const autoCalculateFields = (
       const newUnitBudget = parseFloat(String(newValue).replace(/[$,]/g, ""));
       if (!isNaN(newUnitBudget) && quantity > 0) {
         updates["commercial.totalBudget"] = (newUnitBudget * quantity).toFixed(
-          2
+          2,
         );
       }
     } else if (changedField === "quantity") {
       const newQuantity = parseInt(String(newValue));
       if (!isNaN(unitBudget) && !isNaN(newQuantity) && unitBudget > 0) {
         updates["commercial.totalBudget"] = (unitBudget * newQuantity).toFixed(
-          2
+          2,
         );
       }
     }
@@ -40,7 +40,7 @@ export const autoCalculateFields = (
 export const mapValueToFormField = (
   section: string,
   field: string,
-  value: unknown
+  value: unknown,
 ) => {
   console.log(`[DEBUG] Mapping value for ${section}.${field}:`, {
     inputValue: value,
@@ -120,7 +120,7 @@ export const mapValueToFormField = (
 
   console.log(
     `[DEBUG] No mapping found for ${section}.${field}, using original value:`,
-    value
+    value,
   );
   return value;
 };
@@ -134,7 +134,7 @@ export const validateSystemFieldUpdate = (
   section: string,
   field: string,
   value: unknown,
-  allowOverride: boolean = false
+  allowOverride: boolean = false,
 ): boolean => {
   const FIELD_DEFS = formFieldsData.field_definitions as Record<
     string,
@@ -183,7 +183,7 @@ export const validateSystemFieldUpdate = (
 
 export const getPriority = (fieldKey: string): number => {
   for (const [level, config] of Object.entries(
-    (formFieldsData as any).priority_system.priority_levels
+    (formFieldsData as any).priority_system.priority_levels,
   )) {
     if ((config as any).fields.includes(fieldKey)) {
       return parseInt(level);
@@ -226,7 +226,7 @@ export const calculateAccuracy = (requirements: Requirements): number => {
 
   if (fieldCount !== TOTAL_FIELDS) {
     console.warn(
-      `Field count mismatch: Expected ${TOTAL_FIELDS}, found ${fieldCount}`
+      `Field count mismatch: Expected ${TOTAL_FIELDS}, found ${fieldCount}`,
     );
   }
 
@@ -255,7 +255,7 @@ export const getMustFieldsStatus = (requirements: Requirements) => {
 
 export const getFieldLabel = (fieldKey: string): string => {
   for (const [, fields] of Object.entries(
-    (formFieldsData as any).field_definitions
+    (formFieldsData as any).field_definitions,
   )) {
     const def: any = (fields as any)[fieldKey];
     if (def?.label) return def.label as string;
@@ -269,7 +269,7 @@ export const applyFieldUpdate = (
   field: string,
   value: unknown,
   isAssumption = false,
-  source: string = "user"
+  source: string = "user",
 ): Requirements => {
   const updated: Requirements = {
     ...prev,
@@ -312,16 +312,16 @@ export const applyFieldUpdate = (
 export type FieldLocation = { section: string; tab: string; group?: string };
 
 export const resolveFieldLocation = (
-  fieldKey: string
+  fieldKey: string,
 ): Maybe<FieldLocation> => {
   for (const [section, fields] of Object.entries(
-    (formFieldsData as any).field_definitions
+    (formFieldsData as any).field_definitions,
   )) {
     if ((fields as any)[fieldKey]) {
       const fieldDef: any = (fields as any)[fieldKey];
       let tab: string | undefined;
       for (const [tabName, sections] of Object.entries(
-        SECTION_MAPPING as any
+        SECTION_MAPPING as any,
       )) {
         if ((sections as string[]).includes(section)) {
           tab = tabName;
@@ -422,7 +422,7 @@ export const validateField = (fieldKey: string, value: any, fieldDef: any) => {
     case "multi-select":
       if (value && Array.isArray(value) && value.length > 0) {
         const invalidOptions = value.filter(
-          (v: any) => v !== "Not Required" && !fieldDef.options.includes(v)
+          (v: any) => v !== "Not Required" && !fieldDef.options.includes(v),
         );
         if (invalidOptions.length > 0) {
           errors.push({

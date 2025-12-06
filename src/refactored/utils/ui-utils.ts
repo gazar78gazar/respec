@@ -186,7 +186,7 @@ export function focusField(fieldId: string): void {
 
 // 4. Progress Calculations
 export function getMustFieldsStatus(
-  requirements: Requirements
+  requirements: Requirements,
 ): MustFieldsStatus {
   const total = MUST_FIELDS.length;
   let completed = 0;
@@ -209,14 +209,14 @@ export function getMustFieldsStatus(
 }
 
 export function getNextPriorityField(
-  requirements: Requirements
+  requirements: Requirements,
 ): Maybe<string> {
   const emptyFields = Object.entries(requirements)
     .filter(
       ([_, requirement]) =>
         requirement.value === undefined ||
         requirement.value === null ||
-        requirement.value === ""
+        requirement.value === "",
     )
     .map(([fieldName, requirement]) => ({
       fieldName,
@@ -229,7 +229,7 @@ export function getNextPriorityField(
 
 export function getSectionProgress(
   sectionKey: SectionKey,
-  requirements: Requirements
+  requirements: Requirements,
 ): SectionProgress {
   const sectionFields = Object.entries(FIELD_SECTIONS)
     .filter(([_, section]) => section === sectionKey)

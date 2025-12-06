@@ -41,7 +41,7 @@ interface EnhancedChatWindowProps {
   onConflictResolve?: (
     conflictId: string,
     resolution: "accept" | "reject" | "modify",
-    newValue?: string
+    newValue?: string,
   ) => void;
 }
 
@@ -120,7 +120,7 @@ export const EnhancedChatWindow: React.FC<EnhancedChatWindowProps> = ({
   };
 
   const renderSemanticMetadata = (
-    metadata: ChatMessage["semanticMetadata"]
+    metadata: ChatMessage["semanticMetadata"],
   ) => {
     if (!metadata || !showExtractions) return null;
 
@@ -134,7 +134,7 @@ export const EnhancedChatWindow: React.FC<EnhancedChatWindowProps> = ({
           </span>
           <span
             className={`px-2 py-1 rounded-full text-xs font-medium ${getConfidenceColor(
-              metadata.confidence
+              metadata.confidence,
             )}`}
           >
             {getConfidenceText(metadata.confidence)} Confidence
@@ -166,7 +166,7 @@ export const EnhancedChatWindow: React.FC<EnhancedChatWindowProps> = ({
                   </div>
                   <span
                     className={`px-1 py-0.5 rounded text-xs ${getConfidenceColor(
-                      extraction.confidence
+                      extraction.confidence,
                     )}`}
                   >
                     {Math.round(extraction.confidence * 100)}%
@@ -197,7 +197,7 @@ export const EnhancedChatWindow: React.FC<EnhancedChatWindowProps> = ({
                   </div>
                   <span
                     className={`px-1 py-0.5 rounded text-xs ${getConfidenceColor(
-                      update.confidence
+                      update.confidence,
                     )}`}
                   >
                     {Math.round(update.confidence * 100)}%
@@ -313,8 +313,8 @@ export const EnhancedChatWindow: React.FC<EnhancedChatWindowProps> = ({
                   msg.role === "user"
                     ? "bg-blue-500 text-white"
                     : msg.role === "system"
-                    ? "bg-purple-100 border border-purple-200 text-purple-800"
-                    : "bg-white border border-gray-200 text-gray-800"
+                      ? "bg-purple-100 border border-purple-200 text-purple-800"
+                      : "bg-white border border-gray-200 text-gray-800"
                 }`}
               >
                 {msg.content}

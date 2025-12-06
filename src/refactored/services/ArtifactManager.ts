@@ -95,7 +95,7 @@ export class ArtifactManager {
   getBlockingReason(): string | undefined {
     if (this.state.conflicts.metadata.systemBlocked) {
       return `Active conflicts: ${this.state.conflicts.metadata.blockingConflicts.join(
-        ", "
+        ", ",
       )}`;
     }
     return this.state.priorityQueue.blockReason;
@@ -109,7 +109,7 @@ export class ArtifactManager {
     originalRequest: string,
     substitutionNote: string,
     source: Source,
-    dependencyContext?: DependencyContext
+    dependencyContext?: DependencyContext,
   ): Promise<void> {
     if (!this.state.initialized)
       throw new Error("ArtifactManager not initialized");
@@ -148,18 +148,18 @@ export class ArtifactManager {
     console.log(
       `[ArtifactManager] Added specification ${
         spec.id
-      } to mapped artifact (source: ${source || "user"})`
+      } to mapped artifact (source: ${source || "user"})`,
     );
 
     await this.fillSpecificationDependencies(
       spec,
       visited,
-      dependencyContext?.depth ?? 0
+      dependencyContext?.depth ?? 0,
     );
 
     if (source === "conflict_resolution") {
       console.log(
-        `[ArtifactManager] ??  Skipping conflict detection for ${spec.id} (source: conflict_resolution)`
+        `[ArtifactManager] ??  Skipping conflict detection for ${spec.id} (source: conflict_resolution)`,
       );
       return;
     }
@@ -175,13 +175,13 @@ export class ArtifactManager {
   private async fillSpecificationDependencies(
     spec: UCSpecification,
     visited: Set<SpecificationId>,
-    depth: number = 0
+    depth: number = 0,
   ): Promise<void> {
     if (!spec.requires) return;
 
     if (depth > this.DEPENDENCY_DEPTH_LIMIT) {
       console.warn(
-        `[ArtifactManager] Dependency depth exceeded for ${spec.id} (depth=${depth})`
+        `[ArtifactManager] Dependency depth exceeded for ${spec.id} (depth=${depth})`,
       );
       return;
     }
@@ -200,7 +200,7 @@ export class ArtifactManager {
         const dependencySpec = ucDataLayer.getSpecification(dependencyId);
         if (!dependencySpec) {
           console.warn(
-            `[ArtifactManager] Dependency spec id ${dependencyId}  not found`
+            `[ArtifactManager] Dependency spec id ${dependencyId}  not found`,
           );
           continue;
         }
@@ -209,7 +209,7 @@ export class ArtifactManager {
           await this.fulfillSpecificationDependencies(
             dependencySpec,
             visited,
-            depth + 1
+            depth + 1,
           );
           continue;
         }
@@ -231,7 +231,7 @@ export class ArtifactManager {
             parentSpecId: spec.id,
             visited,
             depth: depth + 1,
-          }
+          },
         );
       }
     }
@@ -631,10 +631,10 @@ export class ArtifactManager {
 
   async resolveConflict(
     conflictId: string,
-    resolutionId: string
+    resolutionId: string,
   ): Promise<void> {
     const conflictIndex = this.state.conflicts.active.findIndex(
-      (c) => c.id === conflictId
+      (c) => c.id === conflictId,
     );
     if (conflictIndex === -1) {
       throw new Error(`Conflict ${conflictId} not found`);
@@ -642,11 +642,11 @@ export class ArtifactManager {
 
     const conflict = this.state.conflicts.active[conflictIndex];
     const resolution = conflict.resolutionOptions.find(
-      (r) => r.id === resolutionId
+      (r) => r.id === resolutionId,
     );
     if (!resolution) {
       throw new Error(
-        `Resolution ${resolutionId} not found for conflict ${conflictId}`
+        `Resolution ${resolutionId} not found for conflict ${conflictId}`,
       );
     }
 
@@ -693,11 +693,11 @@ export class ArtifactManager {
    */
   incrementConflictCycle(conflictId: string): void {
     const conflictIndex = this.state.conflicts.active.findIndex(
-      (c) => c.id === conflictId
+      (c) => c.id === conflictId,
     );
     if (conflictIndex === -1) {
       console.warn(
-        `[ArtifactManager] Conflict ${conflictId} not found for cycle increment`
+        `[ArtifactManager] Conflict ${conflictId} not found for cycle increment`,
       );
       return;
     }
@@ -707,13 +707,13 @@ export class ArtifactManager {
     conflict.lastUpdated = new Date();
 
     console.log(
-      `[ArtifactManager] Conflict ${conflictId} cycle count: ${conflict.cycleCount}`
+      `[ArtifactManager] Conflict ${conflictId} cycle count: ${conflict.cycleCount}`,
     );
 
     // Check for escalation threshold
     if (conflict.cycleCount >= 3) {
       console.warn(
-        `[ArtifactManager] ⚠️  Conflict ${conflictId} reached max cycles (3) - escalating`
+        `[ArtifactManager] ⚠️  Conflict ${conflictId} reached max cycles (3) - escalating`,
       );
       this.escalateConflict(conflictId);
     }
@@ -725,7 +725,7 @@ export class ArtifactManager {
    */
   private escalateConflict(conflictId: string): void {
     const conflictIndex = this.state.conflicts.active.findIndex(
-      (c) => c.id === conflictId
+      (c) => c.id === conflictId,
     );
     if (conflictIndex === -1) return;
 
@@ -745,7 +745,7 @@ export class ArtifactManager {
       (this.state.conflicts.metadata.escalatedCount || 0) + 1;
 
     console.log(
-      `[ArtifactManager] Conflict ${conflictId} escalated to manual review`
+      `[ArtifactManager] Conflict ${conflictId} escalated to manual review`,
     );
 
     // Unblock system if no more active conflicts
@@ -757,7 +757,7 @@ export class ArtifactManager {
       this.state.conflicts.metadata.blockingConflicts = [];
 
       console.log(
-        `[ArtifactManager] ✅ All active conflicts resolved or escalated - system unblocked`
+        `[ArtifactManager] ✅ All active conflicts resolved or escalated - system unblocked`,
       );
     }
 
@@ -770,16 +770,16 @@ export class ArtifactManager {
    */
   private async applyConflictResolution(
     conflict: ActiveConflict,
-    resolution: any
+    resolution: any,
   ): Promise<void> {
     console.log(
-      `[ArtifactManager] Applying resolution ${resolution.id} to conflict ${conflict.id}`
+      `[ArtifactManager] Applying resolution ${resolution.id} to conflict ${conflict.id}`,
     );
 
     // ========== PRE-VALIDATION ==========
     if (!resolution.targetNodes || resolution.targetNodes.length === 0) {
       throw new Error(
-        `[Resolution] Resolution ${resolution.id} must specify targetNodes`
+        `[Resolution] Resolution ${resolution.id} must specify targetNodes`,
       );
     }
 
@@ -789,7 +789,7 @@ export class ArtifactManager {
       if (!spec) {
         throw new Error(
           `[Resolution] Node ${nodeId} not found in mapped artifact - cannot resolve. ` +
-            `This conflict may have already been resolved or the artifact state is corrupted.`
+            `This conflict may have already been resolved or the artifact state is corrupted.`,
         );
       }
     }
@@ -811,7 +811,7 @@ export class ArtifactManager {
         .concat(conflict.conflictingNodes.slice(2));
     } else {
       throw new Error(
-        `[Resolution] Unknown resolution option: ${resolution.id}`
+        `[Resolution] Unknown resolution option: ${resolution.id}`,
       );
     }
 
@@ -828,7 +828,7 @@ export class ArtifactManager {
 
         if (!spec) {
           console.warn(
-            `[Resolution] ⚠️  Spec ${specId} not found, skipping removal`
+            `[Resolution] ⚠️  Spec ${specId} not found, skipping removal`,
           );
           continue;
         }
@@ -841,7 +841,7 @@ export class ArtifactManager {
 
         // Remove from mapped artifact
         console.log(
-          `[ArtifactManager] Removing spec ${specId} due to conflict resolution ${resolution.id}`
+          `[ArtifactManager] Removing spec ${specId} due to conflict resolution ${resolution.id}`,
         );
         this.removeSpecificationFromMapped(specId);
       }
@@ -849,7 +849,7 @@ export class ArtifactManager {
       // Log winning specs (no action needed, they stay in mapped)
       for (const specId of winningSpecs) {
         console.log(
-          `[ArtifactManager] Keeping spec ${specId} as resolution choice`
+          `[ArtifactManager] Keeping spec ${specId} as resolution choice`,
         );
       }
 
@@ -859,7 +859,7 @@ export class ArtifactManager {
         if (stillExists) {
           throw new Error(
             `[CRITICAL] Failed to remove ${specId} - data integrity compromised. ` +
-              `Rolling back resolution.`
+              `Rolling back resolution.`,
           );
         }
       }
@@ -869,7 +869,7 @@ export class ArtifactManager {
         if (!exists) {
           throw new Error(
             `[CRITICAL] Winning spec ${specId} disappeared during resolution - ` +
-              `data integrity compromised. Rolling back.`
+              `data integrity compromised. Rolling back.`,
           );
         }
       }
@@ -879,7 +879,7 @@ export class ArtifactManager {
       // ========== ROLLBACK ON FAILURE ==========
       console.error(
         `[ArtifactManager] ❌ Resolution failed, rolling back...`,
-        error
+        error,
       );
 
       // Restore removed specs
@@ -898,7 +898,7 @@ export class ArtifactManager {
    */
   findSpecificationInArtifact(
     artifactName: "mapped" | "respec",
-    specId: SpecificationId
+    specId: SpecificationId,
   ): Maybe<UCArtifactSpecification> {
     const artifact =
       artifactName === "mapped" ? this.state.mapped : this.state.respec;
@@ -910,7 +910,7 @@ export class ArtifactManager {
    * Sprint 3 Week 1: Helper for resolution operations
    */
   private findSpecificationInMapped(
-    specId: SpecificationId
+    specId: SpecificationId,
   ): Maybe<UCArtifactSpecification> {
     return this.findSpecificationInArtifact("mapped", specId);
   }
@@ -943,13 +943,13 @@ export class ArtifactManager {
     if (movable.length > 0) {
       await this.moveSpecificationsToRespec(movable);
       console.log(
-        `[ArtifactManager] Moved ${movable.length} non-conflicting specs to respec`
+        `[ArtifactManager] Moved ${movable.length} non-conflicting specs to respec`,
       );
     }
   }
 
   private async moveSpecificationsToRespec(
-    specIds: SpecificationId[]
+    specIds: SpecificationId[],
   ): Promise<void> {
     specIds.forEach((specId) => {
       const spec = this.state.mapped.specifications[specId];
@@ -1020,7 +1020,7 @@ export class ArtifactManager {
     result.errors.push(...respecValidation.errors, ...mappedValidation.errors);
     result.warnings.push(
       ...respecValidation.warnings,
-      ...mappedValidation.warnings
+      ...mappedValidation.warnings,
     );
 
     result.isValid = result.errors.length === 0;
@@ -1029,7 +1029,7 @@ export class ArtifactManager {
   }
 
   private async validateArtifact(
-    _type: "mapped" | "respec"
+    _type: "mapped" | "respec",
   ): Promise<ArtifactValidationResult> {
     // TODO zeev Implementation would validate individual artifacts
     return {

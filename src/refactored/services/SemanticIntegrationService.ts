@@ -46,7 +46,7 @@ export class SemanticIntegrationService {
 
   constructor(
     semanticMatchingService: SemanticMatchingService,
-    artifactManager?: ArtifactManager
+    artifactManager?: ArtifactManager,
   ) {
     this.semanticMatchingService = semanticMatchingService;
     this.artifactManager = artifactManager || null;
@@ -68,18 +68,18 @@ export class SemanticIntegrationService {
    */
   async processExtractedRequirements(
     extractedRequirements: any[],
-    conversationalResponse: string
+    conversationalResponse: string,
   ): Promise<EnhancedChatResult> {
     try {
       console.log(
         "[SemanticIntegration] 📨 Received",
         extractedRequirements.length,
-        "extracted requirements"
+        "extracted requirements",
       );
 
       // Convert agent extractions to ExtractedNode format
       const extractedNodes = this.convertToExtractedNodes(
-        extractedRequirements
+        extractedRequirements,
       );
 
       if (extractedNodes.length === 0) {
@@ -94,16 +94,16 @@ export class SemanticIntegrationService {
 
       // Match to UC
       console.log(
-        "[SemanticIntegration] 🔍 Sending to SemanticMatchingService..."
+        "[SemanticIntegration] 🔍 Sending to SemanticMatchingService...",
       );
       const matchResults =
         await this.semanticMatchingService.matchExtractedNodesToUC(
-          extractedNodes
+          extractedNodes,
         );
       console.log(
         "[SemanticIntegration] ✅ Received",
         matchResults.length,
-        "UC matches"
+        "UC matches",
       );
 
       // Log matches for debugging
@@ -119,13 +119,13 @@ export class SemanticIntegrationService {
       // Filter by confidence threshold
       const highConfidenceMatches = matchResults.filter(
         (m) =>
-          m.ucMatch.confidence >= this.processingOptions.confidenceThreshold
+          m.ucMatch.confidence >= this.processingOptions.confidenceThreshold,
       );
 
       console.log(
         "[SemanticIntegration] 🎯",
         highConfidenceMatches.length,
-        "matches above threshold"
+        "matches above threshold",
       );
 
       // Route matches by node type (this adds specs to artifacts, including auto-fulfilled dependencies)
@@ -137,7 +137,7 @@ export class SemanticIntegrationService {
       console.log(
         "[SemanticIntegration] 📝",
         formUpdates.length,
-        "form updates generated (includes dependencies)"
+        "form updates generated (includes dependencies)",
       );
 
       // Build result
@@ -180,7 +180,7 @@ export class SemanticIntegrationService {
 
     if (!this.artifactManager) {
       console.warn(
-        "[SemanticIntegration] No artifact manager - cannot generate form updates"
+        "[SemanticIntegration] No artifact manager - cannot generate form updates",
       );
       return formUpdates;
     }
@@ -192,7 +192,7 @@ export class SemanticIntegrationService {
       const fullSpec = ucDataLayer.getSpecification(spec.id);
       if (!fullSpec) {
         console.log(
-          `[SemanticIntegration] ??  No full spec found for ${spec.id}`
+          `[SemanticIntegration] ??  No full spec found for ${spec.id}`,
         );
         return;
       }
@@ -200,14 +200,14 @@ export class SemanticIntegrationService {
       const uiField = ucDataLayer.getUiFieldByFieldName(fullSpec.field_name);
       if (!uiField) {
         console.log(
-          `[SemanticIntegration] ??  No ui field found for ${spec.id}`
+          `[SemanticIntegration] ??  No ui field found for ${spec.id}`,
         );
         return;
       }
 
       console.log(
         `[SemanticIntegration] ?? Generating form update for ${spec.id} = ${spec.value}`,
-        { uiField }
+        { uiField },
       );
 
       formUpdates.push({
@@ -291,7 +291,7 @@ export class SemanticIntegrationService {
   private async handleSpecificationMatch(
     specId: string,
     value: any,
-    match: MatchResult
+    match: MatchResult,
   ): Promise<void> {
     console.log(`[Route] 🎯 SPECIFICATION: ${specId} = ${value}`);
 
@@ -302,7 +302,7 @@ export class SemanticIntegrationService {
         const uc8Spec = ucDataLayer.getSpecification(specId);
         if (!uc8Spec) {
           console.warn(
-            `[Route] ⚠️  Specification ${specId} not found in UC8 dataset`
+            `[Route] ⚠️  Specification ${specId} not found in UC8 dataset`,
           );
           return;
         }
@@ -315,7 +315,7 @@ export class SemanticIntegrationService {
           value,
           match.extractedNode.context || "",
           match.ucMatch.rationale || "",
-          "llm"
+          "llm",
         );
 
         // Step 3: Trigger conflict detection
@@ -324,25 +324,25 @@ export class SemanticIntegrationService {
         // Step 4: Sprint 3 - NO auto-resolution, ALL conflicts go to agent for binary question
         if (conflictResult.hasConflict) {
           console.log(
-            `[Route] 🚨 ${conflictResult.conflicts.length} conflict(s) detected - BLOCKING for user resolution`
+            `[Route] 🚨 ${conflictResult.conflicts.length} conflict(s) detected - BLOCKING for user resolution`,
           );
           console.log(
             `[Route] Conflict types: ${conflictResult.conflicts
               .map((c) => c.type)
-              .join(", ")}`
+              .join(", ")}`,
           );
           // Do NOT move to respec - specs stay in mapped until user resolves via agent
           // Agent will receive conflict data via getActiveConflictsForAgent() in app.tsx
         } else {
           console.log(
-            `[Route] ✅ No conflicts - moving non-conflicting specs to respec`
+            `[Route] ✅ No conflicts - moving non-conflicting specs to respec`,
           );
           await this.artifactManager.moveNonConflictingToRespec();
         }
       } catch (error) {
         console.error(
           `[Route] ❌ Error handling specification ${specId}:`,
-          error
+          error,
         );
         // Fall through to legacy behavior
       }
@@ -364,13 +364,13 @@ export class SemanticIntegrationService {
 
         if (childSpecs.length === 0) {
           console.warn(
-            `[Route] ⚠️  No specifications found for requirement ${reqId}`
+            `[Route] ⚠️  No specifications found for requirement ${reqId}`,
           );
           return;
         }
 
         console.log(
-          `[Route] 📋 Found ${childSpecs.length} specifications for requirement ${reqId}`
+          `[Route] 📋 Found ${childSpecs.length} specifications for requirement ${reqId}`,
         );
 
         // Add all child specifications to mapped artifact
@@ -390,12 +390,12 @@ export class SemanticIntegrationService {
             ) {
               console.log(
                 `[Route] ⚠️  Skipping ${spec.id} - user-selected value already exists in mapped ` +
-                  `(value: "${existingInMapped.value}")`
+                  `(value: "${existingInMapped.value}")`,
               );
               continue; // Don't overwrite user selection
             } else {
               console.log(
-                `[Route] Spec ${spec.id} exists in mapped with system value, will be updated`
+                `[Route] Spec ${spec.id} exists in mapped with system value, will be updated`,
               );
             }
           }
@@ -403,7 +403,7 @@ export class SemanticIntegrationService {
           if (existingInRespec) {
             // Spec already in respec - cross-artifact conflict will be detected
             console.log(
-              `[Route] ⚠️  Spec ${spec.id} exists in respec - cross-artifact conflict will be detected`
+              `[Route] ⚠️  Spec ${spec.id} exists in respec - cross-artifact conflict will be detected`,
             );
             // Continue adding to mapped, conflict detection will handle it
           }
@@ -413,7 +413,7 @@ export class SemanticIntegrationService {
             null,
             `From requirement ${reqId}`,
             `Auto-added as part of requirement ${reqId}`,
-            "llm"
+            "llm",
           );
         }
 
@@ -422,12 +422,12 @@ export class SemanticIntegrationService {
 
         if (!conflictResult.hasConflict) {
           console.log(
-            `[Route] ✅ No conflicts - moving requirement + ${childSpecs.length} children to respec`
+            `[Route] ✅ No conflicts - moving requirement + ${childSpecs.length} children to respec`,
           );
           await this.artifactManager.moveNonConflictingToRespec();
         } else {
           console.log(
-            `[Route] ⚠️  Conflicts detected - holding requirement in mapped`
+            `[Route] ⚠️  Conflicts detected - holding requirement in mapped`,
           );
         }
       } catch (error) {
@@ -466,10 +466,10 @@ export class SemanticIntegrationService {
 
 export function createSemanticIntegrationService(
   semanticMatchingService: SemanticMatchingService,
-  artifactManager?: ArtifactManager
+  artifactManager?: ArtifactManager,
 ): SemanticIntegrationService {
   return new SemanticIntegrationService(
     semanticMatchingService,
-    artifactManager
+    artifactManager,
   );
 }

@@ -18,7 +18,7 @@ export interface RequirementsFormProps {
     section: string,
     field: string,
     value: unknown,
-    isAssumption: boolean
+    isAssumption: boolean,
   ) => void;
   isRequired: (fieldKey: string) => boolean;
 }
@@ -53,7 +53,7 @@ export const RequirementsForm: React.FC<RequirementsFormProps> = ({
                 .filter((f) => f.fieldDef);
 
               const completedInGroup = groupFields.filter(
-                (f) => f.data?.isComplete
+                (f) => f.data?.isComplete,
               ).length;
               const totalInGroup = groupFields.length;
 

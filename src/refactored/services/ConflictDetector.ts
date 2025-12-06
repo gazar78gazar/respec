@@ -70,14 +70,14 @@ export class ConflictDetectionService {
       originalRequest?: string;
       confidence?: number;
       ucSpec?: string;
-    }
+    },
   ): Promise<FieldConflict[]> {
     const conflicts: FieldConflict[] = [];
     const [section, fieldName] = field.split(".");
     const currentValue = this.getNestedValue(
       currentRequirements,
       section,
-      fieldName
+      fieldName,
     );
 
     // Skip if no change
@@ -98,7 +98,7 @@ export class ConflictDetectionService {
         currentValue,
         newValue,
         source,
-        context
+        context,
       );
       conflicts.push(valueChangeConflict);
     }
@@ -109,7 +109,7 @@ export class ConflictDetectionService {
         field,
         newValue,
         context.ucSpec,
-        currentRequirements
+        currentRequirements,
       );
       conflicts.push(...constraintConflicts);
     }
@@ -118,7 +118,7 @@ export class ConflictDetectionService {
     const compatibilityConflicts = await this.detectCompatibilityIssues(
       field,
       newValue,
-      currentRequirements
+      currentRequirements,
     );
     conflicts.push(...compatibilityConflicts);
 
@@ -135,7 +135,7 @@ export class ConflictDetectionService {
         currentValue,
         newValue,
         context.confidence,
-        context.originalRequest
+        context.originalRequest,
       );
       conflicts.push(confidenceWarning);
     }
@@ -156,7 +156,7 @@ export class ConflictDetectionService {
     currentValue: string,
     newValue: string,
     source: "semantic" | "manual" | "autofill",
-    context?: any
+    context?: any,
   ): FieldConflict {
     const severity = this.calculateSeverity(currentValue, newValue, source);
 
@@ -173,7 +173,7 @@ export class ConflictDetectionService {
       suggestions: this.generateValueChangeSuggestions(
         currentValue,
         newValue,
-        source
+        source,
       ),
       metadata: {
         timestamp: new Date(),
@@ -191,7 +191,7 @@ export class ConflictDetectionService {
     currentValue: string,
     newValue: string,
     confidence: number,
-    originalRequest?: string
+    originalRequest?: string,
   ): FieldConflict {
     return {
       id: `confidence_${field}_${Date.now()}`,
@@ -202,7 +202,7 @@ export class ConflictDetectionService {
       severity: confidence < 0.5 ? "warning" : "info",
       type: "overwrite_warning",
       reason: `Low confidence extraction (${Math.round(
-        confidence * 100
+        confidence * 100,
       )}%). Please verify this interpretation.`,
       confidence,
       suggestions: [
@@ -236,7 +236,7 @@ export class ConflictDetectionService {
     field: string,
     newValue: string,
     specId: string,
-    currentRequirements: any
+    currentRequirements: any,
   ): Promise<FieldConflict[]> {
     const conflicts: FieldConflict[] = [];
 
@@ -286,7 +286,7 @@ export class ConflictDetectionService {
   private async detectCompatibilityIssues(
     field: string,
     newValue: string,
-    currentRequirements: any
+    currentRequirements: any,
   ): Promise<FieldConflict[]> {
     const conflicts: FieldConflict[] = [];
 
@@ -301,7 +301,7 @@ export class ConflictDetectionService {
       const memoryType = this.getNestedValue(
         currentRequirements,
         "computePerformance",
-        "memoryType"
+        "memoryType",
       );
       if (
         memoryType &&
@@ -315,7 +315,7 @@ export class ConflictDetectionService {
           currentValue: this.getNestedValue(
             currentRequirements,
             section,
-            fieldName
+            fieldName,
           ),
           newValue,
           severity: "warning",
@@ -349,7 +349,7 @@ export class ConflictDetectionService {
       const processorType = this.getNestedValue(
         currentRequirements,
         "computePerformance",
-        "processorType"
+        "processorType",
       );
       if (
         processorType &&
@@ -364,7 +364,7 @@ export class ConflictDetectionService {
           currentValue: this.getNestedValue(
             currentRequirements,
             section,
-            fieldName
+            fieldName,
           ),
           newValue,
           severity: "warning",
@@ -410,7 +410,7 @@ export class ConflictDetectionService {
   async resolveConflict(
     conflictId: string,
     action: ConflictSuggestion["action"],
-    newValue?: string
+    newValue?: string,
   ): Promise<ConflictResolution> {
     const conflict = this.activeConflicts.get(conflictId);
     if (!conflict) {
@@ -447,13 +447,13 @@ export class ConflictDetectionService {
       this.notifyConflictListeners();
 
       console.log(
-        `[ConflictDetection] Resolved conflict ${conflictId} with action: ${action}`
+        `[ConflictDetection] Resolved conflict ${conflictId} with action: ${action}`,
       );
       return resolution;
     } catch (error) {
       console.error(
         `[ConflictDetection] Failed to resolve conflict ${conflictId}:`,
-        error
+        error,
       );
       throw error;
     }
@@ -464,7 +464,7 @@ export class ConflictDetectionService {
   private calculateSeverity(
     currentValue: string,
     newValue: string,
-    source: "semantic" | "manual" | "autofill"
+    source: "semantic" | "manual" | "autofill",
   ): FieldConflict["severity"] {
     if (source === "manual") return "info"; // Manual changes are usually intentional
     if (currentValue === "Not Required") return "info"; // Setting initial value
@@ -475,7 +475,7 @@ export class ConflictDetectionService {
   private generateValueChangeSuggestions(
     currentValue: string,
     newValue: string,
-    source: string
+    source: string,
   ): ConflictSuggestion[] {
     return [
       {

@@ -27,7 +27,14 @@ export interface ArtifactMetadata {
   validationStatus: "valid" | "pending" | "invalid" | "conflicts";
 }
 
-export type Source = "user" | "llm" | "system" | "migration" | "autofill" | "conflict_resolution" | "dependency";
+export type Source =
+  | "user"
+  | "llm"
+  | "system"
+  | "migration"
+  | "autofill"
+  | "conflict_resolution"
+  | "dependency";
 
 // ============= SPECIFICATION STORAGE =============
 

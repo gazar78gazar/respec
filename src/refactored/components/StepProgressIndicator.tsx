@@ -66,10 +66,10 @@ export const StepProgressIndicator: React.FC<StepHeaderProps> = ({
                     step.completed
                       ? "bg-blue-500 text-white shadow-lg hover:bg-blue-600"
                       : step.current
-                      ? "bg-blue-500 text-white shadow-xl scale-105 ring-4 ring-blue-100"
-                      : step.id === 1
-                      ? "bg-white text-gray-600 border-2 border-gray-300 hover:border-blue-400 hover:text-blue-600"
-                      : "bg-white text-gray-400 border-2 border-gray-300 cursor-not-allowed"
+                        ? "bg-blue-500 text-white shadow-xl scale-105 ring-4 ring-blue-100"
+                        : step.id === 1
+                          ? "bg-white text-gray-600 border-2 border-gray-300 hover:border-blue-400 hover:text-blue-600"
+                          : "bg-white text-gray-400 border-2 border-gray-300 cursor-not-allowed"
                   }
                 `}
               >
