@@ -223,41 +223,45 @@ export default function App() {
     }
   };
 
-  const addChatMessage = (
-    role: UserRole,
-    content: string,
-    id?: string,
-    metadata?: ChatMessage["metadata"],
-  ) => {
-    setChatMessages((prev) => [
-      ...prev,
-      {
-        id: id ? id : `general-${Date.now()}`,
-        role,
-        content,
-        timestamp: new Date(),
-        metadata,
-      },
-    ]);
-  };
+  const addChatMessage = useCallback(
+    (
+      role: UserRole,
+      content: string,
+      id?: string,
+      metadata?: ChatMessage["metadata"],
+    ) => {
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          id: id ? id : `general-${Date.now()}`,
+          role,
+          content,
+          timestamp: new Date(),
+          metadata,
+        },
+      ]);
+    },
+    [],
+  );
 
-  async function communicateWithMAS<A extends MASAction>(
-    action: A,
-    data: PayloadMap[A],
-  ): Promise<MASCommunicationResult> {
-    console.log(`[UI-RESPEC] ${action}:`, data);
+  const communicateWithMAS = useCallback(
+    async <A extends MASAction>(
+      action: A,
+      data: PayloadMap[A],
+    ): Promise<MASCommunicationResult> => {
+      console.log(`[UI-RESPEC] ${action}:`, data);
 
-    setIsProcessing(true);
+      setIsProcessing(true);
 
-    let chatResult: ChatResult;
-    let conflictStatus: StructuredConflicts;
-    let autofillResult: AutofillResult;
+      let chatResult: ChatResult;
+      let conflictStatus: StructuredConflicts;
+      let autofillResult: AutofillResult;
 
-    const handleConflicts = () => {
-      console.log(`[APP] 🚨 Conflicts detected - presenting to user`);
+      const handleConflicts = () => {
+        console.log(`[APP] 🚨 Conflicts detected - presenting to user`);
 
-      const conflict = conflictStatus.conflicts[0];
-      const binaryQuestion = `I detected a conflict: ${conflict.description}
+        const conflict = conflictStatus.conflicts[0];
+        const binaryQuestion = `I detected a conflict: ${conflict.description}
 
 Which would you prefer?
 A) ${conflict.resolutionOptions[0].label}
@@ -268,127 +272,348 @@ B) ${conflict.resolutionOptions[1].label}
 
 Please respond with A or B.`;
 
-      addChatMessage(
-        "assistant",
-        binaryQuestion,
-        `conflict-question-${Date.now()}`,
-      );
+        addChatMessage(
+          "assistant",
+          binaryQuestion,
+          `conflict-question-${Date.now()}`,
+        );
 
-      return { success: true };
-    };
+        return { success: true };
+      };
 
-    try {
-      switch (action) {
-        case "chat_message": {
-          const d = data as PayloadMap["chat_message"];
-          setProcessingMessage("Processing your message...");
-          addTrace("chat_message", { message: d.message }, "SUCCESS");
+      try {
+        switch (action) {
+          case "chat_message": {
+            const d = data as PayloadMap["chat_message"];
+            setProcessingMessage("Processing your message...");
+            addTrace("chat_message", { message: d.message }, "SUCCESS");
 
-          chatResult = await respecService.processChatMessage(d.message);
+            chatResult = await respecService.processChatMessage(d.message);
 
-          conflictStatus = respecService.getActiveConflictsForAgent();
+            conflictStatus = respecService.getActiveConflictsForAgent();
 
-          if (conflictStatus.hasConflicts) return handleConflicts();
+            if (conflictStatus.hasConflicts) return handleConflicts();
 
-          addChatMessage("assistant", chatResult.systemMessage);
+            addChatMessage("assistant", chatResult.systemMessage);
 
-          if (chatResult.formUpdates && chatResult.formUpdates.length) {
-            console.log(
-              `[DEBUG] Chat message returned ${chatResult.formUpdates.length} form updates:`,
-              chatResult.formUpdates,
-            );
-            addTrace(
-              "chat_form_updates",
-              {
-                count: chatResult.formUpdates.length,
-                updates: chatResult.formUpdates,
-              },
-              "SUCCESS",
-            );
-
-            chatResult.formUpdates.forEach((update: EnhancedFormUpdate) => {
-              console.log(`[DEBUG] Processing chat update:`, {
-                section: update.section,
-                field: update.field,
-                value: update.value,
-                isAssumption: update.isAssumption,
-              });
-
-              const mappedValue = mapValueToFormField(
-                update.section,
-                update.field,
-                update.value,
-              );
+            if (chatResult.formUpdates && chatResult.formUpdates.length) {
               console.log(
-                `[DEBUG] Value mapped from ${update.value} to ${mappedValue}`,
+                `[DEBUG] Chat message returned ${chatResult.formUpdates.length} form updates:`,
+                chatResult.formUpdates,
+              );
+              addTrace(
+                "chat_form_updates",
+                {
+                  count: chatResult.formUpdates.length,
+                  updates: chatResult.formUpdates,
+                },
+                "SUCCESS",
               );
 
-              setRequirements((prev) => {
-                const newReqs = {
+              chatResult.formUpdates.forEach((update: EnhancedFormUpdate) => {
+                console.log(`[DEBUG] Processing chat update:`, {
+                  section: update.section,
+                  field: update.field,
+                  value: update.value,
+                  isAssumption: update.isAssumption,
+                });
+
+                const mappedValue = mapValueToFormField(
+                  update.section,
+                  update.field,
+                  update.value,
+                );
+                console.log(
+                  `[DEBUG] Value mapped from ${update.value} to ${mappedValue}`,
+                );
+
+                setRequirements((prev) => {
+                  const newReqs = {
+                    ...prev,
+                    [update.section]: {
+                      ...prev[update.section],
+                      [update.field]: {
+                        ...prev[update.section]?.[update.field],
+                        value: mappedValue,
+                        isComplete: true,
+                        isAssumption: update.isAssumption || false,
+                        dataSource:
+                          update.isAssumption || false
+                            ? "assumption"
+                            : "requirement",
+                        priority:
+                          prev[update.section]?.[update.field]?.priority || 1,
+                        source: "system",
+                        lastUpdated: new Date().toISOString(),
+                        toggleHistory:
+                          prev[update.section]?.[update.field]?.toggleHistory ||
+                          [],
+                      },
+                    },
+                  };
+
+                  console.log(`[DEBUG] Chat update applied to requirements:`, {
+                    field: `${update.section}.${update.field}`,
+                    oldValue: prev[update.section]?.[update.field],
+                    newValue: newReqs[update.section][update.field],
+                  });
+
+                  return newReqs;
+                });
+
+                setTimeout(() => {
+                  setRequirements((currentReqs) => {
+                    const actualValue =
+                      currentReqs[update.section]?.[update.field]?.value;
+                    const expectedValue = mappedValue;
+
+                    if (actualValue !== expectedValue) {
+                      console.error(
+                        `[CHAT VALIDATION FAILED] Field ${update.section}.${update.field}: expected "${expectedValue}", got "${actualValue}"`,
+                      );
+                      addTrace(
+                        "chat_field_verification",
+                        {
+                          section: update.section,
+                          field: update.field,
+                          expected: expectedValue,
+                          actual: actualValue,
+                          source: "chat_message",
+                        },
+                        "FAILED",
+                      );
+                    } else {
+                      console.log(
+                        `[CHAT VALIDATION OK] Field ${update.section}.${update.field} = "${actualValue}"`,
+                      );
+                      addTrace(
+                        "chat_field_verification",
+                        {
+                          section: update.section,
+                          field: update.field,
+                          value: actualValue,
+                          source: "chat_message",
+                        },
+                        "SUCCESS",
+                      );
+                    }
+
+                    return currentReqs; // Return unchanged state
+                  });
+                }, 150); // Slightly longer delay for chat updates
+
+                if (update.substitutionNote) {
+                  const id = `sub-${Date.now()}-${Math.random()
+                    .toString(36)
+                    .substr(2, 9)}`;
+                  const metadata = {
+                    isAssumption: false,
+                    confidence: update.confidence || 0.9,
+                  };
+                  addChatMessage(
+                    "system",
+                    `📝 ${update.substitutionNote}`,
+                    id,
+                    metadata,
+                  );
+                  console.log(
+                    `[DEBUG] Added substitution note for ${update.section}.${update.field}:`,
+                    update.substitutionNote,
+                  );
+                  addTrace(
+                    "substitution_note",
+                    {
+                      section: update.section,
+                      field: update.field,
+                      originalRequest: update.originalRequest,
+                      substitutionNote: update.substitutionNote,
+                    },
+                    "SUCCESS",
+                  );
+                }
+              });
+            }
+
+            return { success: true };
+          }
+
+          case "form_update": {
+            const d = data as PayloadMap["form_update"];
+            if (d.source === "user") {
+              setProcessingMessage("Noting selection...");
+              addTrace(
+                "form_update",
+                { section: d.section, field: d.field, value: d.value },
+                "SUCCESS",
+              );
+              const formResult = await respecService.processFormUpdate(
+                d.section,
+                d.field,
+                d.value,
+              );
+
+              if (formResult.acknowledgment) {
+                addChatMessage("assistant", formResult.acknowledgment);
+              }
+            }
+            return { success: true };
+          }
+
+          case "trigger_autofill": {
+            const d = data as PayloadMap["trigger_autofill"];
+            setProcessingMessage("Generating defaults...");
+            addTrace("trigger_autofill", { trigger: d.trigger }, "SUCCESS");
+            autofillResult = await respecService.triggerAutofill(d.trigger);
+            addChatMessage("assistant", autofillResult.message);
+
+            autofillResult.fields.forEach((field) => {
+              const currentValue =
+                requirements[field.section]?.[field.field]?.value;
+
+              if (!currentValue || currentValue === "") {
+                setRequirements((prev) => ({
                   ...prev,
-                  [update.section]: {
-                    ...prev[update.section],
-                    [update.field]: {
-                      ...prev[update.section]?.[update.field],
-                      value: mappedValue,
+                  [field.section]: {
+                    ...prev[field.section],
+                    [field.field]: {
+                      ...prev[field.section]?.[field.field],
+                      value: field.value,
                       isComplete: true,
-                      isAssumption: update.isAssumption || false,
-                      dataSource:
-                        update.isAssumption || false
-                          ? "assumption"
-                          : "requirement",
+                      isAssumption: true,
+                      dataSource: "assumption",
                       priority:
-                        prev[update.section]?.[update.field]?.priority || 1,
+                        prev[field.section]?.[field.field]?.priority || 1,
                       source: "system",
                       lastUpdated: new Date().toISOString(),
                       toggleHistory:
-                        prev[update.section]?.[update.field]?.toggleHistory ||
-                        [],
+                        prev[field.section]?.[field.field]?.toggleHistory || [],
+                    },
+                  },
+                }));
+              }
+            });
+
+            return { success: true };
+          }
+          case "autofill": {
+            const d = data as PayloadMap["autofill"];
+            return await communicateWithMAS("trigger_autofill", {
+              trigger: d.section,
+            });
+          }
+
+          case "system_populate_field": {
+            const d = data as PayloadMap["system_populate_field"];
+            try {
+              if (
+                !validateSystemFieldUpdate(
+                  requirements,
+                  fieldPermissions,
+                  d.section,
+                  d.field,
+                  d.value,
+                )
+              ) {
+                addTrace(
+                  "system_populate_field",
+                  {
+                    section: d.section,
+                    field: d.field,
+                    value: d.value,
+                    reason: "validation_failed",
+                  },
+                  "FAILED",
+                );
+                return { success: false, error: "Field validation failed" };
+              }
+
+              addTrace(
+                "system_populate_field",
+                { section: d.section, field: d.field, value: d.value },
+                "SUCCESS",
+              );
+              console.log(`[DEBUG] system_populate_field called with:`, {
+                section: d.section,
+                field: d.field,
+                value: d.value,
+                isSystemGenerated: d.isSystemGenerated,
+                rawData: d,
+              });
+
+              const mappedValue = mapValueToFormField(
+                d.section,
+                d.field,
+                d.value,
+              );
+              console.log(
+                `[DEBUG] System populate value mapped from ${d.value} to ${mappedValue}`,
+              );
+
+              setProcessingMessage("Updating field...");
+              setRequirements((prev) => {
+                const newValue = {
+                  ...prev,
+                  [d.section]: {
+                    ...prev[d.section],
+                    [d.field]: {
+                      ...prev[d.section]?.[d.field],
+                      value: mappedValue,
+                      isComplete: true,
+                      isAssumption: d.isSystemGenerated || false,
+                      dataSource:
+                        d.isSystemGenerated || false
+                          ? "assumption"
+                          : "requirement",
+                      priority: prev[d.section]?.[d.field]?.priority || 1,
+                      source: "system",
+                      lastUpdated: new Date().toISOString(),
+                      toggleHistory:
+                        prev[d.section]?.[d.field]?.toggleHistory || [],
                     },
                   },
                 };
 
-                console.log(`[DEBUG] Chat update applied to requirements:`, {
-                  field: `${update.section}.${update.field}`,
-                  oldValue: prev[update.section]?.[update.field],
-                  newValue: newReqs[update.section][update.field],
-                });
+                console.log(
+                  `[DEBUG] Updated requirements for ${d.section}.${d.field}:`,
+                  {
+                    oldValue: prev[d.section]?.[d.field],
+                    newValue: newValue[d.section][d.field],
+                    fullSection: newValue[d.section],
+                  },
+                );
 
-                return newReqs;
+                return newValue;
               });
 
               setTimeout(() => {
                 setRequirements((currentReqs) => {
-                  const actualValue =
-                    currentReqs[update.section]?.[update.field]?.value;
+                  const actualValue = currentReqs[d.section]?.[d.field]?.value;
                   const expectedValue = mappedValue;
 
                   if (actualValue !== expectedValue) {
                     console.error(
-                      `[CHAT VALIDATION FAILED] Field ${update.section}.${update.field}: expected "${expectedValue}", got "${actualValue}"`,
+                      `[VALIDATION FAILED] Field ${d.section}.${d.field}: expected "${expectedValue}", got "${actualValue}"`,
                     );
                     addTrace(
-                      "chat_field_verification",
+                      "system_populate_field_verification",
                       {
-                        section: update.section,
-                        field: update.field,
+                        section: d.section,
+                        field: d.field,
                         expected: expectedValue,
                         actual: actualValue,
-                        source: "chat_message",
                       },
                       "FAILED",
                     );
                   } else {
                     console.log(
-                      `[CHAT VALIDATION OK] Field ${update.section}.${update.field} = "${actualValue}"`,
+                      `[VALIDATION OK] Field ${d.section}.${d.field} = "${actualValue}"`,
                     );
                     addTrace(
-                      "chat_field_verification",
+                      "system_populate_field_verification",
                       {
-                        section: update.section,
-                        field: update.field,
+                        section: d.section,
+                        field: d.field,
                         value: actualValue,
-                        source: "chat_message",
                       },
                       "SUCCESS",
                     );
@@ -396,434 +621,219 @@ Please respond with A or B.`;
 
                   return currentReqs; // Return unchanged state
                 });
-              }, 150); // Slightly longer delay for chat updates
+              }, 100);
 
-              if (update.substitutionNote) {
-                const id = `sub-${Date.now()}-${Math.random()
-                  .toString(36)
-                  .substr(2, 9)}`;
-                const metadata = {
-                  isAssumption: false,
-                  confidence: update.confidence || 0.9,
-                };
-                addChatMessage(
-                  "system",
-                  `📝 ${update.substitutionNote}`,
-                  id,
-                  metadata,
-                );
-                console.log(
-                  `[DEBUG] Added substitution note for ${update.section}.${update.field}:`,
-                  update.substitutionNote,
-                );
-                addTrace(
-                  "substitution_note",
-                  {
-                    section: update.section,
-                    field: update.field,
-                    originalRequest: update.originalRequest,
-                    substitutionNote: update.substitutionNote,
-                  },
-                  "SUCCESS",
-                );
-              }
-            });
-          }
-
-          return { success: true };
-        }
-
-        case "form_update": {
-          const d = data as PayloadMap["form_update"];
-          if (d.source === "user") {
-            setProcessingMessage("Noting selection...");
-            addTrace(
-              "form_update",
-              { section: d.section, field: d.field, value: d.value },
-              "SUCCESS",
-            );
-            const formResult = await respecService.processFormUpdate(
-              d.section,
-              d.field,
-              d.value,
-            );
-
-            if (formResult.acknowledgment) {
-              addChatMessage("assistant", formResult.acknowledgment);
-            }
-          }
-          return { success: true };
-        }
-
-        case "trigger_autofill": {
-          const d = data as PayloadMap["trigger_autofill"];
-          setProcessingMessage("Generating defaults...");
-          addTrace("trigger_autofill", { trigger: d.trigger }, "SUCCESS");
-          autofillResult = await respecService.triggerAutofill(d.trigger);
-          addChatMessage("assistant", autofillResult.message);
-
-          autofillResult.fields.forEach((field) => {
-            const currentValue =
-              requirements[field.section]?.[field.field]?.value;
-
-            if (!currentValue || currentValue === "") {
-              setRequirements((prev) => ({
-                ...prev,
-                [field.section]: {
-                  ...prev[field.section],
-                  [field.field]: {
-                    ...prev[field.section]?.[field.field],
-                    value: field.value,
-                    isComplete: true,
-                    isAssumption: true,
-                    dataSource: "assumption",
-                    priority: prev[field.section]?.[field.field]?.priority || 1,
-                    source: "system",
-                    lastUpdated: new Date().toISOString(),
-                    toggleHistory:
-                      prev[field.section]?.[field.field]?.toggleHistory || [],
-                  },
-                },
-              }));
-            }
-          });
-
-          return { success: true };
-        }
-        case "autofill": {
-          const d = data as PayloadMap["autofill"];
-          return await communicateWithMAS("trigger_autofill", {
-            trigger: d.section,
-          });
-        }
-
-        case "system_populate_field": {
-          const d = data as PayloadMap["system_populate_field"];
-          try {
-            if (
-              !validateSystemFieldUpdate(
-                requirements,
-                fieldPermissions,
-                d.section,
-                d.field,
-                d.value,
-              )
-            ) {
+              return { success: true };
+            } catch (error: unknown) {
+              console.error(`[UI-RESPEC] System field update failed:`, error);
               addTrace(
                 "system_populate_field",
                 {
                   section: d.section,
                   field: d.field,
-                  value: d.value,
-                  reason: "validation_failed",
+                  error: (error as Error).message,
                 },
                 "FAILED",
               );
-              return { success: false, error: "Field validation failed" };
+              return { success: false, error: String(error) };
             }
-
-            addTrace(
-              "system_populate_field",
-              { section: d.section, field: d.field, value: d.value },
-              "SUCCESS",
-            );
-            console.log(`[DEBUG] system_populate_field called with:`, {
-              section: d.section,
-              field: d.field,
-              value: d.value,
-              isSystemGenerated: d.isSystemGenerated,
-              rawData: d,
-            });
-
-            const mappedValue = mapValueToFormField(
-              d.section,
-              d.field,
-              d.value,
-            );
-            console.log(
-              `[DEBUG] System populate value mapped from ${d.value} to ${mappedValue}`,
-            );
-
-            setProcessingMessage("Updating field...");
-            setRequirements((prev) => {
-              const newValue = {
-                ...prev,
-                [d.section]: {
-                  ...prev[d.section],
-                  [d.field]: {
-                    ...prev[d.section]?.[d.field],
-                    value: mappedValue,
+          }
+          case "system_populate_multiple": {
+            const d = data as PayloadMap["system_populate_multiple"];
+            try {
+              addTrace(
+                "system_populate_multiple",
+                { count: d.updates?.length || 0 },
+                "SUCCESS",
+              );
+              setProcessingMessage("Updating multiple fields...");
+              setRequirements((prev) => {
+                const updated = { ...prev };
+                d.updates.forEach((update) => {
+                  if (!updated[update.section]) updated[update.section] = {};
+                  updated[update.section][update.field] = {
+                    ...updated[update.section]?.[update.field],
+                    value: update.value,
                     isComplete: true,
-                    isAssumption: d.isSystemGenerated || false,
+                    isAssumption: update.isSystemGenerated || false,
                     dataSource:
-                      d.isSystemGenerated || false
+                      update.isSystemGenerated || false
                         ? "assumption"
                         : "requirement",
-                    priority: prev[d.section]?.[d.field]?.priority || 1,
+                    priority:
+                      updated[update.section]?.[update.field]?.priority || 1,
                     source: "system",
                     lastUpdated: new Date().toISOString(),
                     toggleHistory:
-                      prev[d.section]?.[d.field]?.toggleHistory || [],
+                      updated[update.section]?.[update.field]?.toggleHistory ||
+                      [],
+                  };
+                });
+                return updated;
+              });
+              return { success: true };
+            } catch (error: unknown) {
+              console.error(
+                `[UI-RESPEC] System multiple update failed:`,
+                error,
+              );
+              return { success: false, error: String(error) };
+            }
+          }
+
+          case "system_send_message": {
+            const d = data as PayloadMap["system_send_message"];
+            try {
+              addChatMessage("assistant", d.message);
+              return { success: true };
+            } catch (error: unknown) {
+              console.error(`[UI-RESPEC] System message failed:`, error);
+              return { success: false, error: String(error) };
+            }
+          }
+
+          case "system_toggle_assumption": {
+            const d = data as PayloadMap["system_toggle_assumption"];
+            try {
+              const { section, field, reason } = d;
+              const currentField = requirements[section]?.[field];
+
+              if (!currentField) {
+                console.error(
+                  `[TOGGLE FAILED] Field not found: ${section}.${field}`,
+                );
+                addTrace("toggle_assumption", { section, field }, "FAILED");
+                return { success: false };
+              }
+
+              const previousState = currentField.isAssumption
+                ? "assumption"
+                : "requirement";
+              const newState = !currentField.isAssumption
+                ? "assumption"
+                : "requirement";
+
+              setRequirements((prev) => ({
+                ...prev,
+                [section]: {
+                  ...prev[section],
+                  [field]: {
+                    ...prev[section][field],
+                    isAssumption: !currentField.isAssumption,
+                    dataSource: newState,
+                    toggleHistory: [
+                      ...(currentField.toggleHistory || []),
+                      {
+                        timestamp: new Date().toISOString(),
+                        from: previousState,
+                        to: newState,
+                        triggeredBy: "system",
+                        reason,
+                      },
+                    ],
                   },
                 },
-              };
+              }));
 
               console.log(
-                `[DEBUG] Updated requirements for ${d.section}.${d.field}:`,
-                {
-                  oldValue: prev[d.section]?.[d.field],
-                  newValue: newValue[d.section][d.field],
-                  fullSection: newValue[d.section],
-                },
+                `[TOGGLE] ${section}.${field}: ${previousState} -> ${newState}`,
+              );
+              addTrace(
+                "toggle_assumption",
+                { section, field, from: previousState, to: newState },
+                "SUCCESS",
               );
 
-              return newValue;
-            });
-
-            setTimeout(() => {
-              setRequirements((currentReqs) => {
-                const actualValue = currentReqs[d.section]?.[d.field]?.value;
-                const expectedValue = mappedValue;
-
-                if (actualValue !== expectedValue) {
-                  console.error(
-                    `[VALIDATION FAILED] Field ${d.section}.${d.field}: expected "${expectedValue}", got "${actualValue}"`,
-                  );
-                  addTrace(
-                    "system_populate_field_verification",
-                    {
-                      section: d.section,
-                      field: d.field,
-                      expected: expectedValue,
-                      actual: actualValue,
-                    },
-                    "FAILED",
-                  );
-                } else {
-                  console.log(
-                    `[VALIDATION OK] Field ${d.section}.${d.field} = "${actualValue}"`,
-                  );
-                  addTrace(
-                    "system_populate_field_verification",
-                    {
-                      section: d.section,
-                      field: d.field,
-                      value: actualValue,
-                    },
-                    "SUCCESS",
-                  );
-                }
-
-                return currentReqs; // Return unchanged state
-              });
-            }, 100);
-
-            return { success: true };
-          } catch (error: unknown) {
-            console.error(`[UI-RESPEC] System field update failed:`, error);
-            addTrace(
-              "system_populate_field",
-              {
-                section: d.section,
-                field: d.field,
-                error: (error as Error).message,
-              },
-              "FAILED",
-            );
-            return { success: false, error: String(error) };
-          }
-        }
-        case "system_populate_multiple": {
-          const d = data as PayloadMap["system_populate_multiple"];
-          try {
-            addTrace(
-              "system_populate_multiple",
-              { count: d.updates?.length || 0 },
-              "SUCCESS",
-            );
-            setProcessingMessage("Updating multiple fields...");
-            setRequirements((prev) => {
-              const updated = { ...prev };
-              d.updates.forEach((update) => {
-                if (!updated[update.section]) updated[update.section] = {};
-                updated[update.section][update.field] = {
-                  ...updated[update.section]?.[update.field],
-                  value: update.value,
-                  isComplete: true,
-                  isAssumption: update.isSystemGenerated || false,
-                  dataSource:
-                    update.isSystemGenerated || false
-                      ? "assumption"
-                      : "requirement",
-                  priority:
-                    updated[update.section]?.[update.field]?.priority || 1,
-                  source: "system",
-                  lastUpdated: new Date().toISOString(),
-                  toggleHistory:
-                    updated[update.section]?.[update.field]?.toggleHistory ||
-                    [],
-                };
-              });
-              return updated;
-            });
-            return { success: true };
-          } catch (error: unknown) {
-            console.error(`[UI-RESPEC] System multiple update failed:`, error);
-            return { success: false, error: String(error) };
-          }
-        }
-
-        case "system_send_message": {
-          const d = data as PayloadMap["system_send_message"];
-          try {
-            addChatMessage("assistant", d.message);
-            return { success: true };
-          } catch (error: unknown) {
-            console.error(`[UI-RESPEC] System message failed:`, error);
-            return { success: false, error: String(error) };
-          }
-        }
-
-        case "system_toggle_assumption": {
-          const d = data as PayloadMap["system_toggle_assumption"];
-          try {
-            const { section, field, reason } = d;
-            const currentField = requirements[section]?.[field];
-
-            if (!currentField) {
-              console.error(
-                `[TOGGLE FAILED] Field not found: ${section}.${field}`,
+              return { success: true, newState };
+            } catch (error: unknown) {
+              console.error(`[TOGGLE ERROR]`, error);
+              addTrace(
+                "toggle_assumption",
+                { error: (error as Error).message },
+                "FAILED",
               );
-              addTrace("toggle_assumption", { section, field }, "FAILED");
-              return { success: false };
+              return { success: false, error: String(error) };
             }
+          }
 
-            const previousState = currentField.isAssumption
-              ? "assumption"
-              : "requirement";
-            const newState = !currentField.isAssumption
-              ? "assumption"
-              : "requirement";
+          case "grant_override_permission": {
+            const d = data as PayloadMap["grant_override_permission"];
+            try {
+              const permissionKey = `${d.section}.${d.field}`;
 
-            setRequirements((prev) => ({
-              ...prev,
-              [section]: {
-                ...prev[section],
-                [field]: {
-                  ...prev[section][field],
-                  isAssumption: !currentField.isAssumption,
-                  dataSource: newState,
-                  toggleHistory: [
-                    ...(currentField.toggleHistory || []),
-                    {
-                      timestamp: new Date().toISOString(),
-                      from: previousState,
-                      to: newState,
-                      triggeredBy: "system",
-                      reason,
-                    },
-                  ],
+              setFieldPermissions((prev) => ({
+                ...prev,
+                [permissionKey]: {
+                  allowSystemOverride: true,
+                  grantedAt: new Date().toISOString(),
+                  grantedBy: d.grantedBy || "user_action",
                 },
-              },
-            }));
+              }));
 
-            console.log(
-              `[TOGGLE] ${section}.${field}: ${previousState} -> ${newState}`,
-            );
-            addTrace(
-              "toggle_assumption",
-              { section, field, from: previousState, to: newState },
-              "SUCCESS",
-            );
+              console.log(`[PERMISSION GRANTED] ${permissionKey}`);
+              addTrace(
+                "permission_granted",
+                { section: d.section, field: d.field },
+                "SUCCESS",
+              );
 
-            return { success: true, newState };
-          } catch (error: unknown) {
-            console.error(`[TOGGLE ERROR]`, error);
-            addTrace(
-              "toggle_assumption",
-              { error: (error as Error).message },
-              "FAILED",
-            );
-            return { success: false, error: String(error) };
+              return { success: true };
+            } catch (error: unknown) {
+              console.error(`[PERMISSION ERROR]`, error);
+              addTrace(
+                "permission_granted",
+                { error: (error as Error).message },
+                "FAILED",
+              );
+              return { success: false, error: String(error) };
+            }
           }
-        }
 
-        case "grant_override_permission": {
-          const d = data as PayloadMap["grant_override_permission"];
-          try {
-            const permissionKey = `${d.section}.${d.field}`;
+          case "revoke_override_permission": {
+            const d = data as PayloadMap["revoke_override_permission"];
+            try {
+              const revokeKey = `${d.section}.${d.field}`;
 
-            setFieldPermissions((prev) => ({
-              ...prev,
-              [permissionKey]: {
-                allowSystemOverride: true,
-                grantedAt: new Date().toISOString(),
-                grantedBy: d.grantedBy || "user_action",
-              },
-            }));
+              setFieldPermissions((prev) => {
+                const updated = { ...prev };
+                delete updated[revokeKey];
+                return updated;
+              });
 
-            console.log(`[PERMISSION GRANTED] ${permissionKey}`);
-            addTrace(
-              "permission_granted",
-              { section: d.section, field: d.field },
-              "SUCCESS",
-            );
+              console.log(`[PERMISSION REVOKED] ${revokeKey}`);
+              addTrace(
+                "permission_revoked",
+                { section: d.section, field: d.field },
+                "SUCCESS",
+              );
 
-            return { success: true };
-          } catch (error: unknown) {
-            console.error(`[PERMISSION ERROR]`, error);
-            addTrace(
-              "permission_granted",
-              { error: (error as Error).message },
-              "FAILED",
-            );
-            return { success: false, error: String(error) };
+              return { success: true };
+            } catch (error: unknown) {
+              console.error(`[PERMISSION ERROR]`, error);
+              addTrace(
+                "permission_revoked",
+                { error: (error as Error).message },
+                "FAILED",
+              );
+              return { success: false, error: String(error) };
+            }
           }
+
+          default:
+            console.warn(`[UI-RESPEC] Unknown action: ${action}`);
+            addTrace("unknown_action", { action }, "WARNING");
+            return { success: false };
         }
-
-        case "revoke_override_permission": {
-          const d = data as PayloadMap["revoke_override_permission"];
-          try {
-            const revokeKey = `${d.section}.${d.field}`;
-
-            setFieldPermissions((prev) => {
-              const updated = { ...prev };
-              delete updated[revokeKey];
-              return updated;
-            });
-
-            console.log(`[PERMISSION REVOKED] ${revokeKey}`);
-            addTrace(
-              "permission_revoked",
-              { section: d.section, field: d.field },
-              "SUCCESS",
-            );
-
-            return { success: true };
-          } catch (error: unknown) {
-            console.error(`[PERMISSION ERROR]`, error);
-            addTrace(
-              "permission_revoked",
-              { error: (error as Error).message },
-              "FAILED",
-            );
-            return { success: false, error: String(error) };
-          }
-        }
-
-        default:
-          console.warn(`[UI-RESPEC] Unknown action: ${action}`);
-          addTrace("unknown_action", { action }, "WARNING");
-          return { success: false };
+      } catch (error: unknown) {
+        console.error(`[UI-RESPEC] Error:`, error);
+        return { success: false, error: String(error) };
+      } finally {
+        setIsProcessing(false);
+        setProcessingMessage("");
       }
-    } catch (error: unknown) {
-      console.error(`[UI-RESPEC] Error:`, error);
-      return { success: false, error: String(error) };
-    } finally {
-      setIsProcessing(false);
-      setProcessingMessage("");
-    }
-  }
+    },
+    [addChatMessage, addTrace, fieldPermissions, requirements, respecService],
+  );
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -835,7 +845,7 @@ Please respond with A or B.`;
           initialRequirements[section] = {};
           initialExpanded[section] = {};
 
-          Object.entries(fields).forEach(([fieldKey, fieldDef]) => {
+          Object.entries(fields).forEach(([fieldKey]) => {
             initialRequirements[section][fieldKey] = {
               value: "",
               isComplete: false,
@@ -850,18 +860,16 @@ Please respond with A or B.`;
         },
       );
 
-      Object.entries(formFieldsData.field_definitions).forEach(
-        ([section, fields]) => {
-          if (FIELD_GROUPS[section]) {
-            Object.entries(FIELD_GROUPS[section]).forEach(
-              ([groupKey, groupDef]) => {
-                initialExpanded[section][groupKey] =
-                  groupDef.defaultOpen || false;
-              },
-            );
-          }
-        },
-      );
+      Object.entries(formFieldsData.field_definitions).forEach(([section]) => {
+        if (FIELD_GROUPS[section]) {
+          Object.entries(FIELD_GROUPS[section]).forEach(
+            ([groupKey, groupDef]) => {
+              initialExpanded[section][groupKey] =
+                groupDef.defaultOpen || false;
+            },
+          );
+        }
+      });
 
       setRequirements(initialRequirements);
       setExpandedGroups(initialExpanded);
@@ -947,7 +955,7 @@ Please respond with A or B.`;
         //   );
 
         //   artifactManager
-        //     .detectConflicts()
+        //     .detectConflicts() // TODO zeev conflict
         //     .then((conflictResult) => {
         //       if (conflictResult.hasConflict) {
         //         console.warn(
@@ -1089,13 +1097,13 @@ Please respond with A or B.`;
         isAssumption,
       });
     },
-    [],
+    [communicateWithMAS, requirements, respecService],
   );
 
   useEffect(() => {
     const timer = setTimeout(() => {
       const formattedRequirements = {};
-      Object.entries(requirements).forEach(([section, fields]) => {
+      Object.entries(requirements).forEach(([_, fields]) => {
         Object.entries(fields).forEach(([fieldKey, fieldData]) => {
           if (fieldData.value && fieldData.value !== "") {
             formattedRequirements[fieldKey] = {
@@ -1176,7 +1184,7 @@ Please respond with A or B.`;
   const handleExport = useCallback(async () => {
     try {
       const formattedRequirements = {};
-      Object.entries(requirements).forEach(([section, fields]) => {
+      Object.entries(requirements).forEach(([_, fields]) => {
         Object.entries(fields).forEach(([fieldKey, fieldData]) => {
           formattedRequirements[fieldKey] = {
             value: fieldData.value,
@@ -1210,7 +1218,7 @@ Please respond with A or B.`;
       console.error("Export failed:", error);
       alert("Export failed: " + error.message);
     }
-  }, []);
+  }, [projectName, requirements]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -1225,7 +1233,7 @@ Please respond with A or B.`;
             (async () => {
               try {
                 const formattedRequirements = {};
-                Object.entries(requirements).forEach(([section, fields]) => {
+                Object.entries(requirements).forEach(([_, fields]) => {
                   Object.entries(fields).forEach(([fieldKey, fieldData]) => {
                     if (fieldData.value && fieldData.value !== "") {
                       formattedRequirements[fieldKey] = {
@@ -1315,7 +1323,9 @@ Please respond with A or B.`;
                 onAutoFillClick={() => autofillSection(activeTab)}
               />
               <RequirementsForm
-                sections={(SECTION_MAPPING as any)[activeTab] || []}
+                sections={
+                  (SECTION_MAPPING as Record<string, string[]>)[activeTab] || []
+                }
                 requirements={requirements}
                 fieldDefs={FIELD_DEFS}
                 groups={FIELD_GROUPS}

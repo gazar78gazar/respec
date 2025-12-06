@@ -19,14 +19,14 @@ import type { Maybe, UCUIField } from "../types/UCDataTypes";
 export interface ExtractedNode {
   text: string; // Original extracted text from user
   category?: string; // Optional hint: 'processor', 'memory', etc.
-  value?: any; // Extracted value if applicable
+  value?: unknown; // Extracted value if applicable
   context?: string; // Original user message for context
 }
 
 export interface MatchResult {
   extractedNode: ExtractedNode;
   ucMatch: UCMatch;
-  value?: any; // Final value (may be transformed)
+  value?: unknown; // Final value (may be transformed)
   extractedText: string;
 }
 

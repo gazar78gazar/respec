@@ -11,6 +11,7 @@
 import { ArtifactManager } from "./ArtifactManager";
 import { ucDataLayer } from "./DataLayer";
 import type { Maybe, UCSpecification } from "../types/UCDataTypes";
+import type { Requirements } from "../types/requirements.types";
 
 // ============= SEMANTIC MATCHING TYPES =============
 
@@ -46,11 +47,13 @@ export interface MessageIntent {
   suggestedActions: string[];
 }
 
+type IntentKey = "requirement" | "question" | "clarification" | "other";
+
 export interface SemanticMatchingContext {
-  currentRequirements: any; // Current form state
-  artifactState: any; // Current artifact state
-  chatHistory: any[]; // Previous messages for context
-  userPreferences?: any; // Learned user patterns
+  currentRequirements?: Requirements; // Current form state
+  artifactState?: unknown; // Current artifact state
+  chatHistory: Array<{ role?: string; content?: string }>; // Previous messages for context
+  userPreferences?: Record<string, unknown>; // Learned user patterns
 }
 
 // ============= MAIN SEMANTIC MATCHER CLASS =============
@@ -131,12 +134,10 @@ export class SemanticMatcher {
 
   private async detectIntent(
     message: string,
-    context?: SemanticMatchingContext,
+    _context?: SemanticMatchingContext,
   ): Promise<MessageIntent> {
-    const prompt = this.buildIntentDetectionPrompt(message, context);
-
     // For MVP: Use pattern matching with LLM fallback
-    const patterns = {
+    const patterns: Record<IntentKey, RegExp[]> = {
       requirement: [
         /\b(i need|i want|looking for|require|must have|need|want|system needs|should be|should have)\b/i,
         /\b(processor|cpu|memory|ram|storage|power|performance|intel|amd|gb|mb|tb|ssd|hdd)\b/i,
@@ -153,12 +154,14 @@ export class SemanticMatcher {
     };
 
     // Pattern-based detection (fast)
-    for (const [intentType, patternList] of Object.entries(patterns)) {
+    for (const [intentType, patternList] of Object.entries(patterns) as Array<
+      [IntentKey, RegExp[]]
+    >) {
       if (patternList.some((pattern) => pattern.test(message))) {
         return {
-          type: intentType as any,
+          type: intentType,
           requiresResponse: intentType !== "requirement",
-          suggestedActions: this.getSuggestedActions(intentType as any),
+          suggestedActions: this.getSuggestedActions(intentType),
         };
       }
     }
@@ -172,8 +175,8 @@ export class SemanticMatcher {
     };
   }
 
-  private getSuggestedActions(intentType: string): string[] {
-    const actions = {
+  private getSuggestedActions(intentType: IntentKey): string[] {
+    const actions: Record<IntentKey, string[]> = {
       requirement: ["extract_specs", "validate_constraints", "check_conflicts"],
       question: ["provide_info", "suggest_options"],
       clarification: ["ask_followup", "suggest_autofill"],
@@ -186,7 +189,7 @@ export class SemanticMatcher {
 
   private async extractTechnicalRequirements(
     message: string,
-    context?: SemanticMatchingContext,
+    _context?: SemanticMatchingContext,
   ): Promise<TechnicalExtraction[]> {
     // For MVP: Pattern-based extraction with confidence scoring
     const extractions: TechnicalExtraction[] = [];
@@ -358,13 +361,13 @@ export class SemanticMatcher {
 
   private buildIntentDetectionPrompt(
     message: string,
-    context?: SemanticMatchingContext,
+    _context?: SemanticMatchingContext,
   ): string {
     // TODO: Build sophisticated prompts for LLM intent detection
     return `Analyze this message for technical requirements: "${message}"`;
   }
 
-  getStats(): any {
+  getStats(): { artifactIntegration: boolean } {
     return {
       artifactIntegration: !!this.artifactManager,
     };

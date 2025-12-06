@@ -30,10 +30,20 @@ interface ChatMessage {
   timestamp?: Date;
 }
 
+interface ClarificationOption {
+  id: string;
+  label: string;
+}
+
+interface ClarificationPrompt {
+  question: string;
+  options: ClarificationOption[];
+}
+
 interface EnhancedChatWindowProps {
   onSendMessage: (message: string) => Promise<MASCommunicationResult>;
   messages: ChatMessage[];
-  pendingClarification?: any;
+  pendingClarification?: ClarificationPrompt | null;
   isLoading: boolean;
   width: number;
   onMouseDown: (e: React.MouseEvent) => void;
@@ -72,7 +82,7 @@ export const EnhancedChatWindow: React.FC<EnhancedChatWindowProps> = ({
     if (inputRef.current && inputRef.current !== input) {
       setInputState(inputRef.current);
     }
-  }, []);
+  }, [input]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -340,16 +350,18 @@ export const EnhancedChatWindow: React.FC<EnhancedChatWindowProps> = ({
               {pendingClarification.question}
             </p>
             <div className="space-y-2">
-              {pendingClarification.options.map((option: any) => (
-                <button
-                  key={option.id}
-                  onClick={() => onSendMessage(option.label)}
-                  className="w-full text-left px-3 py-2 bg-white border rounded hover:bg-gray-50 text-sm"
-                  disabled={isLoading}
-                >
-                  {option.label}
-                </button>
-              ))}
+              {pendingClarification.options.map(
+                (option: ClarificationOption) => (
+                  <button
+                    key={option.id}
+                    onClick={() => onSendMessage(option.label)}
+                    className="w-full text-left px-3 py-2 bg-white border rounded hover:bg-gray-50 text-sm"
+                    disabled={isLoading}
+                  >
+                    {option.label}
+                  </button>
+                ),
+              )}
             </div>
           </div>
         )}

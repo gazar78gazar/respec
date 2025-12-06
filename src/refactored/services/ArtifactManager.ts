@@ -36,11 +36,16 @@ import type {
 } from "../types/UCDataTypes";
 import { conflictResolver } from "./ConflictResolver";
 
+type FormRequirements = Record<
+  string,
+  Record<string, { value?: unknown; isComplete?: boolean }>
+>;
+
 // ============= MAIN ARTIFACT MANAGER =============
 
 export class ArtifactManager {
   private state: ArtifactState;
-  private listeners: Map<string, Function> = new Map();
+  private listeners: Map<string, () => void> = new Map();
   // Sprint 2: Store UC8 conflict data for resolution options
   private conflictData: Map<string, Conflict> = new Map();
 
@@ -81,9 +86,9 @@ export class ArtifactManager {
     return { ...this.state.unmapped };
   }
 
-  getConflictList(): ConflictList {
-    return { ...this.state.conflicts };
-  }
+  // getConflictList(): ConflictList {
+  //   return { ...this.state.conflicts };
+  // }
 
   isSystemBlocked(): boolean {
     return (
@@ -92,20 +97,20 @@ export class ArtifactManager {
     );
   }
 
-  getBlockingReason(): string | undefined {
-    if (this.state.conflicts.metadata.systemBlocked) {
-      return `Active conflicts: ${this.state.conflicts.metadata.blockingConflicts.join(
-        ", ",
-      )}`;
-    }
-    return this.state.priorityQueue.blockReason;
-  }
+  // getBlockingReason(): string | undefined {
+  //   if (this.state.conflicts.metadata.systemBlocked) {
+  //     return `Active conflicts: ${this.state.conflicts.metadata.blockingConflicts.join(
+  //       ", "
+  //     )}`;
+  //   }
+  //   return this.state.priorityQueue.blockReason;
+  // }
 
   // ============= SPECIFICATION OPERATIONS =============
 
   async addSpecificationToMapped(
     spec: UCSpecification,
-    value: any,
+    value: unknown,
     originalRequest: string,
     substitutionNote: string,
     source: Source,
@@ -125,6 +130,8 @@ export class ArtifactManager {
 
     const visited = dependencyContext?.visited ?? new Set<SpecificationId>();
     if (!visited.has(spec.id)) visited.add(spec.id);
+
+    // TODO zeev conflict - add single specification conflict check
 
     const isDependency = !!dependencyContext?.parentSpecId;
 
@@ -157,15 +164,15 @@ export class ArtifactManager {
       dependencyContext?.depth ?? 0,
     );
 
-    if (source === "conflict_resolution") {
-      console.log(
-        `[ArtifactManager] ??  Skipping conflict detection for ${spec.id} (source: conflict_resolution)`,
-      );
-      return;
-    }
+    // if (source === "conflict_resolution") {
+    // TODO zeev conflict
+    //   console.log(
+    //     `[ArtifactManager] ??  Skipping conflict detection for ${spec.id} (source: conflict_resolution)`
+    //   );
+    //   return;
+    // }
 
-    if (!dependencyContext?.skipConflictPlaceholder)
-      await this.triggerConflictPlaceholder(spec.id);
+    if (!isDependency) await this.detectExclusionConflicts();
 
     console.log(`[addSpecificationToMapped] finished for ${spec.id}`, {
       state: this.state,
@@ -206,7 +213,7 @@ export class ArtifactManager {
         }
 
         if (this.state.mapped.specifications[dependencyId]) {
-          await this.fulfillSpecificationDependencies(
+          await this.fillSpecificationDependencies(
             dependencySpec,
             visited,
             depth + 1,
@@ -239,19 +246,22 @@ export class ArtifactManager {
 
   // ============= CONFLICT DETECTION =============
 
-  async triggerConflictDetection(): Promise<ConflictResult> {
-    // TODO zeev implement
-    console.log("[ArtifactManager] Conflict detection placeholder invoked");
-    return { hasConflict: false, conflicts: [] };
+  async detectExclusionConflicts(): Promise<ConflictResult> {
+    // TODO zeev conflict - rewrite
+    console.log("[ArtifactManager] detectExclusionConflicts started");
+    // return { hasConflict: false, conflicts: [] };
 
-    // if (!this.state.initialized) {
-    //   return { hasConflict: false, conflicts: [] };
-    // }
+    if (!this.state.initialized || !ucDataLayer.isLoaded()) {
+      return { hasConflict: false, conflicts: [] };
+    }
 
-    // // Collect all specifications from mapped artifact
+    // Collect all specifications from mapped artifact
     // const specifications: Array<{ id: string; value: any }> = [];
     // const activeRequirements: string[] = [];
     // const activeDomains: string[] = [];
+
+    const mappedSpecs = this.state.mapped.specifications;
+    // const respecSpecs = this.state.respec.specifications;
 
     // Object.values(this.state.mapped.domains).forEach((domain) => {
     //   activeDomains.push(domain.id);
@@ -265,126 +275,96 @@ export class ArtifactManager {
     //   });
     // });
 
-    // // Sprint 2: Full UC8 conflict detection
-    // // Check if UC8 is loaded, use it; otherwise fallback to uc
-    // let result: ConflictResult;
+    // Sprint 2: Full conflict detection
+    console.log(
+      "[ArtifactManager] Using conflict detection with 107 exclusions",
+    );
 
-    // if (ucDataLayer.isLoaded()) {
-    //   console.log(
-    //     "[ArtifactManager] Using UC8 conflict detection with 107 exclusions"
-    //   );
+    // Collect all specification IDs currently in mapped artifact
+    const specIds = Object.keys(mappedSpecs);
 
-    //   // Collect all specification IDs currently in mapped artifact
-    //   const specIds = specifications.map((s) => s.id);
+    // Check for conflicts among current selections
+    const allConflicts = new Map<string, Conflict>(); // Use map to deduplicate
 
-    //   // Check for conflicts among current selections using UC8
-    //   const allConflicts = new Map<string, any>(); // Use map to deduplicate
+    // For each spec, check if it conflicts with all others
+    for (let i = 0; i < specIds.length; i++) {
+      const checkSpec = specIds[i];
+      const otherSpecs = specIds.filter((_, idx) => idx !== i);
 
-    //   // For each spec, check if it conflicts with all others
-    //   for (let i = 0; i < specIds.length; i++) {
-    //     const checkSpec = specIds[i];
-    //     const otherSpecs = specIds.filter((_, idx) => idx !== i);
+      // Use conflictResolver to get conflicts with resolution options
+      const conflicts = conflictResolver.detectConflictsForSpecification(
+        checkSpec,
+        otherSpecs,
+      );
 
-    //     // Use conflictResolver to get conflicts with resolution options
-    //     const uc8Conflicts = conflictResolver.detectConflicts(
-    //       checkSpec,
-    //       otherSpecs
-    //     );
+      conflicts.forEach((conflict) => {
+        // Create unique key for this conflict pair (sorted to avoid duplicates)
+        const conflictKey = conflict.affectedNodes.sort().join("|");
 
-    //     uc8Conflicts.forEach((uc8Conflict) => {
-    //       // Create unique key for this conflict pair (sorted to avoid duplicates)
-    //       const conflictKey = uc8Conflict.conflictingNodes.sort().join("|");
+        if (!allConflicts.has(conflictKey))
+          // Store conflict with full resolution options
+          allConflicts.set(conflictKey, conflict);
+      });
+    }
 
-    //       if (!allConflicts.has(conflictKey)) {
-    //         // Store UC8 conflict with full resolution options
-    //         allConflicts.set(conflictKey, uc8Conflict);
-    //       }
-    //     });
-    //   }
+    // Convert conflicts to ConflictResult format
+    const conflictList = Array.from(allConflicts.values());
 
-    //   // Convert UC8 conflicts to ConflictResult format
-    //   const uc8ConflictList = Array.from(allConflicts.values());
+    // Store conflict data for later resolution option generation
+    this.conflictData.clear();
+    conflictList.forEach((conflict) => {
+      const conflictKey = conflict.affectedNodes.sort().join("|");
+      this.conflictData.set(conflictKey, conflict);
+    });
 
-    //   // Store UC8 conflict data for later resolution option generation
-    //   this.uc8ConflictData.clear();
-    //   uc8ConflictList.forEach((uc8Conflict) => {
-    //     const conflictKey = uc8Conflict.conflictingNodes.sort().join("|");
-    //     this.uc8ConflictData.set(conflictKey, uc8Conflict);
-    //   });
+    const result: ConflictResult = {
+      hasConflict: conflictList.length > 0,
+      conflicts: conflictList,
+    };
 
-    //   result = {
-    //     hasConflict: uc8ConflictList.length > 0,
-    //     conflicts: uc8ConflictList.map((uc8Conflict) => ({
-    //       type: uc8Conflict.type as any,
-    //       nodes: uc8Conflict.conflictingNodes,
-    //       description: uc8Conflict.description,
-    //       resolution: uc8Conflict.resolution,
-    //     })),
-    //   };
+    console.log(
+      `[ArtifactManager] detected ${
+        result.conflicts.length
+      } conflicts (types: ${result.conflicts.map((c) => c.type).join(", ")})`,
+    );
 
-    //   console.log(
-    //     `[ArtifactManager] UC8 detected ${
-    //       result.conflicts.length
-    //     } conflicts (types: ${result.conflicts.map((c) => c.type).join(", ")})`
-    //   );
-    // } else {
-    //   console.warn(
-    //     "[ArtifactManager] UC8 not loaded, falling back to uc conflict detection"
-    //   );
-    //   result = this.uc1Engine.detectConflicts(
-    //     specifications,
-    //     activeRequirements,
-    //     activeDomains
-    //   );
+    // Sprint 3 Week 1: DISABLED - Cross-artifact conflicts (user changing mind is allowed)
+    // When user provides new value for existing spec, auto-resolve in SemanticIntegrationService
+    // const crossConflicts = await this.checkCrossArtifactConflicts();
+    // if (crossConflicts.hasConflict) {
+    //   result.hasConflict = true;
+    //   result.conflicts.push(...crossConflicts.conflicts);
     // }
 
-    // // Sprint 3 Week 1: DISABLED - Cross-artifact conflicts (user changing mind is allowed)
-    // // When user provides new value for existing spec, auto-resolve in SemanticIntegrationService
-    // // const crossConflicts = await this.checkCrossArtifactConflicts();
-    // // if (crossConflicts.hasConflict) {
-    // //   result.hasConflict = true;
-    // //   result.conflicts.push(...crossConflicts.conflicts);
-    // // }
+    // Convert to active conflicts if any found
+    if (result.hasConflict) {
+      result.conflicts.forEach((conflict) => {
+        this.addActiveConflict({
+          id: `conflict-${Date.now()}-${Math.random()
+            .toString(36)
+            .substr(2, 9)}`,
+          affectedNodes: conflict.affectedNodes,
+          type: conflict.type as ConflictType,
+          description: conflict.description,
+          resolutionOptions: conflict.resolutionOptions || [],
+          cycleCount: 0,
+          firstDetected: new Date(),
+          lastUpdated: new Date(),
+        });
+      });
 
-    // // Convert to active conflicts if any found
-    // if (result.hasConflict) {
-    //   result.conflicts.forEach((conflict) => {
-    //     this.addActiveConflict({
-    //       id: `conflict-${Date.now()}-${Math.random()
-    //         .toString(36)
-    //         .substr(2, 9)}`,
-    //       conflictingNodes: conflict.nodes,
-    //       type: conflict.type as any,
-    //       description: conflict.description,
-    //       resolutionOptions: this.generateResolutionOptions(conflict),
-    //       cycleCount: 0,
-    //       firstDetected: new Date(),
-    //       lastUpdated: new Date(),
-    //     });
-    //   });
+      // Block system if conflicts detected
+      this.state.priorityQueue.blocked = true;
+      this.state.priorityQueue.blockReason = `${result.conflicts.length} conflict(s) detected`;
+      this.state.priorityQueue.currentPriority = "CONFLICTS";
 
-    //   // Block system if conflicts detected
-    //   this.state.priorityQueue.blocked = true;
-    //   this.state.priorityQueue.blockReason = `${result.conflicts.length} conflict(s) detected`;
-    //   this.state.priorityQueue.currentPriority = "CONFLICTS";
+      this.state.conflicts.metadata.systemBlocked = true;
+      this.state.conflicts.metadata.blockingConflicts =
+        result.conflicts.flatMap((c) => c.affectedNodes);
+    }
 
-    //   this.state.conflicts.metadata.systemBlocked = true;
-    //   this.state.conflicts.metadata.blockingConflicts =
-    //     result.conflicts.flatMap((c) => c.nodes);
-    // }
-
-    // return result;
+    return result;
   }
-
-  // private async triggerConflictPlaceholder(
-  //   specId: SpecificationId
-  // ): Promise<void> {
-  //   // TODO zeev implement
-  //   console.log(
-  //     `[ArtifactManager] Conflict pipeline placeholder triggered for ${specId}`,
-  //     { state: this.state }
-  //   );
-  // }
 
   /**
    * Check for cross-artifact conflicts (mapped vs respec)
@@ -580,52 +560,14 @@ export class ArtifactManager {
   //   return { resolved: resolvedSpecs.length, specs: resolvedSpecs };
   // }
 
-  // private generateResolutionOptions(conflict: any): any[] {
-  //   // Sprint 2: Check if UC8 conflict data is available
-  //   const conflictKey = conflict.nodes.sort().join("|");
-  //   const uc8Conflict = this.uc8ConflictData.get(conflictKey);
+  private addActiveConflict(conflict: ActiveConflict): void {
+    this.state.conflicts.active.push(conflict);
+    this.state.conflicts.metadata.activeCount++;
+    this.state.conflicts.metadata.lastModified = new Date();
 
-  //   if (uc8Conflict && uc8Conflict.resolutionOptions) {
-  //     console.log(
-  //       `[ArtifactManager] Using UC8 resolution options for conflict: ${conflictKey}`
-  //     );
-  //     return uc8Conflict.resolutionOptions;
-  //   }
-
-  //   // Fallback to uc-style resolution options
-  //   if (conflict.resolution) {
-  //     return [
-  //       {
-  //         id: "option-a",
-  //         description: "High performance with grid power (35-65W)",
-  //         action: "select_option_a",
-  //         targetNodes: conflict.nodes,
-  //         expectedOutcome:
-  //           "High performance processor with adequate power supply",
-  //       },
-  //       {
-  //         id: "option-b",
-  //         description:
-  //           "Lower performance optimized for battery operation (10-20W)",
-  //         action: "select_option_b",
-  //         targetNodes: conflict.nodes,
-  //         expectedOutcome:
-  //           "Battery-optimized configuration with lower performance",
-  //       },
-  //     ];
-  //   }
-
-  //   return [];
-  // }
-
-  // private addActiveConflict(conflict: ActiveConflict): void {
-  //   this.state.conflicts.active.push(conflict);
-  //   this.state.conflicts.metadata.activeCount++;
-  //   this.state.conflicts.metadata.lastModified = new Date();
-
-  //   console.log(`[ArtifactManager] Added active conflict: ${conflict.id}`);
-  //   // this.emit("conflict_detected", { conflict });
-  // }
+    console.log(`[ArtifactManager] Added active conflict: ${conflict.id}`);
+    // this.emit("conflict_detected", { conflict });
+  }
 
   // ============= CONFLICT RESOLUTION =============
 
@@ -770,7 +712,10 @@ export class ArtifactManager {
    */
   private async applyConflictResolution(
     conflict: ActiveConflict,
-    resolution: any,
+    resolution: {
+      id: string;
+      targetNodes: string[];
+    },
   ): Promise<void> {
     console.log(
       `[ArtifactManager] Applying resolution ${resolution.id} to conflict ${conflict.id}`,
@@ -801,14 +746,14 @@ export class ArtifactManager {
     // Parse resolution action
     if (resolution.id === "option-a") {
       // Option A: Keep first conflicting node, remove others
-      winningSpecs = [conflict.conflictingNodes[0]];
-      losingSpecs = conflict.conflictingNodes.slice(1);
+      winningSpecs = [conflict.affectedNodes[0]];
+      losingSpecs = conflict.affectedNodes.slice(1);
     } else if (resolution.id === "option-b") {
       // Option B: Keep second conflicting node, remove others
-      winningSpecs = [conflict.conflictingNodes[1]];
-      losingSpecs = conflict.conflictingNodes
+      winningSpecs = [conflict.affectedNodes[1]];
+      losingSpecs = conflict.affectedNodes
         .slice(0, 1)
-        .concat(conflict.conflictingNodes.slice(2));
+        .concat(conflict.affectedNodes.slice(2));
     } else {
       throw new Error(
         `[Resolution] Unknown resolution option: ${resolution.id}`,
@@ -819,7 +764,8 @@ export class ArtifactManager {
     console.log(`[Resolution] Losing specs: ${losingSpecs.join(", ")}`);
 
     // ========== ATOMIC REMOVAL (with rollback capability) ==========
-    const removedSpecs: Array<{ id: string; backup: any }> = [];
+    const removedSpecs: Array<{ id: string; backup: UCArtifactSpecification }> =
+      [];
 
     try {
       // Remove losing specifications
@@ -919,7 +865,10 @@ export class ArtifactManager {
    * Restore specification to mapped artifact (for rollback)
    * Sprint 3 Week 1: Helper for rollback operations
    */
-  private restoreSpecificationToMapped(specId: string, specBackup: any): void {
+  private restoreSpecificationToMapped(
+    specId: string,
+    specBackup: UCArtifactSpecification,
+  ): void {
     this.state.mapped.specifications[specId] = specBackup;
     this.updateArtifactMetrics("mapped");
   }
@@ -988,12 +937,12 @@ export class ArtifactManager {
 
   // ============= FORM SYNCHRONIZATION =============
 
-  async syncWithFormState(requirements: any): Promise<void> {
+  async syncWithFormState(requirements: FormRequirements): Promise<void> {
     // Compatibility layer: sync new artifact state with existing requirements state
     this.state.respec.metadata.formSyncStatus = "synced";
 
-    Object.entries(requirements).forEach(([section, fields]) => {
-      Object.entries(fields).forEach(([fieldName, fieldData]) => {
+    Object.entries(requirements).forEach(([_section, fields]) => {
+      Object.entries(fields).forEach(([_fieldName, fieldData]) => {
         if (!fieldData.value) return;
 
         // TODO zeev artifact management implement correct way of working with

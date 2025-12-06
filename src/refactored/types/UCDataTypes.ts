@@ -38,7 +38,7 @@ export interface UCRequirement {
   parent_scenarios: string[];
   specification_ids: string[];
   category?: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }
 
 export interface UCSpecification {
@@ -49,7 +49,7 @@ export interface UCSpecification {
   field_name: string;
   requires?: UCSpecificationDependency;
   description?: string;
-  technical_details?: any;
+  technical_details?: Record<string, unknown>;
   selected_value?: string; // TODO zeev to be removed when all the ui is defined by the dataset
 }
 
@@ -78,7 +78,7 @@ export interface UCComment {
   parent_requirements: string[];
   parent_scenarios: string[];
   content: string;
-  technical_context?: any;
+  technical_context?: Record<string, unknown>;
 }
 
 export interface UCExclusion {
@@ -118,19 +118,60 @@ interface GenericConflict {
   affectedNodes: string[];
   description: string;
   resolution?: string;
-  resolutionOptions?: ResolutionOption[];
   cycleCount?: number;
   firstDetected?: Date;
   lastUpdated?: Date;
 }
 
-export interface ResolutionOption {
+export interface OverwriteConflict extends GenericConflict {
+  type: "field_overwrite";
+  field: string;
+  existingValue: string;
+  proposedValue: string;
+  // affectedNodes: [string];
+  resolutionOptions?: OverwriteResolutionOption[];
+}
+
+export interface ExclusionConflict extends GenericConflict {
+  type: "exclusion";
+  resolutionOptions?: ExclusionResolutionOption[];
+}
+
+export interface CascadeConflict extends GenericConflict {
+  type: "cascade";
+  resolutionOptions?: GenericResolutionOption[]; // TODO zeev conflict decide what are the options really
+}
+
+export interface ConstraintConflict extends GenericConflict {
+  type: "field_constraint";
+  resolutionOptions?: GenericResolutionOption[]; // TODO zeev conflict decide what are the options really
+}
+
+export type Conflict =
+  | OverwriteConflict
+  | ExclusionConflict
+  | CascadeConflict
+  | ConstraintConflict;
+
+interface GenericResolutionOption {
   id: string;
   description: string;
-  action: string;
   targetNodes: string[];
   expectedOutcome: string;
 }
+
+export interface ExclusionResolutionOption extends GenericResolutionOption {
+  action: "select_option_a" | "select_option_b" | "custom_value" | "defer";
+}
+
+export interface OverwriteResolutionOption extends GenericResolutionOption {
+  // action: "accept" | "modify";
+  action: "keep_existing" | "apply_new";
+}
+
+export type ResolutionOption =
+  | ExclusionResolutionOption
+  | OverwriteResolutionOption;
 
 export interface ConflictResolution {
   conflictId: string;

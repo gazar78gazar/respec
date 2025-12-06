@@ -47,7 +47,7 @@ export interface SpecificationStore {
 export interface UCArtifactSpecification {
   id: SpecificationId;
   name: string;
-  value: any;
+  value: unknown;
   ucSource: UCSpecification;
   attribution: "requirement" | "assumption";
   confidence: number;
@@ -114,7 +114,7 @@ export interface UnmappedList extends BaseArtifact {
 export interface UnmappedItem {
   id: string;
   originalText: string;
-  extractedValue?: any;
+  extractedValue?: unknown;
   reason: "no_match" | "low_confidence" | "validation_failed" | "user_custom";
   timestamp: Date;
   attemptCount: number;
@@ -139,26 +139,18 @@ export interface ConflictList extends BaseArtifact {
 
 export interface ActiveConflict {
   id: string;
-  conflictingNodes: string[]; // Individual nodes, not full branches
-  type: "constraint" | "dependency" | "logical" | "cross_artifact";
+  affectedNodes: string[]; // Individual nodes, not full branches
+  type: ConflictType;
   description: string;
-  resolutionOptions: ConflictResolution[];
+  resolutionOptions: ResolutionOption[];
   cycleCount: number;
   firstDetected: Date;
   lastUpdated: Date;
 }
 
-export interface ConflictResolution {
-  id: string;
-  description: string;
-  action: "select_option_a" | "select_option_b" | "custom_value" | "defer";
-  targetNodes: string[];
-  expectedOutcome: string;
-}
-
 export interface ResolvedConflict extends ActiveConflict {
   resolvedAt: Date;
-  resolution: ConflictResolution;
+  resolution: ResolutionOption;
   resolvedBy: "user" | "system" | "auto_cycle";
 }
 
@@ -188,7 +180,7 @@ export interface PriorityQueueState {
 export interface PriorityItem {
   type: "conflict" | "mapping" | "extraction" | "validation";
   priority: number;
-  payload: any;
+  payload: unknown;
   timestamp: Date;
   blocked: boolean;
   dependencies?: string[];
@@ -219,7 +211,7 @@ export interface ArtifactValidationError {
   nodeId?: string;
   errorType: "structure" | "constraint" | "dependency" | "conflict";
   message: string;
-  details?: any;
+  details?: unknown;
 }
 
 export interface ArtifactValidationWarning {
@@ -227,18 +219,13 @@ export interface ArtifactValidationWarning {
   nodeId?: string;
   warningType: "performance" | "data_quality" | "user_attention";
   message: string;
-  details?: any;
+  details?: unknown;
 }
 
 // ============= HELPER TYPES =============
 
 export type ArtifactType = "respec" | "mapped" | "unmapped" | "conflicts";
 
-export type ConflictType =
-  | "constraint"
-  | "dependency"
-  | "logical"
-  | "cross_artifact";
 export type ProcessingPriority = "CONFLICTS" | "CLEARING" | "PROCESSING";
 
 export interface SyncResult {

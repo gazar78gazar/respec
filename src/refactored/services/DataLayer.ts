@@ -16,7 +16,10 @@ import {
   // UCSpecificationDependency,
   Maybe,
   UCUIField,
+  UCMetadata,
 } from "../types/UCDataTypes";
+
+type UCNode = UCScenario | UCRequirement | UCSpecification | UCComment;
 
 export class UCDataLayer {
   private dataset: Maybe<UCDataset> = null;
@@ -53,7 +56,7 @@ export class UCDataLayer {
    * Get any node by ID (auto-detects type from ID prefix)
    * S## = scenario, R## = requirement, P## = specification, C## = comment
    */
-  getNode(id: string): any {
+  getNode(id: string): Maybe<UCNode> {
     console.log(`[UCDataLayer] 🔍 getNode(${id})`);
 
     const node =
@@ -72,7 +75,7 @@ export class UCDataLayer {
       console.log(`[UCDataLayer]   ✗ Not found: ${id}`);
     }
 
-    return node;
+    return node || null;
   }
 
   getScenario(id: string): Maybe<UCScenario> {
@@ -221,13 +224,9 @@ export class UCDataLayer {
 
     // Flatten all categories (OR within, AND across)
     const allRequired: string[] = [];
-    Object.entries(spec.requires).forEach(
-      ([_category, nodes]: [string, any]) => {
-        if (Array.isArray(nodes)) {
-          allRequired.push(...nodes);
-        }
-      },
-    );
+    Object.entries(spec.requires).forEach(([_category, nodes]) => {
+      allRequired.push(...nodes);
+    });
 
     console.log(
       `[UCDataLayer]   → Requires ${
@@ -377,8 +376,8 @@ export class UCDataLayer {
   /**
    * Get dataset metadata
    */
-  getMetadata(): any {
-    return this.dataset?.metadata || {};
+  getMetadata(): Maybe<UCMetadata> {
+    return this.dataset?.metadata || null;
   }
 }
 

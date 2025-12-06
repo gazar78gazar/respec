@@ -3,7 +3,7 @@ import type { Maybe } from "../types/UCDataTypes";
 // TypeScript interfaces and types
 export interface Requirements {
   [fieldName: string]: {
-    value?: any;
+    value?: unknown;
     priority: 1 | 2 | 3 | 4;
     isAssumption?: boolean;
     required?: boolean;
@@ -415,9 +415,6 @@ class ImportService {
         };
       }
 
-      const headers = lines[0]
-        .split(",")
-        .map((h) => h.replace(/"/g, "").trim());
       const requirements: Requirements = {};
 
       for (let i = 1; i < lines.length; i++) {
@@ -466,7 +463,7 @@ class ImportService {
    * @param data - Data to validate
    * @returns ValidationResult - Validation results
    */
-  validateImportedData(data: any): ValidationResult {
+  validateImportedData(data: unknown): ValidationResult {
     const errors: string[] = [];
     const warnings: string[] = [];
 
@@ -487,16 +484,18 @@ class ImportService {
     }
 
     // Validate priorities
-    Object.entries(data).forEach(([fieldName, requirement]: [string, any]) => {
-      if (
-        !requirement.priority ||
-        ![1, 2, 3, 4].includes(requirement.priority)
-      ) {
-        errors.push(
-          `Invalid priority for field "${fieldName}": must be 1, 2, 3, or 4`,
-        );
-      }
-    });
+    Object.entries(data as Record<string, Requirements[string]>).forEach(
+      ([fieldName, requirement]) => {
+        if (
+          !requirement.priority ||
+          ![1, 2, 3, 4].includes(requirement.priority)
+        ) {
+          errors.push(
+            `Invalid priority for field "${fieldName}": must be 1, 2, 3, or 4`,
+          );
+        }
+      },
+    );
 
     // Check for must-have fields
     const mustFields = [
@@ -752,7 +751,7 @@ class HelperUtilities {
   formatRequirementsForExport(
     requirements: Requirements,
     format: ExportFormat,
-  ): any {
+  ): unknown {
     switch (format) {
       case "csv":
         return Object.entries(requirements).map(([fieldName, requirement]) => ({
@@ -790,7 +789,7 @@ class HelperUtilities {
    * @param data - Data to compress
    * @returns Promise<string> - Compressed data as base64
    */
-  async compressData(data: any): Promise<string> {
+  async compressData(data: unknown): Promise<string> {
     try {
       const jsonString = JSON.stringify(data);
 
@@ -834,9 +833,16 @@ class HelperUtilities {
     }
   }
 
-  private groupRequirementsBySection(
-    requirements: Requirements,
-  ): Record<string, any[]> {
+  private groupRequirementsBySection(requirements: Requirements): Record<
+    string,
+    Array<{
+      fieldName: string;
+      value: unknown;
+      priority: 1 | 2 | 3 | 4;
+      isAssumption: boolean;
+      required: boolean;
+    }>
+  > {
     const sections = {
       performanceComputing: [],
       IOConnectivity: [],
@@ -861,7 +867,7 @@ class HelperUtilities {
 
   private sortRequirementsByPriority(
     requirements: Requirements,
-  ): [string, any][] {
+  ): Array<[string, Requirements[string]]> {
     return Object.entries(requirements).sort(
       ([, a], [, b]) => a.priority - b.priority,
     );

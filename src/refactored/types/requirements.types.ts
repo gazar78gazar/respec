@@ -67,7 +67,7 @@ export interface Requirements {
   computePerformance?: ComputePerformanceSection;
   formFactor?: FormFactorSection;
   environmentStandards?: EnvironmentStandardsSection;
-  [key: string]: any; // Allow for dynamic sections while maintaining known types
+  [key: string]: unknown; // Allow for dynamic sections while maintaining known types
 }
 
 // Cross-field validation error types
@@ -96,7 +96,7 @@ export interface ChatMessage {
 export interface FormUpdateEvent {
   section: string;
   field: string;
-  value: any;
+  value: unknown;
   isAssumption?: boolean;
 }
 
@@ -112,7 +112,7 @@ export interface MASCommunicationResult {
 }
 
 // Export type guards for runtime checking
-export const isFieldData = (value: any): value is FieldData => {
+export const isFieldData = (value: unknown): value is FieldData => {
   return value && typeof value === "object" && "value" in value;
 };
 

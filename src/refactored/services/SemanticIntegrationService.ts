@@ -28,7 +28,7 @@ import type { Maybe } from "../types/UCDataTypes";
 export interface EnhancedChatResult extends ChatResult {
   matchResults?: MatchResult[];
   extractionSummary?: string;
-  conflictsDetected?: any[];
+  conflictsDetected?: unknown[];
   nextSuggestions?: string[];
 }
 
@@ -67,7 +67,7 @@ export class SemanticIntegrationService {
    * @returns EnhancedChatResult with UC matches and form updates
    */
   async processExtractedRequirements(
-    extractedRequirements: any[],
+    extractedRequirements: unknown[],
     conversationalResponse: string,
   ): Promise<EnhancedChatResult> {
     try {
@@ -161,14 +161,22 @@ export class SemanticIntegrationService {
 
   // ============= CONVERSION METHODS =============
 
-  private convertToExtractedNodes(requirements: any[]): ExtractedNode[] {
+  private convertToExtractedNodes(requirements: unknown[]): ExtractedNode[] {
     console.error("convertToExtractedNodes - using section");
-    return requirements.map((req) => ({
-      text: `${req.field}: ${req.value}`,
-      category: req.section,
-      value: req.value,
-      context: req.originalRequest || req.value,
-    }));
+    return requirements.map((req) => {
+      const requirement = req as {
+        field: string;
+        value: unknown;
+        section: string;
+        originalRequest?: string;
+      };
+      return {
+        text: `${requirement.field}: ${requirement.value}`,
+        category: requirement.section,
+        value: requirement.value,
+        context: requirement.originalRequest || requirement.value,
+      };
+    });
   }
 
   /**
@@ -290,7 +298,7 @@ export class SemanticIntegrationService {
 
   private async handleSpecificationMatch(
     specId: string,
-    value: any,
+    value: unknown,
     match: MatchResult,
   ): Promise<void> {
     console.log(`[Route] 🎯 SPECIFICATION: ${specId} = ${value}`);
@@ -319,7 +327,8 @@ export class SemanticIntegrationService {
         );
 
         // Step 3: Trigger conflict detection
-        const conflictResult = await this.artifactManager.detectConflicts();
+        const conflictResult =
+          await this.artifactManager.detectExclusionConflicts();
 
         // Step 4: Sprint 3 - NO auto-resolution, ALL conflicts go to agent for binary question
         if (conflictResult.hasConflict) {
@@ -418,7 +427,8 @@ export class SemanticIntegrationService {
         }
 
         // Trigger conflict detection
-        const conflictResult = await this.artifactManager.detectConflicts();
+        const conflictResult =
+          await this.artifactManager.detectExclusionConflicts();
 
         if (!conflictResult.hasConflict) {
           console.log(

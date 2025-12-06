@@ -10,8 +10,15 @@
  */
 
 import { ucDataLayer } from "./DataLayer";
+import type { Requirements } from "../types/requirements.types";
 
 // TODO zeev to fix type issues
+
+type ConflictContext = {
+  originalRequest?: string;
+  confidence?: number;
+  ucSpec?: string;
+};
 
 export interface FieldConflict {
   id: string;
@@ -64,13 +71,9 @@ export class ConflictDetectionService {
   async detectConflicts(
     field: string,
     newValue: string,
-    currentRequirements: any,
+    currentRequirements: Requirements,
     source: "semantic" | "manual" | "autofill" = "manual",
-    context?: {
-      originalRequest?: string;
-      confidence?: number;
-      ucSpec?: string;
-    },
+    context?: ConflictContext,
   ): Promise<FieldConflict[]> {
     const conflicts: FieldConflict[] = [];
     const [section, fieldName] = field.split(".");
@@ -156,7 +159,7 @@ export class ConflictDetectionService {
     currentValue: string,
     newValue: string,
     source: "semantic" | "manual" | "autofill",
-    context?: any,
+    context?: ConflictContext,
   ): FieldConflict {
     const severity = this.calculateSeverity(currentValue, newValue, source);
 
@@ -236,7 +239,7 @@ export class ConflictDetectionService {
     field: string,
     newValue: string,
     specId: string,
-    currentRequirements: any,
+    _currentRequirements: Requirements,
   ): Promise<FieldConflict[]> {
     const conflicts: FieldConflict[] = [];
 
@@ -286,7 +289,7 @@ export class ConflictDetectionService {
   private async detectCompatibilityIssues(
     field: string,
     newValue: string,
-    currentRequirements: any,
+    currentRequirements: Requirements,
   ): Promise<FieldConflict[]> {
     const conflicts: FieldConflict[] = [];
 
@@ -537,8 +540,22 @@ export class ConflictDetectionService {
   //   return suggestions;
   // }
 
-  private getNestedValue(obj: any, ...keys: string[]): string {
-    return keys.reduce((current, key) => current?.[key], obj) || "";
+  private getNestedValue(obj: Requirements, ...keys: string[]): string | null {
+    let current: unknown = obj;
+    for (const key of keys) {
+      if (
+        current &&
+        typeof current === "object" &&
+        key in (current as Record<string, unknown>)
+      ) {
+        current = (current as Record<string, unknown>)[key];
+      } else {
+        return null;
+      }
+    }
+
+    if (current === null || current === undefined) return null;
+    return typeof current === "string" ? current : String(current);
   }
 
   // ============= PUBLIC API =============

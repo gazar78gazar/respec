@@ -3,6 +3,32 @@ import { formFieldsData, SECTION_MAPPING } from "../config/uiConfig";
 import * as uiUtils from "../../utils/uiUtilities";
 import type { Maybe } from "../types/UCDataTypes";
 
+type RequirementFieldState = {
+  value?: unknown;
+  priority?: number;
+  isAssumption?: boolean;
+  isComplete?: boolean;
+  dataSource?: string;
+  source?: string;
+  toggleHistory?: unknown[];
+};
+
+type RequirementsState = Record<string, Record<string, RequirementFieldState>>;
+
+type FieldDefinition = {
+  type: "dropdown" | "number" | "text" | "date" | "multi-select" | string;
+  options?: string[];
+  min?: number;
+  max?: number;
+  validation?: string;
+  label?: string;
+  group?: string;
+};
+
+type FieldDefinitions = Record<string, Record<string, FieldDefinition>>;
+
+type PriorityLevels = Record<string, { fields: string[] }>;
+
 export const autoCalculateFields = (
   changedField: string,
   newValue: string | number,
@@ -11,7 +37,7 @@ export const autoCalculateFields = (
   const updates: Record<string, string> = {};
 
   if (changedField === "budgetPerUnit" || changedField === "quantity") {
-    const commercial = (requirements as any).commercial || {};
+    const commercial = (requirements as RequirementsState).commercial || {};
     const unitBudget = parseFloat(
       (commercial.budgetPerUnit?.value || 0).toString().replace(/[$,]/g, ""),
     );
@@ -136,12 +162,9 @@ export const validateSystemFieldUpdate = (
   value: unknown,
   allowOverride: boolean = false,
 ): boolean => {
-  const FIELD_DEFS = formFieldsData.field_definitions as Record<
-    string,
-    Record<string, any>
-  >;
+  const FIELD_DEFS = formFieldsData.field_definitions as FieldDefinitions;
 
-  const currentField = (requirements as any)[section]?.[field];
+  const currentField = (requirements as RequirementsState)[section]?.[field];
   if (
     currentField?.source === "user" &&
     currentField?.value !== "" &&
@@ -164,7 +187,11 @@ export const validateSystemFieldUpdate = (
   if (
     fieldDef.type === "dropdown" &&
     fieldDef.options &&
-    !fieldDef.options.includes(value as any)
+    value !== null &&
+    value !== undefined &&
+    !fieldDef.options.includes(
+      typeof value === "string" ? value : String(value),
+    )
   ) {
     return false;
   }
@@ -182,10 +209,11 @@ export const validateSystemFieldUpdate = (
 };
 
 export const getPriority = (fieldKey: string): number => {
-  for (const [level, config] of Object.entries(
-    (formFieldsData as any).priority_system.priority_levels,
-  )) {
-    if ((config as any).fields.includes(fieldKey)) {
+  const priorityLevels = formFieldsData.priority_system
+    .priority_levels as PriorityLevels;
+
+  for (const [level, config] of Object.entries(priorityLevels)) {
+    if (config.fields.includes(fieldKey)) {
       return parseInt(level);
     }
   }
@@ -193,9 +221,13 @@ export const getPriority = (fieldKey: string): number => {
 };
 
 export const calculateCompletion = (requirements: Requirements): number => {
-  const formatted: Record<string, any> = {};
+  const formatted: Record<
+    string,
+    { value?: unknown; priority?: number; isAssumption?: boolean }
+  > = {};
   Object.entries(requirements).forEach(([_, fields]) => {
-    Object.entries(fields as any).forEach(([fieldKey, fieldData]: any) => {
+    const sectionFields = fields as Record<string, RequirementFieldState>;
+    Object.entries(sectionFields).forEach(([fieldKey, fieldData]) => {
       formatted[fieldKey] = {
         value: fieldData.value,
         priority: fieldData.priority,
@@ -214,8 +246,8 @@ export const calculateAccuracy = (requirements: Requirements): number => {
   let accuracyScore = 0;
   let fieldCount = 0;
 
-  Object.values(requirements as any).forEach((section: any) => {
-    Object.values(section).forEach((field: any) => {
+  Object.values(requirements as RequirementsState).forEach((section) => {
+    Object.values(section).forEach((field) => {
       fieldCount++;
       if (field.isComplete) {
         if (!field.isAssumption) accuracyScore += REQUIREMENT_WEIGHT;
@@ -234,14 +266,13 @@ export const calculateAccuracy = (requirements: Requirements): number => {
 };
 
 export const getMustFieldsStatus = (requirements: Requirements) => {
-  const mustFields: string[] = (formFieldsData as any).priority_system
-    .must_fields;
+  const mustFields = formFieldsData.priority_system.must_fields;
   let completed = 0;
   const missing: string[] = [];
 
   mustFields.forEach((fieldKey) => {
     let found = false;
-    Object.values(requirements as any).forEach((section: any) => {
+    Object.values(requirements as RequirementsState).forEach((section) => {
       if (section[fieldKey]?.isComplete) {
         found = true;
         completed++;
@@ -255,9 +286,9 @@ export const getMustFieldsStatus = (requirements: Requirements) => {
 
 export const getFieldLabel = (fieldKey: string): string => {
   for (const [, fields] of Object.entries(
-    (formFieldsData as any).field_definitions,
+    formFieldsData.field_definitions as FieldDefinitions,
   )) {
-    const def: any = (fields as any)[fieldKey];
+    const def = (fields as Record<string, FieldDefinition>)[fieldKey];
     if (def?.label) return def.label as string;
   }
   return fieldKey;
@@ -271,12 +302,13 @@ export const applyFieldUpdate = (
   isAssumption = false,
   source: string = "user",
 ): Requirements => {
+  const currentState = prev as RequirementsState;
   const updated: Requirements = {
     ...prev,
     [section]: {
-      ...(prev as any)[section],
+      ...currentState[section],
       [field]: {
-        ...((prev as any)[section]?.[field] || {}),
+        ...(currentState[section]?.[field] || {}),
         value,
         isComplete: value !== "" && value !== null,
         isAssumption,
@@ -286,12 +318,17 @@ export const applyFieldUpdate = (
     },
   } as Requirements;
 
-  const autoUpdates = autoCalculateFields(field, value as any, updated);
+  const autoUpdates = autoCalculateFields(
+    field,
+    value as string | number,
+    updated,
+  );
   Object.entries(autoUpdates).forEach(([path, autoValue]) => {
     const [autoSection, autoField] = path.split(".");
     if (autoSection && autoField) {
-      const sec = (updated as any)[autoSection] || {};
-      (updated as any)[autoSection] = sec;
+      const sections = updated as RequirementsState;
+      const sec = sections[autoSection] || {};
+      sections[autoSection] = sec;
       sec[autoField] = {
         ...(sec[autoField] || {}),
         value: autoValue,
@@ -315,14 +352,12 @@ export const resolveFieldLocation = (
   fieldKey: string,
 ): Maybe<FieldLocation> => {
   for (const [section, fields] of Object.entries(
-    (formFieldsData as any).field_definitions,
+    formFieldsData.field_definitions as FieldDefinitions,
   )) {
-    if ((fields as any)[fieldKey]) {
-      const fieldDef: any = (fields as any)[fieldKey];
+    if ((fields as Record<string, FieldDefinition>)[fieldKey]) {
+      const fieldDef = (fields as Record<string, FieldDefinition>)[fieldKey];
       let tab: string | undefined;
-      for (const [tabName, sections] of Object.entries(
-        SECTION_MAPPING as any,
-      )) {
+      for (const [tabName, sections] of Object.entries(SECTION_MAPPING)) {
         if ((sections as string[]).includes(section)) {
           tab = tabName;
           break;
@@ -344,7 +379,11 @@ export const focusAndScrollField = (fieldKey: string): boolean => {
   return false;
 };
 
-export const validateField = (fieldKey: string, value: any, fieldDef: any) => {
+export const validateField = (
+  fieldKey: string,
+  value: unknown,
+  fieldDef: FieldDefinition & { label?: string; required?: boolean },
+) => {
   const errors: Array<{ severity: "error" | "warning"; message: string }> = [];
 
   if (
@@ -366,10 +405,15 @@ export const validateField = (fieldKey: string, value: any, fieldDef: any) => {
 
   switch (fieldDef.type) {
     case "number":
-      numValue = parseFloat(value);
-      if (value && value !== "" && isNaN(numValue)) {
+      numValue = Number(value);
+      if (
+        value !== undefined &&
+        value !== null &&
+        value !== "" &&
+        Number.isNaN(numValue)
+      ) {
         errors.push({ severity: "error", message: "Must be a valid number" });
-      } else if (value && value !== "") {
+      } else if (value !== undefined && value !== null && value !== "") {
         if (fieldDef.min !== undefined && numValue < fieldDef.min) {
           errors.push({
             severity: "error",
@@ -410,7 +454,9 @@ export const validateField = (fieldKey: string, value: any, fieldDef: any) => {
         value &&
         value !== "" &&
         fieldDef.options &&
-        !fieldDef.options.includes(value)
+        !fieldDef.options.includes(
+          typeof value === "string" ? value : String(value),
+        )
       ) {
         errors.push({
           severity: "error",
@@ -422,7 +468,10 @@ export const validateField = (fieldKey: string, value: any, fieldDef: any) => {
     case "multi-select":
       if (value && Array.isArray(value) && value.length > 0) {
         const invalidOptions = value.filter(
-          (v: any) => v !== "Not Required" && !fieldDef.options.includes(v),
+          (v) =>
+            fieldDef.options &&
+            v !== "Not Required" &&
+            !fieldDef.options.includes(typeof v === "string" ? v : String(v)),
         );
         if (invalidOptions.length > 0) {
           errors.push({

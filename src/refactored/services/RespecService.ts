@@ -19,6 +19,19 @@ import {
 // Sprint 1: Import UC8 Data Layer
 import { ucDataLayer } from "./DataLayer";
 import type { Maybe } from "../types/UCDataTypes";
+import type { Requirements } from "../types/requirements.types";
+
+type FieldDefinitionInput = {
+  type: string;
+  options?: string[];
+  min?: number;
+  max?: number;
+  validation?: string;
+  label?: string;
+  group?: string;
+};
+
+type FieldDefinitions = Record<string, Record<string, FieldDefinitionInput>>;
 
 // Simplified interfaces for the browser-only service
 export interface ChatResult {
@@ -27,13 +40,13 @@ export interface ChatResult {
   formUpdates?: EnhancedFormUpdate[];
   clarificationNeeded?: string;
   confidence: number;
-  conflictData?: any; // Sprint 3 Week 1: Conflict information for agent
+  conflictData?: unknown; // Sprint 3 Week 1: Conflict information for agent
 }
 
 export interface FormUpdate {
   section: string;
   field: string;
-  value: any;
+  value: unknown;
   isAssumption: boolean;
   confidence: number;
 }
@@ -72,7 +85,7 @@ export type StrucureConflictEntry = {
   id: string;
   type: string;
   description: string;
-  conflictingNodes: any;
+  affectedNodes: unknown;
   resolutionOptions: {
     id: string;
     label: string;
@@ -255,7 +268,7 @@ export class RespecService {
     }
   }
 
-  async initialize(fieldDefinitions?: any): Promise<void> {
+  async initialize(fieldDefinitions?: FieldDefinitions): Promise<void> {
     if (this.isInitialized) {
       console.log("[SimplifiedRespec] Already initialized");
       return;
@@ -411,13 +424,13 @@ export class RespecService {
   //   });
   // }
 
-  private buildFieldOptionsMap(fieldDefinitions: any): void {
+  private buildFieldOptionsMap(fieldDefinitions: FieldDefinitions): void {
     // Build field options map from form field definitions
     Object.entries(fieldDefinitions).forEach(
-      ([section, fields]: [string, any]) => {
+      ([section, fields]: [string, Record<string, FieldDefinitionInput>]) => {
         this.fieldOptionsMap[section] = {};
         Object.entries(fields).forEach(
-          ([fieldKey, fieldDef]: [string, any]) => {
+          ([fieldKey, fieldDef]: [string, FieldDefinitionInput]) => {
             this.fieldOptionsMap[section][fieldKey] = {
               type: fieldDef.type,
               options: fieldDef.options,
@@ -440,11 +453,11 @@ export class RespecService {
     });
   }
 
-  private getFieldMappingsForPrompt(): any {
+  private getFieldMappingsForPrompt(): Record<string, string[]> {
     // Organize field mappings by section for the Anthropic prompt
-    const mappingsBySection: any = {};
+    const mappingsBySection: Record<string, string[]> = {};
 
-    this.fieldMappings.forEach((mapping, name) => {
+    this.fieldMappings.forEach((mapping, _name) => {
       if (!mappingsBySection[mapping.section]) {
         mappingsBySection[mapping.section] = [];
       }
@@ -763,7 +776,7 @@ export class RespecService {
       id: conflict.id,
       type: conflict.type,
       description: conflict.description,
-      conflictingNodes: conflict.conflictingNodes.map((nodeId) => ({
+      affectedNodes: conflict.affectedNodes.map((nodeId) => ({
         id: nodeId,
         ...this.getNodeDetails(nodeId),
       })),
@@ -773,8 +786,7 @@ export class RespecService {
         outcome: option.expectedOutcome,
       })),
       cycleCount: conflict.cycleCount,
-      priority:
-        (conflict.type as any) === "cross_artifact" ? "critical" : "high",
+      priority: conflict.type === "cross_artifact" ? "critical" : "high", // TODO zeev conflict fix cross_artifact type. What is it?
     }));
 
     return {
@@ -791,7 +803,11 @@ export class RespecService {
    * Get node details for conflict display
    * Sprint 3 Week 1: Helper for structuring conflict data
    */
-  private getNodeDetails(nodeId: string): any {
+  private getNodeDetails(nodeId: string): {
+    name: string;
+    value?: unknown;
+    hierarchy?: { domain: string; requirement: string };
+  } {
     if (!this.artifactManager) return {};
 
     // const hierarchy = this.ucEngine.getHierarchy(nodeId);
@@ -818,7 +834,7 @@ export class RespecService {
   async processFormUpdate(
     section: string,
     field: string,
-    value: any,
+    value: unknown,
   ): Promise<FormProcessingResult> {
     console.log(
       `[SimplifiedRespec] Form update: ${section}.${field} = ${value}`,
@@ -904,7 +920,7 @@ export class RespecService {
   private generateFormAcknowledgment(
     section: string,
     field: string,
-    value: any,
+    value: unknown,
   ): string {
     const friendlyName = this.getFriendlyFieldName(section, field);
 
@@ -1046,7 +1062,7 @@ export class RespecService {
   async detectFieldConflicts(
     field: string,
     newValue: string,
-    currentRequirements: any,
+    currentRequirements: Requirements,
     source: "semantic" | "manual" | "autofill" = "manual",
     context?: {
       originalRequest?: string;

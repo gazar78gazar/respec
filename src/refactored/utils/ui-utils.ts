@@ -3,7 +3,7 @@ import type { Maybe } from "../types/UCDataTypes";
 // TypeScript interfaces and types
 export interface Requirements {
   [fieldName: string]: {
-    value?: any;
+    value?: unknown;
     priority: 1 | 2 | 3 | 4;
     isAssumption?: boolean;
     required?: boolean;
@@ -107,7 +107,7 @@ export function calculateCompletionScore(requirements: Requirements): number {
   let totalWeight = 0;
   let completedWeight = 0;
 
-  Object.entries(requirements).forEach(([fieldName, requirement]) => {
+  Object.entries(requirements).forEach(([_, requirement]) => {
     const priority = requirement.priority;
     const weight = 5 - priority; // Priority 1 = weight 4, Priority 2 = weight 3, etc.
 

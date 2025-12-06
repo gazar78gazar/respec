@@ -2,7 +2,7 @@ import React from "react";
 import type { Requirements } from "../types/requirements.types";
 import { SectionAccordionGroup } from "./SectionAccordionGroup";
 import { FormField } from "./FormField";
-import type { FieldDef } from "./FormField";
+import type { FieldDef, FieldValue } from "./FormField";
 
 export interface RequirementsFormProps {
   sections: string[];
@@ -48,7 +48,14 @@ export const RequirementsForm: React.FC<RequirementsFormProps> = ({
                 .map((fieldKey) => ({
                   fieldKey,
                   fieldDef: fieldDefs[section][fieldKey],
-                  data: (requirements as any)[section]?.[fieldKey],
+                  data: (
+                    requirements[section] as
+                      | Record<
+                          string,
+                          { value?: FieldValue; isAssumption?: boolean }
+                        >
+                      | undefined
+                  )?.[fieldKey],
                 }))
                 .filter((f) => f.fieldDef);
 
