@@ -115,10 +115,11 @@ export type ConflictType =
 
 interface GenericConflict {
   id: string;
-  affectedNodes: string[];
+  key: string;
   description: string;
   resolution?: string;
   cycleCount?: number;
+  affectedNodes: string[];
   firstDetected?: Date;
   lastUpdated?: Date;
 }
@@ -128,23 +129,26 @@ export interface OverwriteConflict extends GenericConflict {
   field: string;
   existingValue: string;
   proposedValue: string;
-  // affectedNodes: [string];
   resolutionOptions?: OverwriteResolutionOption[];
 }
 
 export interface ExclusionConflict extends GenericConflict {
   type: "exclusion";
+  exclusionId: string;
+  existingValue: string;
+  proposedValue: string;
   resolutionOptions?: ExclusionResolutionOption[];
 }
 
 export interface CascadeConflict extends GenericConflict {
   type: "cascade";
-  resolutionOptions?: GenericResolutionOption[]; // TODO zeev conflict decide what are the options really
+  resolutionOptions?: CascadeResolutionOption[]; // TODO zeev conflict decide what are the options really
 }
 
 export interface ConstraintConflict extends GenericConflict {
   type: "field_constraint";
-  resolutionOptions?: GenericResolutionOption[]; // TODO zeev conflict decide what are the options really
+  field: string;
+  resolutionOptions?: ConstraintResolutionOption[]; // TODO zeev conflict decide what are the options really
 }
 
 export type Conflict =
@@ -161,12 +165,20 @@ interface GenericResolutionOption {
 }
 
 export interface ExclusionResolutionOption extends GenericResolutionOption {
-  action: "select_option_a" | "select_option_b" | "custom_value" | "defer";
+  action: "select_option_a" | "select_option_b" | "custom_value" | "defer"; // TODO zonflict do we need custom value and "defer"?
 }
 
 export interface OverwriteResolutionOption extends GenericResolutionOption {
   // action: "accept" | "modify";
   action: "keep_existing" | "apply_new";
+}
+
+export interface CascadeResolutionOption extends GenericResolutionOption {
+  action: "keep_existing" | "apply_new"; // TODO zeev conflict implement correct options
+}
+
+export interface ConstraintResolutionOption extends GenericResolutionOption {
+  action: "keep_existing" | "apply_new"; // TODO zeev conflict implement correct options
 }
 
 export type ResolutionOption =

@@ -929,13 +929,13 @@ Please respond with A or B.`;
     initializeApp();
   }, [respecService]);
 
-  useEffect(() => {
-    const syncInterval = setInterval(() => {
-      console.log("[UI-ReSpec] Polling ready - waiting for ReSpec integration");
-    }, 5000); // Reduced frequency until ReSpec is integrated
+  // useEffect(() => {
+  //   const syncInterval = setInterval(() => {
+  //     console.log("[UI-ReSpec] Polling ready - waiting for ReSpec integration");
+  //   }, 5000); // Reduced frequency until ReSpec is integrated
 
-    return () => clearInterval(syncInterval);
-  }, []);
+  //   return () => clearInterval(syncInterval);
+  // }, []);
 
   useEffect(() => {
     if (!artifactManager) return;

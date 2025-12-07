@@ -239,7 +239,7 @@ export const calculateCompletion = (requirements: Requirements): number => {
 };
 
 export const calculateAccuracy = (requirements: Requirements): number => {
-  const TOTAL_FIELDS = 37;
+  const TOTAL_FIELDS = 37; // TODO zeev fix correct amount based on config
   const REQUIREMENT_WEIGHT = 100 / TOTAL_FIELDS;
   const ASSUMPTION_WEIGHT = 60 / TOTAL_FIELDS;
 
