@@ -75,16 +75,18 @@ export interface AutofillResult {
   trigger: string;
 }
 
+export type EntryResolutionOption = {
+  id: string;
+  label: string;
+  outcome: string;
+};
+
 export type StrucureConflictEntry = {
   id: string;
   type: string;
   description: string;
   affectedNodes: unknown;
-  resolutionOptions: {
-    id: string;
-    label: string;
-    outcome: string;
-  }[];
+  resolutionOptions: EntryResolutionOption[];
   cycleCount: number;
   priority: "critical" | "high";
 };

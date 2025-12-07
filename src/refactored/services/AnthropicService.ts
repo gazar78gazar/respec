@@ -1,11 +1,17 @@
 // Anthropic API Integration Service
 import Anthropic from "@anthropic-ai/sdk";
+import { ArtifactManager } from "./ArtifactManager";
+import {
+  EntryResolutionOption,
+  StructuredConflicts,
+  StrucureConflictEntry,
+} from "./RespecService";
 
 export class AnthropicService {
   private client: Anthropic | null = null;
   private apiKey: string;
   private isInitialized = false;
-  private fieldMappings: any = null;
+  private fieldMappings: Record<string, string[]> = {};
 
   constructor(apiKey?: string) {
     // Get API key from environment or constructor
@@ -18,7 +24,7 @@ export class AnthropicService {
     }
   }
 
-  async initialize(fieldMappings?: any): Promise<void> {
+  async initialize(fieldMappings?: Record<string, string[]>): Promise<void> {
     if (this.isInitialized) return;
 
     // Store field mappings from UC1.json
@@ -47,12 +53,12 @@ export class AnthropicService {
 
   async analyzeRequirements(
     message: string,
-    context?: any,
+    context?: string,
   ): Promise<{
     requirements: Array<{
       section: string;
       field: string;
-      value: any;
+      value: string;
       confidence: number;
       isAssumption: boolean;
       originalRequest?: string;
@@ -78,19 +84,20 @@ export class AnthropicService {
         [];
 
       // Add previous conversation turns if available
-      if (
-        context?.conversationHistory &&
-        Array.isArray(context.conversationHistory)
-      ) {
-        context.conversationHistory.forEach((turn: any) => {
-          if (turn.role === "user" || turn.role === "assistant") {
-            messages.push({
-              role: turn.role,
-              content: turn.content || "",
-            });
-          }
-        });
-      }
+      // TODO zeev history can't exist on string
+      // if (
+      //   context?.conversationHistory &&
+      //   Array.isArray(context.conversationHistory)
+      // ) {
+      //   context.conversationHistory.forEach((turn: any) => {
+      //     if (turn.role === "user" || turn.role === "assistant") {
+      //       messages.push({
+      //         role: turn.role,
+      //         content: turn.content || "",
+      //       });
+      //     }
+      //   });
+      // }
 
       // Add current message
       messages.push({
@@ -382,7 +389,7 @@ CRITICAL:
    */
   async parseConflictResponse(
     userMessage: string,
-    _activeConflict: any,
+    _activeConflict: StrucureConflictEntry,
   ): Promise<{
     isResolution: boolean;
     choice: "a" | "b" | null;
@@ -526,7 +533,7 @@ Examples:
    */
   private async generateClarification(
     userMessage: string,
-    conflict: any,
+    conflict: StrucureConflictEntry,
   ): Promise<string> {
     if (!this.client) {
       return `To help you decide, let me clarify:\n\nOption A: ${conflict.resolutionOptions[0].label}\nOption B: ${conflict.resolutionOptions[1].label}\n\nPlease choose A or B.`;
@@ -578,13 +585,13 @@ Keep it friendly and conversational.
    */
   async handleConflictResolution(
     userMessage: string,
-    conflictData: any,
-    artifactManager: any,
+    conflictData: StructuredConflicts,
+    artifactManager: ArtifactManager,
   ): Promise<{
     response: string;
     mode: string;
     conflictId?: string;
-    chosenOption?: any;
+    chosenOption?: EntryResolutionOption;
     cycleCount?: number;
   }> {
     console.log("[AnthropicService] Handling conflict resolution", {
@@ -652,8 +659,16 @@ Keep it friendly and conversational.
     // Step 5: Map choice to resolution option
     const resolutionId = parsed.choice === "a" ? "option-a" : "option-b";
     const selectedOption = conflict.resolutionOptions.find(
-      (opt: any) => opt.id === resolutionId,
+      (opt: EntryResolutionOption) => opt.id === resolutionId,
     );
+
+    if (!selectedOption) {
+      return {
+        response: `I encountered an issue applying that choice, because selected option was not found.`,
+        mode: "resolution_failed",
+        conflictId: conflict.id,
+      };
+    }
 
     // Step 6: Call ArtifactManager to apply resolution
     try {
