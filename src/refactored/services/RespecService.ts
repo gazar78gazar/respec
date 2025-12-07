@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
-import { AnthropicService } from "../../services/respec/AnthropicService";
+import { AnthropicService } from "./AnthropicService";
 import { SemanticMatcher, createSemanticMatcher } from "./SemanticMatcher";
 import {
   SemanticMatchingService,
