@@ -984,7 +984,7 @@ Please respond with A or B.`;
         isAssumption,
       });
     },
-    [communicateWithMAS, requirements, respecService],
+    [communicateWithMAS],
   );
 
   useEffect(() => {

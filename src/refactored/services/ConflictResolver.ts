@@ -99,7 +99,7 @@ export class ConflictResolver {
     conflict: Conflict,
     currentSelections: string[],
   ): ResolutionOption[] {
-    console.log("[!!!] generateResolutionOptions", conflict, currentSelections);
+    console.log("[ConflictResolver] generateResolutionOptions", conflict, currentSelections);
     switch (conflict.type) {
       case "field_overwrite": {
         const _c = conflict as OverwriteConflict;
@@ -363,124 +363,6 @@ export class ConflictResolver {
     }
     return conflicts;
   }
-
-  /**
-   * Detect if adding a spec would overwrite existing selections
-   * This is the KEY method for comprehensive conflict detection!
-   *
-   * Returns conflicts for:
-   * 1. Direct field overwrites (same field, different value)
-   * 2. Exclusion-triggered overwrites (incompatible specs)
-   * 3. Cascade overwrites (dependencies causing conflicts)
-   *
-   * NOTE: Dataset guarantees no cycles, so no cycle detection needed
-   */
-  // detectOverwriteConflictsOld(
-  //   newSpecId: string,
-  //   currentSelections: string[]
-  // ): OverwriteConflict[] {
-  //   //   field: string; //   type: "field_overwrite" | "exclusion" | "cascade" | "field_constraint"; // Array<{
-  //   existingValue: string;
-  //   proposedValue: string;
-  //   reason: string;
-  //   exclusionId?: string;
-  //   affectedNodes: string[];
-  //   resolution?: string;
-  // }>
-  // console.log(`[UCDataLayer] 🔍 detectOverwriteConflicts(${newSpecId}`, currentSelections);
-
-  // const conflicts: OverwriteConflict[] = [];
-  // const newSpec = ucDataLayer.getSpecification(newSpecId);
-  // if (!newSpec) return conflicts;
-
-  // // 1. Check direct field overwrites
-  // const fieldName = newSpec.field_name;
-  // if (fieldName) {
-  //   const existingSpecForField = currentSelections.find((id) => {
-  //     const spec = ucDataLayer.getSpecification(id);
-  //     return spec?.field_name === fieldName;
-  //   });
-
-  //   if (existingSpecForField && existingSpecForField !== newSpecId) {
-  //     const newConflict: OverwriteConflict = {
-  //       id: uuidv4(),
-  //       type: "field_overwrite",
-  //       field: fieldName,
-  //       existingValue: existingSpecForField,
-  //       proposedValue: newSpecId,
-  //       description: `Field "${fieldName}" already has a value`,
-  //       affectedNodes: [existingSpecForField],
-  //     };
-  //     conflicts.push(newConflict);
-  //     console.log(
-  //       `[UCDataLayer]   🔄 Field overwrite detected for "${fieldName}"`,
-  //     );
-  //   }
-  // }
-
-  // 2. Check exclusion-triggered overwrites
-  // const exclusions = ucDataLayer.getExclusionsForNode(newSpecId);
-  // for (const exclusion of exclusions) {
-  //   const conflictingNode = exclusion.nodes.find(
-  //     (n: string) => n !== newSpecId && currentSelections.includes(n),
-  //   );
-
-  //   if (conflictingNode) {
-  //     const conflictingSpec = ucDataLayer.getSpecification(conflictingNode);
-  //     conflicts.push({
-  //       type: "exclusion",
-  //       field: conflictingSpec?.field_name || "",
-  //       existingValue: conflictingNode,
-  //       proposedValue: newSpecId,
-  //       reason: exclusion.reason,
-  //       exclusionId: exclusion.id,
-  //       affectedNodes: [conflictingNode],
-  //       resolution: exclusion.question_template,
-  //     });
-  //     console.log(`[UCDataLayer]   🚫 Exclusion conflict: ${exclusion.id}`);
-  //   }
-  // }
-
-  // 3. Check cascade overwrites (dependencies causing conflicts)
-  // const requiredNodes = ucDataLayer.getRequiredNodes(newSpecId);
-  // for (const reqNode of requiredNodes) {
-  //   // Simple recursive check without cycle detection (dataset guarantees no cycles)
-  //   const cascadeConflicts = this.detectOverwriteConflicts(
-  //     reqNode,
-  //     currentSelections
-  //   );
-
-  //   conflicts.push(
-  //     ...cascadeConflicts.map((c) => ({
-  //       ...c,
-  //       type: "cascade",
-  //       reason: `Required by ${newSpecId}: ${c.reason}`,
-  //     }))
-  //   );
-  // }
-
-  // 4. Check if this causes field constraints (field has zero valid options)
-  // const validOptions = ucDataLayer.getValidOptionsForField(fieldName || "", [
-  //   ...currentSelections,
-  //   newSpecId,
-  // ]);
-  // if (fieldName && validOptions.length === 0) {
-  //   conflicts.push({
-  //     type: "field_constraint",
-  //     field: fieldName,
-  //     existingValue: currentSelections.join(","),
-  //     proposedValue: newSpecId,
-  //     reason: `Adding ${newSpecId} would leave field "${fieldName}" with no valid options`,
-  //     affectedNodes: currentSelections,
-  //   });
-  //   console.log(
-  //     `[UCDataLayer]   🚨 Field constraint violation for "${fieldName}"`
-  //   );
-  // }
-
-  //   console.log(`[UCDataLayer]   → Total conflicts: ${conflicts.length}`);
-  //   return conflicts;
-  // }
 
   private generateDefaultOverwriteOptions(
     conflict: OverwriteConflict,

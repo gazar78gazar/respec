@@ -249,7 +249,7 @@ export class ArtifactManager {
 
   async detectExclusionConflicts(): Promise<ConflictResult> {
     // TODO zeev conflict - rewrite
-    console.warn("[!!!] detectExclusionConflicts started");
+    console.warn("[ArtifactManager] detectExclusionConflicts started");
 
     // return { hasConflict: false, conflicts: [] };
 
@@ -264,13 +264,13 @@ export class ArtifactManager {
 
     const mappedSpecs = this.state.mapped.specifications;
     console.log(
-      "[!!!] detectExclusionConflicts Specifications to check from mappedSpecs",
+      "[ArtifactManager] detectExclusionConflicts Specifications to check from mappedSpecs",
       mappedSpecs,
     );
 
     const respecSpecs = this.state.respec.specifications;
     console.log(
-      "[!!!] detectExclusionConflicts Specifications to check from respecSpecs",
+      "[ArtifactManager] detectExclusionConflicts Specifications to check from respecSpecs",
       respecSpecs,
     );
 
@@ -312,7 +312,7 @@ export class ArtifactManager {
 
       if (conflicts)
         console.log(
-          `[!!!] detectExclusionConflicts for ${checkSpec} and ${otherSpecs} are`,
+          `[ArtifactManager] detectExclusionConflicts for ${checkSpec} and ${otherSpecs} are`,
           conflicts,
         );
 
@@ -327,7 +327,7 @@ export class ArtifactManager {
     // Convert conflicts to ConflictResult format
     const conflictList = Array.from(allConflicts.values());
     console.log(
-      `[!!!] detectExclusionConflicts result conflict list`,
+      `[ArtifactManager] detectExclusionConflicts result conflict list`,
       conflictList,
     );
 
@@ -343,7 +343,7 @@ export class ArtifactManager {
     };
 
     console.log(
-      `[!!!] detectExclusionConflicts detected ${
+      `[ArtifactManager] detectExclusionConflicts detected ${
         result.conflicts.length
       } conflicts (types: ${result.conflicts.map((c) => c.type).join(", ")})`,
     );
