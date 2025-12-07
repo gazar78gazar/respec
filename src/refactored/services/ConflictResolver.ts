@@ -99,7 +99,11 @@ export class ConflictResolver {
     conflict: Conflict,
     currentSelections: string[],
   ): ResolutionOption[] {
-    console.log("[ConflictResolver] generateResolutionOptions", conflict, currentSelections);
+    console.log(
+      "[ConflictResolver] generateResolutionOptions",
+      conflict,
+      currentSelections,
+    );
     switch (conflict.type) {
       case "field_overwrite": {
         const _c = conflict as OverwriteConflict;
