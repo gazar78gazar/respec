@@ -13,7 +13,7 @@ export class AnthropicService {
 
     if (!this.apiKey) {
       console.warn(
-        "[AnthropicService] No API key provided - will use fallback responses"
+        "[AnthropicService] No API key provided - will use fallback responses",
       );
     }
   }
@@ -47,7 +47,7 @@ export class AnthropicService {
 
   async analyzeRequirements(
     message: string,
-    context?: any
+    context?: any,
   ): Promise<{
     requirements: Array<{
       section: string;
@@ -99,7 +99,7 @@ export class AnthropicService {
       });
 
       console.log(
-        `[AnthropicService] 📜 Sending ${messages.length} messages (${messages.length - 1} history + 1 current)`
+        `[AnthropicService] 📜 Sending ${messages.length} messages (${messages.length - 1} history + 1 current)`,
       );
 
       const completion = await this.client.messages.create({
@@ -128,7 +128,7 @@ export class AnthropicService {
       } catch (parseError) {
         console.warn(
           "[AnthropicService] Could not parse JSON response:",
-          parseError
+          parseError,
         );
       }
 
@@ -382,7 +382,7 @@ CRITICAL:
    */
   async parseConflictResponse(
     userMessage: string,
-    _activeConflict: any
+    _activeConflict: any,
   ): Promise<{
     isResolution: boolean;
     choice: "a" | "b" | null;
@@ -489,7 +489,7 @@ Examples:
     } catch (error) {
       console.error(
         "[AnthropicService] Error parsing conflict response:",
-        error
+        error,
       );
 
       // Fallback to simple parsing
@@ -526,7 +526,7 @@ Examples:
    */
   private async generateClarification(
     userMessage: string,
-    conflict: any
+    conflict: any,
   ): Promise<string> {
     if (!this.client) {
       return `To help you decide, let me clarify:\n\nOption A: ${conflict.resolutionOptions[0].label}\nOption B: ${conflict.resolutionOptions[1].label}\n\nPlease choose A or B.`;
@@ -566,7 +566,7 @@ Keep it friendly and conversational.
     } catch (error) {
       console.error(
         "[AnthropicService] Error generating clarification:",
-        error
+        error,
       );
       return `To help you decide:\n\nOption A: ${conflict.resolutionOptions[0].label}\nOption B: ${conflict.resolutionOptions[1].label}\n\nWhich would you prefer? Please respond with A or B.`;
     }
@@ -579,7 +579,7 @@ Keep it friendly and conversational.
   async handleConflictResolution(
     userMessage: string,
     conflictData: any,
-    artifactManager: any
+    artifactManager: any,
   ): Promise<{
     response: string;
     mode: string;
@@ -609,7 +609,7 @@ Keep it friendly and conversational.
     if (!parsed.isResolution) {
       const clarification = await this.generateClarification(
         userMessage,
-        conflict
+        conflict,
       );
 
       return {
@@ -652,7 +652,7 @@ Keep it friendly and conversational.
     // Step 5: Map choice to resolution option
     const resolutionId = parsed.choice === "a" ? "option-a" : "option-b";
     const selectedOption = conflict.resolutionOptions.find(
-      (opt: any) => opt.id === resolutionId
+      (opt: any) => opt.id === resolutionId,
     );
 
     // Step 6: Call ArtifactManager to apply resolution

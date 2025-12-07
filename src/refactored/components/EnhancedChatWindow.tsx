@@ -48,13 +48,7 @@ interface EnhancedChatWindowProps {
   width: number;
   onMouseDown: (e: React.MouseEvent) => void;
   isResizing: boolean;
-  onConflictResolve?: (
-    conflictId: string,
-    resolution: "accept" | "reject" | "modify",
-    newValue?: string,
-  ) => void;
 }
-
 export const EnhancedChatWindow: React.FC<EnhancedChatWindowProps> = ({
   onSendMessage,
   messages,
@@ -63,7 +57,6 @@ export const EnhancedChatWindow: React.FC<EnhancedChatWindowProps> = ({
   width,
   onMouseDown,
   isResizing,
-  onConflictResolve,
 }) => {
   const inputRef = useRef<string>("");
   const [input, setInputState] = useState("");
@@ -212,50 +205,6 @@ export const EnhancedChatWindow: React.FC<EnhancedChatWindowProps> = ({
                   >
                     {Math.round(update.confidence * 100)}%
                   </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Conflicts Detected */}
-        {metadata.conflicts && metadata.conflicts.length > 0 && (
-          <div>
-            <div className="font-medium text-red-700 mb-1">
-              ⚠️ Conflicts Detected:
-            </div>
-            <div className="space-y-2">
-              {metadata.conflicts.map((conflict, idx) => (
-                <div
-                  key={idx}
-                  className="bg-red-50 border border-red-200 p-2 rounded"
-                >
-                  <div className="text-red-800 font-medium">
-                    {conflict.field}
-                  </div>
-                  <div className="text-sm text-red-600">
-                    Current:{" "}
-                    <span className="font-mono">{conflict.currentValue}</span> →
-                    New: <span className="font-mono">{conflict.newValue}</span>
-                  </div>
-                  <div className="flex space-x-2 mt-2">
-                    <button
-                      onClick={() =>
-                        onConflictResolve?.(conflict.field, "accept")
-                      }
-                      className="px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600"
-                    >
-                      Accept New
-                    </button>
-                    <button
-                      onClick={() =>
-                        onConflictResolve?.(conflict.field, "reject")
-                      }
-                      className="px-2 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600"
-                    >
-                      Keep Current
-                    </button>
-                  </div>
                 </div>
               ))}
             </div>

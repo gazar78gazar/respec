@@ -13,7 +13,8 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
-    "test:quick": "node -e \"console.log('Open browser console and paste test-runner.js content')\""
+    "test:quick": "node -e \"console.log('Open browser console and paste test-runner.js content')\"",
+    "prepare": "husky install"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.63.1",

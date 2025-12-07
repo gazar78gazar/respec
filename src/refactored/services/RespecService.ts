@@ -10,16 +10,10 @@ import {
   createSemanticIntegrationService as createSemanticIntegrationServiceNew,
 } from "./SemanticIntegrationService";
 import { ArtifactManager } from "./ArtifactManager";
-import {
-  ConflictDetectionService,
-  createConflictDetectionService,
-  FieldConflict,
-} from "./ConflictDetector";
 
 // Sprint 1: Import UC8 Data Layer
 import { ucDataLayer } from "./DataLayer";
 import type { Maybe } from "../types/UCDataTypes";
-import type { Requirements } from "../types/requirements.types";
 
 type FieldDefinitionInput = {
   type: string;
@@ -121,67 +115,9 @@ export class RespecService {
   private semanticMatcher: Maybe<SemanticMatcher> = null;
   private semanticMatchingService: Maybe<SemanticMatchingService> = null;
   private semanticIntegrationNew: Maybe<SemanticIntegrationServiceNew> = null;
-  private useSemanticMatching: boolean = true; // TODO zeev how to use it?
 
   // Sprint 3 Week 1: Core services for conflict detection and resolution
   private artifactManager?: ArtifactManager;
-
-  // Conflict detection system
-  private conflictDetection: Maybe<ConflictDetectionService> = null;
-
-  // Sprint 3: Pending form updates from RESPEC artifact changes
-  // private pendingFormUpdates: EnhancedFormUpdate[] = []; // TODO zeev how is it being used?
-
-  // Engineering pattern recognition database
-  // private patterns = {
-  //   // Digital I/O patterns
-  //   digital_input: [
-  //     /(\d+)\s*(digital)?\s*(inputs?)/i,
-  //     /(\d+)\s*DI/i,
-  //     /(\d+)\s*binary\s*inputs?/i,
-  //     /need\s*(\d+)\s*on[\/\-]?off\s*signals?/i,
-  //   ],
-  //   digital_output: [
-  //     /(\d+)\s*(digital)?\s*(outputs?)/i,
-  //     /(\d+)\s*DO/i,
-  //     /(\d+)\s*binary\s*outputs?/i,
-  //     /control\s*(\d+)\s*devices?/i,
-  //   ],
-  //   analog_input: [
-  //     /(\d+)\s*(analog)?\s*(inputs?)/i,
-  //     /(\d+)\s*AI/i,
-  //     /(\d+)\s*sensors?/i,
-  //     /measure\s*(\d+)\s*signals?/i,
-  //   ],
-  //   analog_output: [
-  //     /(\d+)\s*(analog)?\s*(outputs?)/i,
-  //     /(\d+)\s*AO/i,
-  //     /(\d+)\s*control\s*outputs?/i,
-  //     /drive\s*(\d+)\s*actuators?/i,
-  //   ],
-  //   // Power and voltage patterns
-  //   power_supply: [
-  //     /(\d+)\s*v(olt)?s?\s*(supply|power)/i,
-  //     /(\d+)\s*vdc/i,
-  //     /power\s*at\s*(\d+)\s*v/i,
-  //   ],
-  //   communication: [
-  //     /ethernet/i,
-  //     /modbus/i,
-  //     /profinet/i,
-  //     /canbus/i,
-  //     /serial/i,
-  //     /rs485/i,
-  //     /rs232/i,
-  //   ],
-  //   // Application contexts
-  //   substation: [
-  //     /substation/i,
-  //     /electrical\s*substation/i,
-  //     /power\s*substation/i,
-  //   ],
-  //   industrial: [/industrial/i, /manufacturing/i, /factory/i, /plant/i],
-  // };
 
   // Smart defaults based on common engineering requirements
   private smartDefaults = {
@@ -250,21 +186,16 @@ export class RespecService {
       this.semanticMatcher = createSemanticMatcher();
       this.semanticMatcher.initialize(artifactManager);
 
-      // Initialize conflict detection
-      this.conflictDetection = createConflictDetectionService();
-
       console.log(
         "[SimplifiedRespec] ✅ Sprint 2 semantic matching initialized",
       );
       console.log("[SimplifiedRespec] - SemanticMatchingService: ready");
       console.log("[SimplifiedRespec] - SemanticIntegrationService: ready");
-      this.useSemanticMatching = true;
     } catch (error) {
       console.error(
         "[SimplifiedRespec] Failed to initialize semantic matching:",
         error,
       );
-      this.useSemanticMatching = false;
     }
   }
 
@@ -373,56 +304,6 @@ export class RespecService {
       `[SimplifiedRespec] Extracted ${this.fieldMappings.size} field mappings from UC8`,
     );
   }
-
-  // private loadFallbackMappings(): void {
-  //   // Fallback mappings if UC.json can't be loaded
-  //   const fallbackMappings = [
-  //     {
-  //       name: "processor",
-  //       section: "computePerformance",
-  //       field: "processorType",
-  //     },
-  //     {
-  //       name: "memory",
-  //       section: "computePerformance",
-  //       field: "memory_capacity",
-  //     },
-  //     {
-  //       name: "storage",
-  //       section: "computePerformance",
-  //       field: "storage_capacity",
-  //     },
-  //     {
-  //       name: "digital inputs",
-  //       section: "IOConnectivity",
-  //       field: "digitalIO",
-  //     },
-  //     { name: "analog inputs", section: "IOConnectivity", field: "analogIO" },
-  //     {
-  //       name: "ethernet ports",
-  //       section: "IOConnectivity",
-  //       field: "ethernetPorts",
-  //     },
-  //     {
-  //       name: "temperature",
-  //       section: "environmentStandards",
-  //       field: "operatingTemperature",
-  //     },
-  //     {
-  //       name: "budget per unit",
-  //       section: "commercial",
-  //       field: "budgetPerUnit",
-  //     },
-  //     { name: "quantity", section: "commercial", field: "quantity" },
-  //   ];
-
-  //   fallbackMappings.forEach((map) => {
-  //     this.fieldMappings.set(map.name, {
-  //       section: map.section,
-  //       field: map.field,
-  //     });
-  //   });
-  // }
 
   private buildFieldOptionsMap(fieldDefinitions: FieldDefinitions): void {
     // Build field options map from form field definitions
@@ -1055,78 +936,5 @@ export class RespecService {
    */
   getArtifactManager(): ArtifactManager | undefined {
     return this.artifactManager;
-  }
-
-  // ============= CONFLICT DETECTION API =============
-
-  async detectFieldConflicts(
-    field: string,
-    newValue: string,
-    currentRequirements: Requirements,
-    source: "semantic" | "manual" | "autofill" = "manual",
-    context?: {
-      originalRequest?: string;
-      confidence?: number;
-      ucSpec?: string;
-    },
-  ): Promise<FieldConflict[]> {
-    if (!this.conflictDetection) {
-      console.warn("[SimplifiedRespec] Conflict detection not initialized");
-      return [];
-    }
-
-    try {
-      return await this.conflictDetection.detectConflicts(
-        field,
-        newValue,
-        currentRequirements,
-        source,
-        context,
-      );
-    } catch (error) {
-      console.error("[SimplifiedRespec] Conflict detection failed:", error);
-      return [];
-    }
-  }
-
-  async resolveConflict(
-    conflictId: string,
-    action: "accept" | "reject" | "modify",
-    newValue?: string,
-  ) {
-    if (!this.conflictDetection) {
-      throw new Error("Conflict detection not initialized");
-    }
-
-    return await this.conflictDetection.resolveConflict(
-      conflictId,
-      action,
-      newValue,
-    );
-  }
-
-  getActiveConflicts(): FieldConflict[] {
-    if (!this.conflictDetection) return [];
-    return this.conflictDetection.getActiveConflicts();
-  }
-
-  onConflictChange(listener: (conflicts: FieldConflict[]) => void): () => void {
-    if (!this.conflictDetection) {
-      return () => {}; // No-op unsubscribe
-    }
-    return this.conflictDetection.onConflictChange(listener);
-  }
-
-  getConflictStats() {
-    if (!this.conflictDetection) {
-      return { active: 0, resolved: 0, byType: {}, bySeverity: {} };
-    }
-    return this.conflictDetection.getConflictStats();
-  }
-
-  clearAllConflicts() {
-    if (this.conflictDetection) {
-      this.conflictDetection.clearAllConflicts();
-    }
   }
 }

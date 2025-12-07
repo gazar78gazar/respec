@@ -8,7 +8,6 @@ import {
   AutofillResult,
 } from "./services/RespecService";
 import { dataServices } from "./services/dataServices";
-import { FieldConflict } from "./services/ConflictDetector";
 import { ArtifactManager } from "./services/ArtifactManager";
 import { ucDataLayer } from "./services/DataLayer";
 
@@ -31,9 +30,7 @@ import { HeaderBar } from "./components/HeaderBar";
 import { RequirementsReview } from "./components/RequirementsReview";
 import { formFieldsData, SECTION_MAPPING } from "./config/uiConfig";
 import { ProcessingPopup } from "./components/ProcessingPopup";
-import { ConflictPanelContainer } from "./components/ConflictPanelContainer";
 import { RequirementsForm } from "./components/RequirementsForm";
-import { ConflictToggleButton } from "./components/ConflictToggleButton";
 import { RequirementsHeader } from "./components/RequirementsHeader";
 import {
   mapValueToFormField,
@@ -78,9 +75,6 @@ export default function App() {
     },
   ]);
   const chatEndRef = useRef(null);
-
-  const [activeConflicts, setActiveConflicts] = useState<FieldConflict[]>([]);
-  const [showConflicts, setShowConflicts] = useState(true);
 
   const [respecService] = useState(() => new RespecService());
   const [isProcessing, setIsProcessing] = useState(false);
@@ -161,38 +155,6 @@ export default function App() {
     },
     [],
   );
-
-  const handleConflictResolve = async (
-    conflictId: string,
-    action: "accept" | "reject" | "modify",
-    newValue?: string,
-  ): Promise<void> => {
-    try {
-      const resolution = await respecService.resolveConflict(
-        conflictId,
-        action,
-        newValue,
-      );
-
-      if (resolution.applied && action === "accept") {
-        const conflict = activeConflicts.find((c) => c.id === conflictId);
-        if (conflict) {
-          updateField(
-            conflict.section,
-            conflict.field.split(".")[1],
-            resolution.newValue || conflict.newValue,
-            false,
-          );
-        }
-      }
-
-      console.log(
-        `[APP] Conflict ${conflictId} resolved with action: ${action}`,
-      );
-    } catch (error) {
-      console.error("[APP] Failed to resolve conflict:", error);
-    }
-  };
 
   const sendMessageWrapper = async (
     message: string,
@@ -907,20 +869,6 @@ Please respond with A or B.`;
         setArtifactManager(artifactManager);
 
         respecService.initializeSemanticMatching(artifactManager);
-
-        const unsubscribeConflicts = respecService.onConflictChange(
-          (conflicts) => {
-            setActiveConflicts(conflicts);
-            const hasCriticalConflicts = conflicts.some(
-              (c) => c.severity === "critical" || c.severity === "error",
-            );
-            if (hasCriticalConflicts) {
-              setShowConflicts(true);
-            }
-          },
-        );
-
-        return unsubscribeConflicts;
       } catch (err) {
         console.error("[APP] Artifact state management init failed:", err);
       }
@@ -928,14 +876,6 @@ Please respond with A or B.`;
 
     initializeApp();
   }, [respecService]);
-
-  // useEffect(() => {
-  //   const syncInterval = setInterval(() => {
-  //     console.log("[UI-ReSpec] Polling ready - waiting for ReSpec integration");
-  //   }, 5000); // Reduced frequency until ReSpec is integrated
-
-  //   return () => clearInterval(syncInterval);
-  // }, []);
 
   useEffect(() => {
     if (!artifactManager) return;
@@ -986,51 +926,6 @@ Please respond with A or B.`;
     syncToArtifacts();
   }, [requirements, artifactManager]);
 
-  // useEffect(() => {
-  //   if (!artifactManager) return;
-
-  //   artifactManager.on(
-  //     "form_updates_from_respec",
-  //     (data: FieldsUpdatesData) => {
-  //       // TODO zeev decide how to use. Suppose to be the only way to update requirements object
-  //       console.log(`[APP] 📝 Form updates from ${data.source}:`, data.updates);
-
-  //       data.updates.forEach(
-  //         (update: {
-  //           section: string;
-  //           field: string;
-  //           value: unknown;
-  //           isSystemGenerated?: boolean;
-  //         }) => {
-  //           setRequirements((prev) => ({
-  //             ...prev,
-  //             [update.section]: {
-  //               ...prev[update.section],
-  //               [update.field]: {
-  //                 value: update.value,
-  //                 isComplete: true,
-  //                 source: data.source,
-  //                 lastUpdated: new Date().toISOString(),
-  //               },
-  //             },
-  //           }));
-  //         }
-  //       );
-
-  //       const metadata = {
-  //         isFormUpdate: true,
-  //         updates: data.updates,
-  //       };
-  //       addChatMessage(
-  //         "system",
-  //         `Form updated: ${data.updates.length} field(s) changed`,
-  //         `form-update-${Date.now()}`,
-  //         metadata
-  //       );
-  //     }
-  //   );
-  // }, [artifactManager]);
-
   const toggleGroup = (section, group) => {
     setExpandedGroups((prev) => ({
       ...prev,
@@ -1079,16 +974,8 @@ Please respond with A or B.`;
       }
 
       if (source !== "system") {
-        respecService
-          .detectFieldConflicts(
-            `${section}.${field}`,
-            value as string,
-            requirements,
-            source === "user" ? "manual" : "semantic",
-          )
-          .catch((error) => {
-            console.warn("[APP] Conflict detection failed:", error);
-          });
+        alert("field conflict !");
+        // TODO zeev conflict implement manual field change fix
       }
 
       communicateWithMAS("form_update", {
@@ -1359,28 +1246,6 @@ Please respond with A or B.`;
         width={chatWidth}
         onMouseDown={handleMouseDown}
         isResizing={isResizing}
-        onConflictResolve={handleConflictResolve}
-      />
-
-      {activeConflicts.length > 0 && showConflicts && (
-        <ConflictPanelContainer
-          visible={showConflicts}
-          conflicts={activeConflicts}
-          onResolve={handleConflictResolve}
-          onDismiss={(conflictId) =>
-            setActiveConflicts((prev) =>
-              prev.filter((c) => c.id !== conflictId),
-            )
-          }
-        />
-      )}
-
-      <ConflictToggleButton
-        count={activeConflicts.length}
-        onToggle={() => setShowConflicts(!showConflicts)}
-        hasCritical={activeConflicts.some(
-          (c) => c.severity === "critical" || c.severity === "error",
-        )}
       />
 
       <StepProgressIndicator

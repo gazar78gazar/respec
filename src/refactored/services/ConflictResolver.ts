@@ -6,7 +6,6 @@ import { v4 as uuidv4 } from "uuid";
 import { ucDataLayer } from "./DataLayer";
 import {
   Conflict,
-  ConflictType,
   ResolutionOption,
   ConflictResolution,
   OverwriteConflict,
@@ -26,19 +25,19 @@ export class ConflictResolver {
    */
   detectAllConflictsForSpecification(
     newSpecId: string,
-    currentSelections: string[]
+    currentSelections: string[],
   ): Conflict[] {
     console.log(`[ConflictResolver] 🔍 detectConflicts(${newSpecId})`);
 
     const exclusuionConflicts = this.detectExclusionConflicts(
       newSpecId,
-      currentSelections
+      currentSelections,
     );
 
     exclusuionConflicts.forEach((c) => {
       c.resolutionOptions = this.generateResolutionOptions(
         c,
-        currentSelections
+        currentSelections,
       ) as ExclusionResolutionOption[];
       this.conflictHistory.set(c.id, c);
     });
@@ -98,7 +97,7 @@ export class ConflictResolver {
    */
   private generateResolutionOptions(
     conflict: Conflict,
-    currentSelections: string[]
+    currentSelections: string[],
   ): ResolutionOption[] {
     console.log("[!!!] generateResolutionOptions", conflict, currentSelections);
     switch (conflict.type) {
@@ -172,7 +171,7 @@ export class ConflictResolver {
       }
       default:
         alert(
-          `unhandled type of conflict ${conflict.type} - make correct exception`
+          `unhandled type of conflict ${conflict.type} - make correct exception`,
         );
         return [];
       // return this.generateDefaultOptions(conflict, existing, proposed);
@@ -185,7 +184,7 @@ export class ConflictResolver {
   getConflictImpact(
     // TODO zeev conflict reuse method if relevant
     conflict: Conflict,
-    currentSelections: string[]
+    currentSelections: string[],
   ): {
     toRemove: string[];
     toAdd: string[];
@@ -221,7 +220,7 @@ export class ConflictResolver {
     });
 
     console.log(
-      `[UCDataLayer]   → Remove: ${toRemove.size}, Add: ${toAdd.size}, Cascade: ${cascadeEffects.size}`
+      `[UCDataLayer]   → Remove: ${toRemove.size}, Add: ${toAdd.size}, Cascade: ${cascadeEffects.size}`,
     );
 
     return {
@@ -233,11 +232,11 @@ export class ConflictResolver {
 
   detectOverwriteConflicts(
     newSpecId: string,
-    currentSelections: string[]
+    currentSelections: string[],
   ): OverwriteConflict[] {
     console.log(
       `[UCDataLayer] 🔍 detectOverwriteConflicts(${newSpecId}`,
-      currentSelections
+      currentSelections,
     );
 
     const conflicts: OverwriteConflict[] = [];
@@ -264,7 +263,7 @@ export class ConflictResolver {
         };
         conflicts.push(newConflict);
         console.log(
-          `[UCDataLayer]   🔄 Field overwrite detected for "${fieldName}"`
+          `[UCDataLayer]   🔄 Field overwrite detected for "${fieldName}"`,
         );
       }
     }
@@ -273,13 +272,13 @@ export class ConflictResolver {
 
   detectExclusionConflicts(
     newSpecId: string,
-    currentSelections: string[]
+    currentSelections: string[],
   ): ExclusionConflict[] {
     const conflicts: ExclusionConflict[] = [];
     const exclusions = ucDataLayer.getExclusionsForNode(newSpecId);
     for (const exclusion of exclusions) {
       const conflictingNode = exclusion.nodes.find(
-        (n: string) => n !== newSpecId && currentSelections.includes(n)
+        (n: string) => n !== newSpecId && currentSelections.includes(n),
       );
 
       if (conflictingNode) {
@@ -305,7 +304,7 @@ export class ConflictResolver {
 
   detectCascadeConflicts(
     newSpecId: string,
-    currentSelections: string[]
+    currentSelections: string[],
   ): CascadeConflict[] {
     const conflicts: CascadeConflict[] = [];
     const requiredNodes = ucDataLayer.getRequiredNodes(newSpecId);
@@ -313,7 +312,7 @@ export class ConflictResolver {
       // Simple recursive check without cycle detection (dataset guarantees no cycles)
       const cascadeConflicts = this.detectOverwriteConflicts(
         reqNode,
-        currentSelections
+        currentSelections,
       );
 
       cascadeConflicts.forEach((c) => {
@@ -336,7 +335,7 @@ export class ConflictResolver {
 
   detectConstraintConflicts(
     newSpecId: string,
-    currentSelections: string[]
+    currentSelections: string[],
   ): ConstraintConflict[] {
     const conflicts: ConstraintConflict[] = [];
     const newSpec = ucDataLayer.getSpecification(newSpecId);
@@ -359,7 +358,7 @@ export class ConflictResolver {
         affectedNodes: currentSelections,
       });
       console.log(
-        `[UCDataLayer]   🚨 Field constraint violation for "${fieldName}"`
+        `[UCDataLayer]   🚨 Field constraint violation for "${fieldName}"`,
       );
     }
     return conflicts;
@@ -486,7 +485,7 @@ export class ConflictResolver {
   private generateDefaultOverwriteOptions(
     conflict: OverwriteConflict,
     existing: string,
-    proposed: string
+    proposed: string,
   ): OverwriteResolutionOption[] {
     return [
       {
@@ -509,7 +508,7 @@ export class ConflictResolver {
   private generateDefaultExclusionOptions(
     conflict: ExclusionConflict,
     existing: string,
-    proposed: string
+    proposed: string,
   ): ExclusionResolutionOption[] {
     return [
       {
@@ -535,7 +534,7 @@ export class ConflictResolver {
   async resolveConflict(
     conflictId: string,
     action: "keep_existing" | "apply_new",
-    currentSelections: string[]
+    currentSelections: string[],
   ): Promise<{
     newSelections: string[];
     changes: {
@@ -545,7 +544,7 @@ export class ConflictResolver {
     };
   }> {
     console.log(
-      `[ConflictResolver] ✅ resolveConflict(${conflictId}, ${action})`
+      `[ConflictResolver] ✅ resolveConflict(${conflictId}, ${action})`,
     );
 
     const conflict = this.conflictHistory.get(conflictId);
@@ -577,7 +576,7 @@ export class ConflictResolver {
       if (conflict.type === "cascade") {
         const impact = this.getConflictImpact(
           { proposedValue: proposedNode, affectedNodes: [existingNode] },
-          currentSelections
+          currentSelections,
         );
 
         impact.toRemove.forEach((node) => {
@@ -617,7 +616,7 @@ export class ConflictResolver {
     });
 
     console.log(
-      `[ConflictResolver]   → Removed: ${changes.removed.length}, Added: ${changes.added.length}`
+      `[ConflictResolver]   → Removed: ${changes.removed.length}, Added: ${changes.added.length}`,
     );
 
     return { newSelections, changes };
@@ -635,13 +634,13 @@ export class ConflictResolver {
    */
   reverseResolution(
     resolutionIndex: number,
-    currentSelections: string[]
+    currentSelections: string[],
   ): string[] {
     const resolution = this.resolutionHistory[resolutionIndex];
     if (!resolution) return currentSelections;
 
     console.log(
-      `[ConflictResolver] ↩️ Reversing resolution from ${resolution.timestamp}`
+      `[ConflictResolver] ↩️ Reversing resolution from ${resolution.timestamp}`,
     );
 
     let newSelections = [...currentSelections];
@@ -651,7 +650,7 @@ export class ConflictResolver {
       // Remove what was added
       if (resolution.nodeToAdd) {
         newSelections = newSelections.filter(
-          (id) => id !== resolution.nodeToAdd
+          (id) => id !== resolution.nodeToAdd,
         );
       }
 
@@ -670,34 +669,34 @@ export class ConflictResolver {
   /**
    * Detect fields that have zero valid options (CONFLICTS!)
    */
-  detectFieldConflicts(
-    currentSelections: string[]
-  ): Array<{ field: string; reason: string }> {
-    console.log(
-      `[UCDataLayer] 🚨 detectFieldConflicts(${currentSelections.length} selections)`
-    );
+  // detectFieldConflicts(
+  //   currentSelections: string[]
+  // ): Array<{ field: string; reason: string }> {
+  //   console.log(
+  //     `[UCDataLayer] 🚨 detectFieldConflicts(${currentSelections.length} selections)`
+  //   );
 
-    const conflicts: Array<{ field: string; reason: string }> = [];
-    const allFields = ucDataLayer.getAllFormFields();
+  //   const conflicts: Array<{ field: string; reason: string }> = [];
+  //   const allFields = ucDataLayer.getAllFormFields();
 
-    allFields.forEach((field) => {
-      const validOptions = ucDataLayer.getValidOptionsForField(
-        field,
-        currentSelections
-      );
+  //   allFields.forEach((field) => {
+  //     const validOptions = ucDataLayer.getValidOptionsForField(
+  //       field,
+  //       currentSelections
+  //     );
 
-      if (validOptions.length === 0) {
-        conflicts.push({
-          field,
-          reason: `All options for "${field}" are excluded by current selections`,
-        });
-        console.log(`[UCDataLayer]   🚨 CONFLICT on field: ${field}`);
-      }
-    });
+  //     if (validOptions.length === 0) {
+  //       conflicts.push({
+  //         field,
+  //         reason: `All options for "${field}" are excluded by current selections`,
+  //       });
+  //       console.log(`[UCDataLayer]   🚨 CONFLICT on field: ${field}`);
+  //     }
+  //   });
 
-    console.log(`[UCDataLayer]   → Found ${conflicts.length} field conflicts`);
-    return conflicts;
-  }
+  //   console.log(`[UCDataLayer]   → Found ${conflicts.length} field conflicts`);
+  //   return conflicts;
+  // }
 }
 
 export const conflictResolver = new ConflictResolver();
