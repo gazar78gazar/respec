@@ -9,22 +9,22 @@ export const formFieldsData = {
         label: "Processor Type",
         options: [
           "Not Required",
-          "Intel U300E",
-          "Intel Atom",
-          "Intel Core i3",
-          "Intel Core i5",
-          "Intel Core i7",
-          "Intel Core i9",
+          "Entry (Intel Atom)",
+          "Standard (Intel Core i3)",
+          "Performance (Intel Core i5)",
+          "Premium (Intel Core i7)",
+          "Extreme (Intel Core i9)",
         ],
         group: "processing",
       },
-      aiGpuAcceleration: {
+      gpuAcceleration: {
         type: "dropdown",
         label: "AI/GPU Acceleration",
         options: [
           "Not Required",
           "Intel Xe Graphics",
           "Dedicated GPU Required",
+          "AI Accelerator (NPU/TPU)",
         ],
         group: "processing",
       },
@@ -387,7 +387,7 @@ export const formFieldsData = {
     computePerformance: {
       processing: {
         label: "Processing",
-        fields: ["processorType", "aiGpuAcceleration"],
+        fields: ["processorType", "gpuAcceleration"],
         defaultOpen: true,
       },
       memory: {

@@ -623,29 +623,29 @@
       "type": "specification",
       "name": "Under 20W Power",
       "parent_requirements": ["R04"],
-      "selected_value": "10-20W (Low)",
+      "selected_value": "10-20W",
       "description": "Low power consumption for battery operation",
       "requires": {
         "processorType": ["P01"],
         "coolingMethod": ["P57"]
       },
-      "field_name": "powerConsumption"
+      "field_name": "maxPowerConsumption"
     },
     "P13": {
       "id": "P13",
       "type": "specification",
       "name": "Redundant Power Supply",
       "parent_requirements": ["R20"],
-      "selected_value": "Redundant Power",
+      "selected_value": "Dual",
       "description": "Dual power inputs for high availability",
-      "field_name": "powerInput"
+      "field_name": "redundantPower"
     },
     "P14": {
       "id": "P14",
       "type": "specification",
       "name": "Extended Temperature",
       "parent_requirements": ["R07", "R06"],
-      "selected_value": "Extended (-40°C to 70°C)",
+      "selected_value": "-40° to 70°",
       "description": "Wide temperature range for outdoor installations",
       "field_name": "operatingTemperature"
     },
@@ -654,7 +654,7 @@
       "type": "specification",
       "name": "Extreme Temperature",
       "parent_requirements": ["R09"],
-      "selected_value": "Extreme (-40°C to 85°C)",
+      "selected_value": "-40° to 70°",
       "description": "Extreme temperature range for harsh environments",
       "requires": {
         "coolingMethod": ["P57"],
@@ -914,7 +914,7 @@
       "type": "specification",
       "name": "1 Gbps Ethernet Speed",
       "parent_requirements": ["R26"],
-      "selected_value": "1 Gbps (Gigabit Ethernet)",
+      "selected_value": "1 Gbps",
       "description": "Gigabit ethernet for standard industrial applications",
       "field_name": "ethernetSpeed"
     },
@@ -923,7 +923,7 @@
       "type": "specification",
       "name": "10 Gbps Ethernet Speed",
       "parent_requirements": ["R26"],
-      "selected_value": "10 Gbps (10-Gigabit)",
+      "selected_value": "10 Gbps",
       "description": "10 Gigabit ethernet for high-speed data transfer",
       "requires": {
         "processorType": ["P03", "P04"],
@@ -963,7 +963,7 @@
       "type": "specification",
       "name": "Real-time Latency (<10ms)",
       "parent_requirements": ["R25"],
-      "selected_value": "< 10ms (Real-time)",
+      "selected_value": "Standard Real-Time (<10ms)",
       "description": "Real-time response for industrial control",
       "field_name": "responseLatency"
     },
@@ -972,7 +972,7 @@
       "type": "specification",
       "name": "Windows 11 IoT Enterprise",
       "parent_requirements": ["R27"],
-      "selected_value": "Windows 11 IoT Enterprise",
+      "selected_value": "Windows 11 IoT",
       "description": "Windows 11 IoT for industrial applications",
       "field_name": "operatingSystem"
     },
@@ -981,7 +981,7 @@
       "type": "specification",
       "name": "Ubuntu 22.04 LTS",
       "parent_requirements": ["R27"],
-      "selected_value": "Ubuntu Linux 22.04 LTS",
+      "selected_value": "Ubuntu 22.04 LTS",
       "description": "Ubuntu LTS for long-term support",
       "field_name": "operatingSystem"
     },
@@ -1008,7 +1008,7 @@
       "type": "specification",
       "name": "Industrial Vibration Resistance",
       "parent_requirements": ["R29"],
-      "selected_value": "Industrial (2G, 5-500Hz)",
+      "selected_value": "Standard (2G)",
       "description": "Standard industrial vibration resistance",
       "field_name": "vibrationResistance"
     },
@@ -1017,7 +1017,7 @@
       "type": "specification",
       "name": "Mobile/Vehicle Vibration Resistance",
       "parent_requirements": ["R29"],
-      "selected_value": "Mobile/Vehicle (5G, 5-500Hz)",
+      "selected_value": "Heavy (5G)",
       "description": "Enhanced vibration resistance for mobile installations",
       "requires": {
         "coolingMethod": ["P57"]
@@ -1116,7 +1116,7 @@
       "type": "specification",
       "name": "WiFi Connectivity",
       "parent_requirements": ["R31"],
-      "selected_value": "WiFi",
+      "selected_value": "WiFi 6",
       "description": "WiFi 6 for local wireless connectivity",
       "field_name": "wirelessExtension"
     },
@@ -1196,7 +1196,7 @@
     "P82": {
       "id": "P82",
       "type": "specification",
-      "name": "Intel Core i9",
+      "name": "Intel Core i9 processor",
       "parent_requirements": ["R03"],
       "selected_value": "Extreme (Intel Core i9)",
       "description": "Extreme performance processor",
@@ -1213,13 +1213,52 @@
       "type": "specification",
       "name": "Ultra Low Power (<10W)",
       "parent_requirements": ["R04"],
-      "selected_value": "< 10W (Ultra Low)",
+      "selected_value": "< 10W",
       "description": "Ultra low power consumption for battery/solar operation",
       "requires": {
         "processorType": ["P01"],
         "coolingMethod": ["P57"]
       },
-      "field_name": "powerConsumption"
+      "field_name": "maxPowerConsumption"
+    },
+    "P84": {
+      "id": "P84",
+      "type": "specification",
+      "name": "Standart (20-35W)",
+      "parent_requirements": ["R04"],
+      "selected_value": "20-35W",
+      "description": "Middle power consumption",
+      "requires": {
+        "processorType": ["P03"],
+        "coolingMethod": ["P57"]
+      },
+      "field_name": "maxPowerConsumption"
+    },
+    "P85": {
+      "id": "P85",
+      "type": "specification",
+      "name": "High (35-65W)",
+      "parent_requirements": ["R04"],
+      "selected_value": "35-65W",
+      "description": "Middle power consumption",
+      "requires": {
+        "processorType": ["P04"],
+        "coolingMethod": ["P57"]
+      },
+      "field_name": "maxPowerConsumption"
+    },
+    "P86": {
+      "id": "P86",
+      "type": "specification",
+      "name": "Very high (> 65W)",
+      "parent_requirements": ["R04"],
+      "selected_value": "> 65W",
+      "description": "Middle power consumption",
+      "requires": {
+        "processorType": ["P04"],
+        "coolingMethod": ["P57"]
+      },
+      "field_name": "maxPowerConsumption"
     }
   },
   "comments": {
@@ -2444,12 +2483,7 @@
       "field_name": "ethernetSpeed",
       "ui_type": "dropdown",
       "selection_type": "single_choice",
-      "options": [
-        "100 Mbps (Fast Ethernet)",
-        "1 Gbps (Gigabit Ethernet)",
-        "10 Gbps (10-Gigabit)",
-        "Any"
-      ]
+      "options": ["Not Required", "100 Mbps", "1 Gbps", "10 Gbps"]
     },
     "gpuAcceleration": {
       "section": "computePerformance",
@@ -2525,12 +2559,11 @@
       "ui_type": "dropdown",
       "selection_type": "single_choice",
       "options": [
-        "Windows 10 IoT Enterprise",
-        "Windows 11 IoT Enterprise",
-        "Ubuntu Linux 20.04 LTS",
-        "Ubuntu Linux 22.04 LTS",
-        "Real-Time Linux",
-        "Any"
+        "Not Required",
+        "Windows 11 IoT",
+        "Ubuntu 20.04 LTS",
+        "Ubuntu 22.04 LTS",
+        "Real-Time Linux"
       ]
     },
     "operatingTemperature": {
@@ -2540,25 +2573,11 @@
       "ui_type": "dropdown",
       "selection_type": "single_choice",
       "options": [
-        "Commercial (0°C to 50°C)",
-        "Industrial (-20°C to 60°C)",
-        "Extended (-40°C to 70°C)",
-        "Extreme (-40°C to 85°C)"
-      ]
-    },
-    "powerConsumption": {
-      "section": "formFactor",
-      "category": "power_requirements",
-      "field_name": "powerConsumption",
-      "ui_type": "dropdown",
-      "selection_type": "single_choice",
-      "options": [
-        "< 10W (Ultra Low)",
-        "10-20W (Low)",
-        "20-35W (Standard)",
-        "35-65W (High)",
-        "> 65W (Very High)",
-        "No Restriction"
+        "Not Required",
+        "0° to 50°",
+        "-20° to 60°",
+        "-40° to 70°",
+        "-40° to 85°"
       ]
     },
     "powerInput": {
@@ -2585,6 +2604,7 @@
       "ui_type": "dropdown",
       "selection_type": "single_choice",
       "options": [
+        "Not Required",
         "Entry (Intel Atom)",
         "Standard (Intel Core i3)",
         "Performance (Intel Core i5)",
@@ -2599,11 +2619,11 @@
       "ui_type": "dropdown",
       "selection_type": "single_choice",
       "options": [
-        "< 1ms (Hard Real-time)",
-        "< 10ms (Real-time)",
-        "< 100ms (Near Real-time)",
-        "< 1 second (Standard)",
-        "Best Effort"
+        "Not Required",
+        "Standard Real-Time (<10ms)",
+        "Near Real-Time (<20ms)",
+        "Interactive (<50ms)",
+        "Responsive (<100ms)"
       ]
     },
     "samplingRate": {
@@ -2674,10 +2694,10 @@
       "ui_type": "dropdown",
       "selection_type": "single_choice",
       "options": [
-        "Office/Desktop (No requirement)",
-        "Industrial (2G, 5-500Hz)",
-        "Mobile/Vehicle (5G, 5-500Hz)",
-        "Severe (10G, MIL-STD-810)"
+        "Not Required",
+        "Standard (2G)",
+        "Heavy (5G)",
+        "Extreme (10G)"
       ]
     },
     "wirelessExtension": {
@@ -2686,7 +2706,38 @@
       "field_name": "wirelessExtension",
       "ui_type": "multi_select",
       "selection_type": "multi_choice",
-      "options": ["None", "WiFi", "LTE", "5G", "LoRa"]
+      "options": [
+        "Not Required",
+        "WiFi 6",
+        "WiFi 6E",
+        "LTE",
+        "5G",
+        "LoRa",
+        "Bluetooth 5.3"
+      ]
+    },
+    "maxPowerConsumption": {
+      "section": "formFactor",
+      "category": "power_requirements",
+      "field_name": "maxPowerConsumption",
+      "ui_type": "dropdown",
+      "selection_type": "single_choice",
+      "options": [
+        "Not Required",
+        "< 10W",
+        "10-20W",
+        "20-35W",
+        "35-65W",
+        "> 65W"
+      ]
+    },
+    "redundantPower": {
+      "section": "formFactor",
+      "category": "power_requirements",
+      "field_name": "redundantPower",
+      "ui_type": "dropdown",
+      "selection_type": "single_choice",
+      "options": ["Not Required", "Single", "Dual", "N+1"]
     }
   }
 }

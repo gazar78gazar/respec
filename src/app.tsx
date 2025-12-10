@@ -1830,7 +1830,14 @@ Please respond with A or B.`;
   };
 
   const calculateAccuracy = () => {
-    const TOTAL_FIELDS = 37; // Total number of fields in the system
+    const fieldDefs = formFieldsData.field_definitions as Record<
+      string,
+      Record<string, unknown>
+    >;
+    const TOTAL_FIELDS = Object.values(fieldDefs).reduce(
+      (sum, fields) => sum + Object.keys(fields).length,
+      0,
+    );
     const REQUIREMENT_WEIGHT = 100 / TOTAL_FIELDS; // ~2.7% per field
     const ASSUMPTION_WEIGHT = 60 / TOTAL_FIELDS; // ~1.62% per field
 
@@ -1855,7 +1862,7 @@ Please respond with A or B.`;
       });
     });
 
-    // Validate we have 37 fields total (optional check)
+    // Validate field count vs config (optional check)
     if (fieldCount !== TOTAL_FIELDS) {
       console.warn(
         `Field count mismatch: Expected ${TOTAL_FIELDS}, found ${fieldCount}`

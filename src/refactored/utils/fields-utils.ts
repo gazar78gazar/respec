@@ -239,22 +239,35 @@ export const calculateCompletion = (requirements: Requirements): number => {
 };
 
 export const calculateAccuracy = (requirements: Requirements): number => {
-  const TOTAL_FIELDS = 37; // TODO zeev fix correct amount based on config
-  const REQUIREMENT_WEIGHT = 100 / TOTAL_FIELDS;
-  const ASSUMPTION_WEIGHT = 60 / TOTAL_FIELDS;
-
-  let accuracyScore = 0;
+  const FIELD_DEFS = formFieldsData.field_definitions as FieldDefinitions;
+  const TOTAL_FIELDS = Object.values(FIELD_DEFS).reduce(
+    (sum, fields) => sum + Object.keys(fields).length,
+    0,
+  );
   let fieldCount = 0;
+  let completedRequirements = 0;
+  let completedAssumptions = 0;
 
-  Object.values(requirements as RequirementsState).forEach((section) => {
-    Object.values(section).forEach((field) => {
+  // Iterate over defined fields only to keep counts in sync with config
+  Object.entries(FIELD_DEFS).forEach(([sectionKey, fields]) => {
+    const sectionState = (requirements as RequirementsState)[sectionKey] || {};
+    Object.keys(fields).forEach((fieldKey) => {
       fieldCount++;
-      if (field.isComplete) {
-        if (!field.isAssumption) accuracyScore += REQUIREMENT_WEIGHT;
-        else accuracyScore += ASSUMPTION_WEIGHT;
-      }
+      const field = sectionState[fieldKey];
+      if (!field?.isComplete) return;
+      if (field.isAssumption) completedAssumptions++;
+      else completedRequirements++;
     });
   });
+
+  // Use the larger of expected vs. counted to avoid over-crediting extras
+  const denominator = Math.max(TOTAL_FIELDS, fieldCount || TOTAL_FIELDS);
+  const REQUIREMENT_WEIGHT = 100 / denominator;
+  const ASSUMPTION_WEIGHT = 60 / denominator;
+
+  const accuracyScore =
+    completedRequirements * REQUIREMENT_WEIGHT +
+    completedAssumptions * ASSUMPTION_WEIGHT;
 
   if (fieldCount !== TOTAL_FIELDS) {
     console.warn(

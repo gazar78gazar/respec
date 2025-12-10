@@ -218,10 +218,14 @@ export class SemanticIntegrationService {
         { uiField },
       );
 
+      // Prefer structured selected_value for UI bindings; fall back to stored value or name
+      const valueForForm =
+        fullSpec.selected_value ?? spec.value ?? fullSpec.name;
+
       formUpdates.push({
         section: uiField.section,
         field: uiField.field_name,
-        value: spec.value,
+        value: valueForForm,
         confidence: spec.confidence || 1.0,
         isAssumption:
           spec.source === "dependency" ||

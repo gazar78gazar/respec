@@ -57,7 +57,7 @@ const FIELD_SECTIONS: Record<string, SectionKey> = {
 
   // Power & Environment
   powerSupply: "powerEnvironment",
-  powerConsumption: "powerEnvironment",
+  maxPowerConsumption: "powerEnvironment",
   operatingTemp: "powerEnvironment",
   enclosureType: "powerEnvironment",
   coolingRequirements: "powerEnvironment",
@@ -89,7 +89,7 @@ const FIELD_PRIORITIES: Record<string, 1 | 2 | 3 | 4> = {
   cpuCores: 3,
   cpuSpeed: 3,
   storageСapacity: 3,
-  powerConsumption: 3,
+  maxPowerConsumption: 3,
   enclosureType: 3,
   timeline: 3,
 

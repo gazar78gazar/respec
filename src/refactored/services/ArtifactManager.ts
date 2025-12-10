@@ -72,6 +72,7 @@ export class ArtifactManager {
   // ============= STATE ACCESS =============
 
   getState(): ArtifactState {
+    this.pruneInactiveConflicts();
     return { ...this.state };
   }
 
@@ -579,9 +580,27 @@ export class ArtifactManager {
   // }
 
   private addActiveConflict(conflict: ActiveConflict): void {
+    const signature = this.getConflictSignature(conflict);
+    const exists = this.state.conflicts.active.some(
+      (c) => this.getConflictSignature(c) === signature,
+    );
+    if (exists) {
+      console.log(
+        `[ArtifactManager] Skipping duplicate conflict for signature ${signature}`,
+      );
+      return;
+    }
+
     this.state.conflicts.active.push(conflict);
-    this.state.conflicts.metadata.activeCount++;
+    this.state.conflicts.metadata.activeCount =
+      this.state.conflicts.active.length;
     this.state.conflicts.metadata.lastModified = new Date();
+    this.state.conflicts.metadata.blockingConflicts = Array.from(
+      new Set([
+        ...this.state.conflicts.metadata.blockingConflicts,
+        ...conflict.affectedNodes,
+      ]),
+    );
 
     console.log(`[ArtifactManager] Added active conflict: ${conflict.id}`);
     // this.emit("conflict_detected", { conflict });
@@ -624,9 +643,19 @@ export class ArtifactManager {
     this.state.conflicts.resolved.push(resolvedConflict);
     this.state.conflicts.active.splice(conflictIndex, 1);
 
+    // Remove any other active conflicts with the same signature to avoid loops on identical pairs
+    const resolvedSignature = this.getConflictSignature(conflict);
+    this.state.conflicts.active = this.state.conflicts.active.filter(
+      (c) => this.getConflictSignature(c) !== resolvedSignature,
+    );
+
     // Update metadata
-    this.state.conflicts.metadata.activeCount--;
+    this.state.conflicts.metadata.activeCount =
+      this.state.conflicts.active.length;
     this.state.conflicts.metadata.resolvedCount++;
+    this.state.conflicts.metadata.blockingConflicts = Array.from(
+      new Set(this.state.conflicts.active.flatMap((c) => c.affectedNodes)),
+    );
 
     // Unblock system if no more active conflicts
     if (this.state.conflicts.active.length === 0) {
@@ -743,12 +772,12 @@ export class ArtifactManager {
       );
     }
 
-    // Verify all target nodes exist in mapped artifact
+    // Verify all target nodes exist in mapped or respec artifact
     for (const nodeId of resolution.targetNodes) {
-      const spec = this.findSpecificationInMapped(nodeId);
+      const spec = this.findSpecificationWithLocation(nodeId);
       if (!spec) {
         throw new Error(
-          `[Resolution] Node ${nodeId} not found in mapped artifact - cannot resolve. ` +
+          `[Resolution] Node ${nodeId} not found in mapped or respec artifact - cannot resolve. ` +
             `This conflict may have already been resolved or the artifact state is corrupted.`,
         );
       }
@@ -767,33 +796,53 @@ export class ArtifactManager {
     });
 
     // ========== ATOMIC REMOVAL (with rollback capability) ==========
-    const removedSpecs: Array<{ id: string; backup: UCArtifactSpecification }> =
-      [];
+    const removedSpecs: Array<{
+      id: string;
+      backup: UCArtifactSpecification;
+      artifact: "mapped" | "respec";
+    }> = [];
+    const removalPlanned = new Set<string>();
 
     try {
       // Remove losing specifications
       for (const specId of losingSpecs) {
-        const spec = this.findSpecificationInMapped(specId);
+        const located = this.findSpecificationWithLocation(specId);
 
-        if (!spec) {
-          // TODO zeev conflict - should also remove from respec
+        if (!located) {
           console.warn(
-            `[Resolution] ⚠️  Spec ${specId} not found, skipping removal`,
+            `[Resolution] Spec ${specId} not found in mapped or respec, skipping removal`,
           );
           continue;
         }
 
-        // Backup before removal
-        removedSpecs.push({
-          id: specId,
-          backup: JSON.parse(JSON.stringify(spec)),
-        });
-
-        // Remove from mapped artifact
-        console.log(
-          `[ArtifactManager] Removing spec ${specId} due to conflict resolution ${resolution.id}`,
+        this.planRemoval(
+          located.artifact,
+          located.spec,
+          removedSpecs,
+          removalPlanned,
         );
-        this.removeSpecificationFromMapped(specId);
+
+        const dependents = this.collectAssumptionDependencies(specId);
+        dependents.forEach((dependent) =>
+          this.planRemoval(
+            dependent.artifact,
+            dependent.spec,
+            removedSpecs,
+            removalPlanned,
+          ),
+        );
+      }
+
+      // Execute removals
+      for (const removal of removedSpecs) {
+        console.log(
+          `[ArtifactManager] Removing spec ${removal.id} (artifact=${removal.artifact}) due to conflict resolution ${resolution.id}`,
+        );
+        if (removal.artifact === "mapped") {
+          this.removeSpecificationFromMapped(removal.id);
+        } else {
+          this.removeSpecificationFromRespec(removal.id);
+        }
       }
 
       // Log winning specs (no action needed, they stay in mapped)
@@ -805,7 +854,9 @@ export class ArtifactManager {
 
       // ========== POST-RESOLUTION VERIFICATION ==========
       for (const specId of losingSpecs) {
-        const stillExists = this.findSpecificationInMapped(specId);
+        const stillExists =
+          this.findSpecificationInMapped(specId) ||
+          this.findSpecificationInRespec(specId);
         if (stillExists) {
           throw new Error(
             `[CRITICAL] Failed to remove ${specId} - data integrity compromised. ` +
@@ -815,7 +866,9 @@ export class ArtifactManager {
       }
 
       for (const specId of winningSpecs) {
-        const exists = this.findSpecificationInMapped(specId);
+        const exists =
+          this.findSpecificationInMapped(specId) ||
+          this.findSpecificationInRespec(specId);
         if (!exists) {
           throw new Error(
             `[CRITICAL] Winning spec ${specId} disappeared during resolution - ` +
@@ -823,6 +876,11 @@ export class ArtifactManager {
           );
         }
       }
+
+      // Remove any stale conflicts that reference removed specs
+      const removedIds = removedSpecs.map((r) => r.id);
+      this.purgeConflictsForNodes(removedIds);
+      this.pruneInactiveConflicts();
 
       console.log(`[ArtifactManager] ✅ Resolution applied successfully`);
     } catch (error) {
@@ -833,9 +891,9 @@ export class ArtifactManager {
       );
 
       // Restore removed specs
-      for (const { id, backup } of removedSpecs) {
+      for (const { id, backup, artifact } of removedSpecs) {
         console.log(`[Rollback] Restoring spec ${id}`);
-        this.restoreSpecificationToMapped(id, backup);
+        this.restoreSpecificationToArtifact(id, backup, artifact);
       }
 
       throw error;
@@ -865,6 +923,22 @@ export class ArtifactManager {
     return this.findSpecificationInArtifact("mapped", specId);
   }
 
+  private findSpecificationInRespec(
+    specId: SpecificationId,
+  ): Maybe<UCArtifactSpecification> {
+    return this.findSpecificationInArtifact("respec", specId);
+  }
+
+  private findSpecificationWithLocation(
+    specId: SpecificationId,
+  ): Maybe<{ artifact: "mapped" | "respec"; spec: UCArtifactSpecification }> {
+    const mapped = this.findSpecificationInMapped(specId);
+    if (mapped) return { artifact: "mapped", spec: mapped };
+    const respec = this.findSpecificationInRespec(specId);
+    if (respec) return { artifact: "respec", spec: respec };
+    return null;
+  }
+
   /**
    * Restore specification to mapped artifact (for rollback)
    * Sprint 3 Week 1: Helper for rollback operations
@@ -875,6 +949,20 @@ export class ArtifactManager {
   ): void {
     this.state.mapped.specifications[specId] = specBackup;
     this.updateArtifactMetrics("mapped");
+  }
+
+  private restoreSpecificationToArtifact(
+    specId: SpecificationId,
+    specBackup: UCArtifactSpecification,
+    artifact: "mapped" | "respec" = "mapped",
+  ): void {
+    const target = artifact || "mapped";
+    if (target === "mapped") {
+      this.restoreSpecificationToMapped(specId, specBackup);
+    } else {
+      this.state.respec.specifications[specId] = specBackup;
+      this.updateArtifactMetrics("respec");
+    }
   }
 
   // ============= ARTIFACT MOVEMENT =============
@@ -930,6 +1018,143 @@ export class ArtifactManager {
     if (this.state.mapped.specifications[specId]) {
       delete this.state.mapped.specifications[specId];
       this.updateArtifactMetrics("mapped");
+    }
+  }
+
+  private removeSpecificationFromRespec(specId: SpecificationId): void {
+    if (this.state.respec.specifications[specId]) {
+      delete this.state.respec.specifications[specId];
+      this.updateArtifactMetrics("respec");
+    }
+  }
+
+  private planRemoval(
+    artifact: "mapped" | "respec",
+    spec: UCArtifactSpecification,
+    removedSpecs: Array<{
+      id: string;
+      backup: UCArtifactSpecification;
+      artifact: "mapped" | "respec";
+    }>,
+    removalPlanned: Set<string>,
+  ): void {
+    if (removalPlanned.has(spec.id)) return;
+    removalPlanned.add(spec.id);
+    const backup: UCArtifactSpecification = {
+      ...spec,
+      timestamp: new Date(spec.timestamp),
+    };
+    removedSpecs.push({
+      id: spec.id,
+      backup,
+      artifact,
+    });
+  }
+
+  private collectAssumptionDependencies(rootSpecId: SpecificationId): Array<{
+    artifact: "mapped" | "respec";
+    spec: UCArtifactSpecification;
+  }> {
+    const queue: SpecificationId[] = [rootSpecId];
+    const dependents: Array<{
+      artifact: "mapped" | "respec";
+      spec: UCArtifactSpecification;
+    }> = [];
+    const visited = new Set<SpecificationId>();
+
+    while (queue.length) {
+      const current = queue.shift();
+      if (!current) continue;
+
+      (["mapped", "respec"] as const).forEach((artifactName) => {
+        Object.values(this.state[artifactName].specifications).forEach(
+          (spec) => {
+            if (
+              spec.attribution !== "assumption" ||
+              spec.dependencyOf !== current
+            ) {
+              return;
+            }
+            if (visited.has(spec.id)) return;
+            visited.add(spec.id);
+            dependents.push({ artifact: artifactName, spec });
+            queue.push(spec.id);
+          },
+        );
+      });
+    }
+
+    return dependents;
+  }
+
+  private getConflictSignature(conflict: ActiveConflict): string {
+    return `${conflict.type}:${[...conflict.affectedNodes].sort().join("|")}`;
+  }
+
+  /**
+   * Remove active conflicts that reference any of the provided node IDs.
+   * Keeps conflict list in sync after removals/resolutions to prevent loops.
+   */
+  private purgeConflictsForNodes(nodeIds: SpecificationId[]): void {
+    if (!nodeIds.length) return;
+    const targets = new Set(nodeIds);
+    const before = this.state.conflicts.active.length;
+    if (before === 0) return;
+
+    this.state.conflicts.active = this.state.conflicts.active.filter(
+      (conflict) =>
+        !conflict.affectedNodes.some((nodeId) => targets.has(nodeId)),
+    );
+
+    const after = this.state.conflicts.active.length;
+    if (after === before) return;
+
+    this.state.conflicts.metadata.activeCount = after;
+    this.state.conflicts.metadata.blockingConflicts = Array.from(
+      new Set(this.state.conflicts.active.flatMap((c) => c.affectedNodes)),
+    );
+    this.state.conflicts.metadata.systemBlocked = after > 0;
+    if (after === 0) {
+      this.state.priorityQueue.blocked = false;
+      this.state.priorityQueue.blockReason = undefined;
+      this.state.priorityQueue.currentPriority = "CLEARING";
+    }
+  }
+
+  /**
+   * Remove conflicts that reference specs no longer present in mapped or respec
+   * Prevents stale conflicts from re-triggering resolution loops after removals.
+   */
+  private pruneInactiveConflicts(): void {
+    const exists = (id: SpecificationId) =>
+      !!this.state.mapped.specifications[id] ||
+      !!this.state.respec.specifications[id];
+
+    const before = this.state.conflicts.active.length;
+    if (before === 0) return;
+
+    this.state.conflicts.active = this.state.conflicts.active.filter(
+      (conflict) => conflict.affectedNodes.some((nodeId) => exists(nodeId)),
+    );
+
+    const after = this.state.conflicts.active.length;
+    if (after === before) return;
+
+    // Update metadata to reflect pruned conflicts
+    this.state.conflicts.metadata.activeCount = after;
+    this.state.conflicts.metadata.blockingConflicts = Array.from(
+      new Set(
+        this.state.conflicts.active.flatMap(
+          (conflict) => conflict.affectedNodes,
+        ),
+      ),
+    );
+    this.state.conflicts.metadata.systemBlocked = after > 0;
+
+    if (after === 0) {
+      this.state.priorityQueue.blocked = false;
+      this.state.priorityQueue.blockReason = undefined;
+      this.state.priorityQueue.currentPriority = "CLEARING";
     }
   }
 
