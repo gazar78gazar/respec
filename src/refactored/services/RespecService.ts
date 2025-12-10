@@ -476,7 +476,7 @@ export class RespecService {
 
       const formUpdates =
         resolutionResult.mode === "resolution_success"
-          ? this.generateFormUpdatesFromRespec()
+          ? this.artifactManager.generateFormUpdatesFromRespec()
           : [];
 
       // Add to conversation history
@@ -721,16 +721,6 @@ export class RespecService {
           }
         : undefined,
     };
-  }
-
-  /**
-   * Build form updates from the current respec artifact (post-conflict resolution).
-   * This ensures the UI reflects the latest approved specifications.
-   */
-  private generateFormUpdatesFromRespec(): EnhancedFormUpdate[] {
-    if (!this.artifactManager) return [];
-
-    return this.artifactManager.generateFormUpdatesFromRespec() as EnhancedFormUpdate[];
   }
 
   async processFormUpdate(
