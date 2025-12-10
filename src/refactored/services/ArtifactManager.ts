@@ -36,6 +36,7 @@ import type {
   ResolutionOption,
 } from "../types/UCDataTypes";
 import { conflictResolver } from "./ConflictResolver";
+import { EnhancedFormUpdate } from "./RespecService";
 
 type FormRequirements = Record<
   string,
@@ -1216,6 +1217,78 @@ export class ArtifactManager {
       warnings: [],
       suggestedActions: [],
     };
+  }
+
+  /**
+   * Build form updates from the current respec artifact (post-conflict resolution).
+   * Emits updates for every UI field so removals clear the form state.
+   */
+  generateFormUpdatesFromRespec(): EnhancedFormUpdate[] {
+    const formUpdates: EnhancedFormUpdate[] = [];
+
+    const respecArtifact = this.state.respec;
+
+    // Build best-spec-per-field map
+    const fieldToSpec: Record<
+      string,
+      {
+        spec: (typeof respecArtifact.specifications)[keyof typeof respecArtifact.specifications];
+        selected: string | null;
+      }
+    > = {};
+
+    Object.values(respecArtifact.specifications).forEach((spec) => {
+      const fullSpec = ucDataLayer.getSpecification(spec.id);
+      if (!fullSpec || !fullSpec.field_name) return;
+
+      const selectedValue =
+        fullSpec.selected_value ??
+        (spec.value as string) ??
+        fullSpec.name ??
+        null;
+
+      const existing = fieldToSpec[fullSpec.field_name];
+      if (
+        !existing ||
+        (spec.confidence || 0) > (existing.spec.confidence || 0)
+      ) {
+        fieldToSpec[fullSpec.field_name] = {
+          spec,
+          selected: selectedValue,
+        };
+      }
+    });
+
+    // Emit updates for every known UI field so removals clear the form
+    const uiFields = ucDataLayer.getAllUiFields();
+    Object.entries(uiFields).forEach(([fieldName, uiField]) => {
+      const mapped = fieldToSpec[fieldName];
+
+      if (mapped) {
+        const spec = mapped.spec;
+        formUpdates.push({
+          section: uiField.section,
+          field: uiField.field_name,
+          value: mapped.selected,
+          confidence: spec.confidence || 1.0,
+          isAssumption: spec.attribution === "assumption",
+          originalRequest: spec.originalRequest,
+          substitutionNote: spec.substitutionNote,
+        });
+      } else {
+        formUpdates.push({
+          section: uiField.section,
+          field: uiField.field_name,
+          value: null,
+          confidence: 1,
+          isAssumption: false,
+          originalRequest: "",
+          substitutionNote: "Cleared because no specification is selected",
+        });
+      }
+    });
+
+    return formUpdates;
   }
 
   // ============= UTILITY METHODS =============

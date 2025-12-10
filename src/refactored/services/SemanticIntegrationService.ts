@@ -132,7 +132,8 @@ export class SemanticIntegrationService {
       await this.routeMatchesByType(highConfidenceMatches);
 
       // Generate form updates from respec artifact (includes auto-added dependencies)
-      const formUpdates = this.generateFormUpdatesFromRespec();
+      const formUpdates =
+        this.artifactManager?.generateFormUpdatesFromRespec() || [];
 
       console.log(
         "[SemanticIntegration] 📝",
@@ -177,65 +178,6 @@ export class SemanticIntegrationService {
         context: requirement.originalRequest || requirement.value,
       };
     });
-  }
-
-  /**
-   * Generate form updates from respec artifact
-   * This includes auto-added dependency specs that weren't in the original matches
-   */
-  private generateFormUpdatesFromRespec(): EnhancedFormUpdate[] {
-    const formUpdates: EnhancedFormUpdate[] = [];
-
-    if (!this.artifactManager) {
-      console.warn(
-        "[SemanticIntegration] No artifact manager - cannot generate form updates",
-      );
-      return formUpdates;
-    }
-
-    // Get the respec artifact which contains all approved specs (including dependencies)
-    const respecArtifact = this.artifactManager.getRespecArtifact();
-
-    Object.values(respecArtifact.specifications).forEach((spec) => {
-      const fullSpec = ucDataLayer.getSpecification(spec.id);
-      if (!fullSpec) {
-        console.log(
-          `[SemanticIntegration] ??  No full spec found for ${spec.id}`,
-        );
-        return;
-      }
-
-      const uiField = ucDataLayer.getUiFieldByFieldName(fullSpec.field_name);
-      if (!uiField) {
-        console.log(
-          `[SemanticIntegration] ??  No ui field found for ${spec.id}`,
-        );
-        return;
-      }
-
-      console.log(
-        `[SemanticIntegration] ?? Generating form update for ${spec.id} = ${spec.value}`,
-        { uiField },
-      );
-
-      // Prefer structured selected_value for UI bindings; fall back to stored value or name
-      const valueForForm =
-        fullSpec.selected_value ?? spec.value ?? fullSpec.name;
-
-      formUpdates.push({
-        section: uiField.section,
-        field: uiField.field_name,
-        value: valueForForm,
-        confidence: spec.confidence || 1.0,
-        isAssumption:
-          spec.source === "dependency" ||
-          (spec.source === "llm" && (spec.confidence || 1.0) < 0.9),
-        originalRequest: spec.originalRequest,
-        substitutionNote: spec.substitutionNote,
-      });
-    });
-
-    return formUpdates;
   }
 
   /**

@@ -728,31 +728,9 @@ export class RespecService {
    * This ensures the UI reflects the latest approved specifications.
    */
   private generateFormUpdatesFromRespec(): EnhancedFormUpdate[] {
-    const formUpdates: EnhancedFormUpdate[] = [];
+    if (!this.artifactManager) return [];
 
-    if (!this.artifactManager) return formUpdates;
-
-    const respecArtifact = this.artifactManager.getRespecArtifact();
-
-    Object.values(respecArtifact.specifications).forEach((spec) => {
-      const fullSpec = ucDataLayer.getSpecification(spec.id);
-      if (!fullSpec) return;
-
-      const uiField = ucDataLayer.getUiFieldByFieldName(fullSpec.field_name);
-      if (!uiField) return;
-
-      formUpdates.push({
-        section: uiField.section,
-        field: uiField.field_name,
-        value: spec.value,
-        confidence: spec.confidence || 1.0,
-        isAssumption: spec.attribution === "assumption",
-        originalRequest: spec.originalRequest,
-        substitutionNote: spec.substitutionNote,
-      });
-    });
-
-    return formUpdates;
+    return this.artifactManager.generateFormUpdatesFromRespec() as EnhancedFormUpdate[];
   }
 
   async processFormUpdate(
