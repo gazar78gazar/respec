@@ -312,6 +312,13 @@ export class UCDataLayer {
     return this.dataset!.ui_fields[fieldName];
   }
 
+  /**
+   * Get all UI field definitions (for building full form updates)
+   */
+  getAllUiFields(): Record<string, UCUIField> {
+    return this.dataset?.ui_fields || {};
+  }
+
   // ============= EXTENDED CONFLICT DETECTION (CRITICAL!) =============
 
   /**
