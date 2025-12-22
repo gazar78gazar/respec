@@ -297,7 +297,10 @@ Please respond with A or B.`;
                       [update.field]: {
                         ...prev[update.section]?.[update.field],
                         value: mappedValue,
-                        isComplete: true,
+                        isComplete:
+                          mappedValue !== "" &&
+                          mappedValue !== null &&
+                          mappedValue !== undefined,
                         isAssumption: update.isAssumption || false,
                         dataSource:
                           update.isAssumption || false
