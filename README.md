@@ -180,6 +180,10 @@ If NO conflicts: moveToRespec() + updateForm()
 If CONFLICT: isolateConflict() + generateQuestion()
 ```
 
+Manual form edits in the refactored UI map field values back to UC8 specs
+(by `selected_value`/`name`) and run conflict detection so A/B resolutions
+stay aligned with `option-a`/`option-b` IDs.
+
 ## 🧪 Testing
 
 ### Automated Tests
@@ -256,3 +260,5 @@ To continue development on **Sprint 3 Week 1**, see:
 **Current Sprint**: Sprint 3 Week 1 (Conflict Detection Enhancement)
 
 For questions or issues, see the comprehensive documentation in the `docs/` folder.
+
+

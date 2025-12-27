@@ -142,13 +142,15 @@ export interface ExclusionConflict extends GenericConflict {
 
 export interface CascadeConflict extends GenericConflict {
   type: "cascade";
-  resolutionOptions?: CascadeResolutionOption[]; // TODO zeev conflict decide what are the options really
+  proposedValue: string;
+  resolutionOptions?: CascadeResolutionOption[];
 }
 
 export interface ConstraintConflict extends GenericConflict {
   type: "field_constraint";
   field: string;
-  resolutionOptions?: ConstraintResolutionOption[]; // TODO zeev conflict decide what are the options really
+  proposedValue: string;
+  resolutionOptions?: ConstraintResolutionOption[];
 }
 
 export type Conflict =
@@ -174,16 +176,18 @@ export interface OverwriteResolutionOption extends GenericResolutionOption {
 }
 
 export interface CascadeResolutionOption extends GenericResolutionOption {
-  action: "keep_existing" | "apply_new"; // TODO zeev conflict implement correct options
+  action: "keep_existing" | "apply_new";
 }
 
 export interface ConstraintResolutionOption extends GenericResolutionOption {
-  action: "keep_existing" | "apply_new"; // TODO zeev conflict implement correct options
+  action: "keep_existing" | "apply_new";
 }
 
 export type ResolutionOption =
   | ExclusionResolutionOption
-  | OverwriteResolutionOption;
+  | OverwriteResolutionOption
+  | CascadeResolutionOption
+  | ConstraintResolutionOption;
 
 export interface ConflictResolution {
   conflictId: string;

@@ -205,6 +205,32 @@ export default function App() {
     },
     [],
   );
+  const presentConflictQuestion = useCallback(
+    (conflictStatus: StructuredConflicts): MASCommunicationResult => {
+      console.log(`[APP] ?? Conflicts detected - presenting to user`);
+
+      const conflict = conflictStatus.conflicts[0];
+      const binaryQuestion = `I detected a conflict: ${conflict.description}
+
+Which would you prefer?
+A) ${conflict.resolutionOptions[0].label}
+   Outcome: ${conflict.resolutionOptions[0].outcome}
+
+B) ${conflict.resolutionOptions[1].label}
+   Outcome: ${conflict.resolutionOptions[1].outcome}
+
+Please respond with A or B.`;
+
+      addChatMessage(
+        "assistant",
+        binaryQuestion,
+        `conflict-question-${Date.now()}`,
+      );
+
+      return { success: true };
+    },
+    [addChatMessage],
+  );
 
   const communicateWithMAS = useCallback(
     async <A extends MASAction>(
@@ -218,30 +244,7 @@ export default function App() {
       let chatResult: ChatResult;
       let conflictStatus: StructuredConflicts;
       let autofillResult: AutofillResult;
-
-      const handleConflicts = () => {
-        console.log(`[APP] 🚨 Conflicts detected - presenting to user`);
-
-        const conflict = conflictStatus.conflicts[0];
-        const binaryQuestion = `I detected a conflict: ${conflict.description}
-
-Which would you prefer?
-A) ${conflict.resolutionOptions[0].label}
-   Outcome: ${conflict.resolutionOptions[0].outcome}
-
-B) ${conflict.resolutionOptions[1].label}
-   Outcome: ${conflict.resolutionOptions[1].outcome}
-
-Please respond with A or B.`;
-
-        addChatMessage(
-          "assistant",
-          binaryQuestion,
-          `conflict-question-${Date.now()}`,
-        );
-
-        return { success: true };
-      };
+      const handleConflicts = () => presentConflictQuestion(conflictStatus);
 
       try {
         switch (action) {
@@ -367,7 +370,11 @@ Please respond with A or B.`;
                   });
                 }, 150); // Slightly longer delay for chat updates
 
-                if (update.substitutionNote) {
+                const substitutionNote = update.substitutionNote?.trim();
+                if (
+                  substitutionNote &&
+                  substitutionNote !== "Cleared because no specification is selected"
+                ) {
                   const id = `sub-${Date.now()}-${Math.random()
                     .toString(36)
                     .substr(2, 9)}`;
@@ -377,13 +384,13 @@ Please respond with A or B.`;
                   };
                   addChatMessage(
                     "system",
-                    `📝 ${update.substitutionNote}`,
+                    `📝 ${substitutionNote}`,
                     id,
                     metadata,
                   );
                   console.log(
                     `[DEBUG] Added substitution note for ${update.section}.${update.field}:`,
-                    update.substitutionNote,
+                    substitutionNote,
                   );
                   addTrace(
                     "substitution_note",
@@ -391,7 +398,7 @@ Please respond with A or B.`;
                       section: update.section,
                       field: update.field,
                       originalRequest: update.originalRequest,
-                      substitutionNote: update.substitutionNote,
+                      substitutionNote,
                     },
                     "SUCCESS",
                   );
@@ -797,7 +804,14 @@ Please respond with A or B.`;
         setProcessingMessage("");
       }
     },
-    [addChatMessage, addTrace, fieldPermissions, requirements, respecService],
+    [
+      addChatMessage,
+      addTrace,
+      fieldPermissions,
+      requirements,
+      respecService,
+      presentConflictQuestion,
+    ],
   );
 
   useEffect(() => {
@@ -898,7 +912,7 @@ Please respond with A or B.`;
         //   );
 
         //   artifactManager
-        //     .detectConflicts() // TODO zeev conflict
+        //     .detectConflicts()
         //     .then((conflictResult) => {
         //       if (conflictResult.hasConflict) {
         //         console.warn(
@@ -939,6 +953,70 @@ Please respond with A or B.`;
     }));
   };
 
+  const handleManualFieldUpdateConflictCheck = useCallback(
+    async (section: string, field: string, value: unknown) => {
+      if (!artifactManager || !ucDataLayer.isLoaded()) return;
+
+      const specs = ucDataLayer.getSpecificationsForFormField(field);
+      if (specs.length === 0) return;
+
+      const selections = Array.isArray(value) ? value : [value];
+      const matches: Array<{
+        spec: (typeof specs)[number];
+        selection: unknown;
+      }> = [];
+      const seen = new Set<string>();
+
+      selections.forEach((selection) => {
+        if (
+          selection === null ||
+          selection === undefined ||
+          selection === "" ||
+          selection === "Not Required"
+        ) {
+          return;
+        }
+
+        const normalized = String(selection);
+        const matchedSpec = specs.find(
+          (spec) =>
+            spec.id === normalized ||
+            spec.selected_value === normalized ||
+            spec.name === normalized,
+        );
+
+        if (!matchedSpec || seen.has(matchedSpec.id)) return;
+        seen.add(matchedSpec.id);
+        matches.push({ spec: matchedSpec, selection });
+      });
+
+      if (matches.length === 0) return;
+
+      for (const match of matches) {
+        await artifactManager.addSpecificationToMapped(
+          match.spec,
+          match.selection,
+          `Manual update for ${section}.${field}`,
+          "",
+          "user",
+        );
+      }
+
+      const conflictResult = await artifactManager.detectExclusionConflicts();
+
+      if (conflictResult.hasConflict) {
+        const conflictStatus = respecService.getActiveConflictsForAgent();
+        if (conflictStatus.hasConflicts) {
+          presentConflictQuestion(conflictStatus);
+        }
+        return;
+      }
+
+      await artifactManager.moveNonConflictingToRespec();
+    },
+    [artifactManager, respecService, presentConflictQuestion],
+  );
+
   const updateField = useCallback(
     (
       section: string,
@@ -977,17 +1055,17 @@ Please respond with A or B.`;
       }
 
       if (source !== "system") {
-        alert("field conflict !");
-        // TODO zeev conflict implement manual field change fix
+        void handleManualFieldUpdateConflictCheck(section, field, value);
       }
 
       communicateWithMAS("form_update", {
-        field: `${section}.${field}`,
+        section,
+        field,
         value,
-        isAssumption,
+        source: source === "system" ? "system" : "user",
       });
     },
-    [communicateWithMAS],
+    [communicateWithMAS, handleManualFieldUpdateConflictCheck],
   );
 
   useEffect(() => {
@@ -1261,3 +1339,8 @@ Please respond with A or B.`;
     </div>
   );
 }
+
+
+
+
+

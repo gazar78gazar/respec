@@ -134,8 +134,6 @@ export class ArtifactManager {
     const visited = dependencyContext?.visited ?? new Set<SpecificationId>();
     if (!visited.has(spec.id)) visited.add(spec.id);
 
-    // TODO zeev conflict - add single specification conflict check
-
     const isDependency = !!dependencyContext?.parentSpecId;
 
     const artifactSpec: UCArtifactSpecification = {
@@ -167,15 +165,10 @@ export class ArtifactManager {
       dependencyContext?.depth ?? 0,
     );
 
-    // if (source === "conflict_resolution") {
-    // TODO zeev conflict
-    //   console.log(
-    //     `[ArtifactManager] ??  Skipping conflict detection for ${spec.id} (source: conflict_resolution)`
-    //   );
-    //   return;
-    // }
-
-    // if (!isDependency) await this.detectExclusionConflicts(); // TODO zeev conflict. Should be called once before moving to respec
+    const shouldCheckConflicts = !isDependency && source === "user";
+    if (shouldCheckConflicts) {
+      this.detectConflictsForSpecification(spec.id);
+    }
 
     console.log(`[addSpecificationToMapped] finished for ${spec.id}`, {
       state: this.state,
@@ -249,54 +242,83 @@ export class ArtifactManager {
 
   // ============= CONFLICT DETECTION =============
 
-  async detectExclusionConflicts(): Promise<ConflictResult> {
-    // TODO zeev conflict - rewrite
-    console.warn("[ArtifactManager] detectExclusionConflicts started");
+  private getCurrentSpecificationIds(): SpecificationId[] {
+    return [
+      ...Object.keys(this.state.mapped.specifications),
+      ...Object.keys(this.state.respec.specifications),
+    ];
+  }
 
-    // return { hasConflict: false, conflicts: [] };
+  private registerConflicts(conflicts: Conflict[]): ConflictResult {
+    const result: ConflictResult = {
+      hasConflict: conflicts.length > 0,
+      conflicts,
+    };
+
+    if (!result.hasConflict) {
+      return result;
+    }
+
+    conflicts.forEach((conflict) => {
+      this.addActiveConflict({
+        id: conflict.id,
+        affectedNodes: conflict.affectedNodes,
+        type: conflict.type as ConflictType,
+        description: conflict.description,
+        resolutionOptions: conflict.resolutionOptions || [],
+        cycleCount: 0,
+        firstDetected: new Date(),
+        lastUpdated: new Date(),
+      });
+    });
+
+    this.state.priorityQueue.blocked = true;
+    this.state.priorityQueue.blockReason = `${this.state.conflicts.active.length} conflict(s) detected`;
+    this.state.priorityQueue.currentPriority = "CONFLICTS";
+
+    this.state.conflicts.metadata.systemBlocked = true;
+    this.state.conflicts.metadata.blockingConflicts = Array.from(
+      new Set(this.state.conflicts.active.flatMap((c) => c.affectedNodes)),
+    );
+
+    return result;
+  }
+
+  private detectConflictsForSpecification(
+    specId: SpecificationId,
+  ): ConflictResult {
+    if (!this.state.initialized || !ucDataLayer.isLoaded()) {
+      return { hasConflict: false, conflicts: [] };
+    }
+
+    const otherSpecs = this.getCurrentSpecificationIds().filter(
+      (id) => id !== specId,
+    );
+
+    const allConflicts = conflictResolver.detectAllConflictsForSpecification(
+      specId,
+      otherSpecs,
+    );
+
+    const uniqueConflicts = new Map<string, Conflict>();
+    allConflicts.forEach((conflict) => {
+      if (!uniqueConflicts.has(conflict.key)) {
+        uniqueConflicts.set(conflict.key, conflict);
+      }
+      this.conflictData.set(conflict.key, conflict);
+    });
+
+    return this.registerConflicts(Array.from(uniqueConflicts.values()));
+  }
+
+  async detectExclusionConflicts(): Promise<ConflictResult> {
+    console.warn("[ArtifactManager] detectExclusionConflicts started");
 
     if (!this.state.initialized || !ucDataLayer.isLoaded()) {
       return { hasConflict: false, conflicts: [] };
     }
 
-    // Collect all specifications from mapped artifact
-    // const specifications: Array<{ id: string; value: any }> = [];
-    // const activeRequirements: string[] = [];
-    // const activeDomains: string[] = [];
-
-    const mappedSpecs = this.state.mapped.specifications;
-    console.log(
-      "[ArtifactManager] detectExclusionConflicts Specifications to check from mappedSpecs",
-      mappedSpecs,
-    );
-
-    const respecSpecs = this.state.respec.specifications;
-    console.log(
-      "[ArtifactManager] detectExclusionConflicts Specifications to check from respecSpecs",
-      respecSpecs,
-    );
-
-    // const respecSpecs = this.state.respec.specifications;
-
-    // Object.values(this.state.mapped.domains).forEach((domain) => {
-    //   activeDomains.push(domain.id);
-
-    //   Object.values(domain.requirements).forEach((requirement) => {
-    //     activeRequirements.push(requirement.id);
-
-    //     Object.values(requirement.specifications).forEach((spec) => {
-    //       specifications.push({ id: spec.id, value: spec.value });
-    //     });
-    //   });
-    // });
-
-    // Sprint 2: Full conflict detection
-    // console.log(
-    //   "[ArtifactManager] Using conflict detection with 107 exclusions"
-    // );
-
-    // Collect all specification IDs currently in mapped artifact
-    const specIds = [...Object.keys(mappedSpecs), ...Object.keys(respecSpecs)];
+    const specIds = this.getCurrentSpecificationIds();
 
     // Check for conflicts among current selections
     const allConflicts = new Map<string, Conflict>(); // Use map to deduplicate
@@ -312,26 +334,16 @@ export class ArtifactManager {
         otherSpecs,
       );
 
-      if (conflicts)
-        console.log(
-          `[ArtifactManager] detectExclusionConflicts for ${checkSpec} and ${otherSpecs} are`,
-          conflicts,
-        );
-
       conflicts.forEach((conflict) => {
         // Create unique key for this conflict pair (sorted to avoid duplicates)
-        if (!allConflicts.has(conflict.key))
-          // Store conflict with full resolution options
+        if (!allConflicts.has(conflict.key)) {
           allConflicts.set(conflict.key, conflict);
+        }
       });
     }
 
     // Convert conflicts to ConflictResult format
     const conflictList = Array.from(allConflicts.values());
-    console.log(
-      `[ArtifactManager] detectExclusionConflicts result conflict list`,
-      conflictList,
-    );
 
     // Store conflict data for later resolution option generation
     this.conflictData.clear();
@@ -339,49 +351,13 @@ export class ArtifactManager {
       this.conflictData.set(conflict.key, conflict),
     );
 
-    const result: ConflictResult = {
-      hasConflict: conflictList.length > 0,
-      conflicts: conflictList,
-    };
+    const result = this.registerConflicts(conflictList);
 
     console.log(
       `[ArtifactManager] detectExclusionConflicts detected ${
         result.conflicts.length
       } conflicts (types: ${result.conflicts.map((c) => c.type).join(", ")})`,
     );
-
-    // Sprint 3 Week 1: DISABLED - Cross-artifact conflicts (user changing mind is allowed)
-    // When user provides new value for existing spec, auto-resolve in SemanticIntegrationService
-    // const crossConflicts = await this.checkCrossArtifactConflicts();
-    // if (crossConflicts.hasConflict) {
-    //   result.hasConflict = true;
-    //   result.conflicts.push(...crossConflicts.conflicts);
-    // }
-
-    // Convert to active conflicts if any found
-    if (result.hasConflict) {
-      result.conflicts.forEach((conflict) => {
-        this.addActiveConflict({
-          id: conflict.id,
-          affectedNodes: conflict?.affectedNodes,
-          type: conflict.type as ConflictType,
-          description: conflict.description,
-          resolutionOptions: conflict.resolutionOptions || [],
-          cycleCount: 0,
-          firstDetected: new Date(),
-          lastUpdated: new Date(),
-        });
-      });
-
-      // Block system if conflicts detected
-      this.state.priorityQueue.blocked = true;
-      this.state.priorityQueue.blockReason = `${result.conflicts.length} conflict(s) detected`;
-      this.state.priorityQueue.currentPriority = "CONFLICTS";
-
-      this.state.conflicts.metadata.systemBlocked = true;
-      this.state.conflicts.metadata.blockingConflicts =
-        result.conflicts.flatMap((c) => c.affectedNodes);
-    }
 
     return result;
   }

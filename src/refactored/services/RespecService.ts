@@ -649,12 +649,10 @@ export class RespecService {
 
     // Sprint 3 Week 2: Sort by priority
     const priorityOrder: Record<string, number> = {
-      "cross-artifact": 1, // Highest - user changing existing choices
-      cross_artifact: 1, // Handle underscore variant
-      logical: 2, // High - fundamental incompatibilities
-      constraint: 3, // Medium - schema violations
-      dependency: 3, // Medium - missing requirements
-      mutex: 4, // Low - multiple selections
+      exclusion: 1,
+      field_overwrite: 2,
+      cascade: 3,
+      field_constraint: 3,
     };
 
     activeConflicts = [...activeConflicts].sort((a, b) => {
@@ -678,7 +676,7 @@ export class RespecService {
         outcome: option.expectedOutcome,
       })),
       cycleCount: conflict.cycleCount,
-      priority: conflict.type === "cross_artifact" ? "critical" : "high", // TODO zeev conflict fix cross_artifact type. What is it?
+      priority: conflict.type === "field_overwrite" ? "critical" : "high",
     }));
 
     return {
@@ -949,3 +947,5 @@ export class RespecService {
     return this.artifactManager;
   }
 }
+
+

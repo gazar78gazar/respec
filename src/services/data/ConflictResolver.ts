@@ -96,7 +96,7 @@ export class ConflictResolver {
         // Fallback to default options
         return this.generateDefaultOptions(conflict, existing, proposed);
 
-      case 'cascade':
+      case 'cascade': {
         const impact = ucDataLayer.getConflictImpact(conflict, currentSelections);
         return [
           {
@@ -114,7 +114,7 @@ export class ConflictResolver {
             expectedOutcome: `Will remove ${impact.toRemove.length} items and add ${impact.toAdd.length}`
           }
         ];
-
+      }
       default:
         return this.generateDefaultOptions(conflict, existing, proposed);
     }

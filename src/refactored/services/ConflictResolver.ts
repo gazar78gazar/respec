@@ -42,47 +42,49 @@ export class ConflictResolver {
       this.conflictHistory.set(c.id, c);
     });
 
-    // const overwriteConflicts = this.detectOverwriteConflicts(
-    //   newSpecId,
-    //   currentSelections
-    // );
+    const overwriteConflicts = this.detectOverwriteConflicts(
+      newSpecId,
+      currentSelections,
+    );
+    overwriteConflicts.forEach((c) => {
+      c.resolutionOptions = this.generateResolutionOptions(
+        c,
+        currentSelections,
+      ) as OverwriteResolutionOption[];
+      this.conflictHistory.set(c.id, c);
+    });
 
-    // const cascadeConflicts = this.detectCascadeConflicts(
-    //   newSpecId,
-    //   currentSelections
-    // );
+    const cascadeConflicts = this.detectCascadeConflicts(
+      newSpecId,
+      currentSelections,
+    );
+    cascadeConflicts.forEach((c) => {
+      c.resolutionOptions = this.generateResolutionOptions(
+        c,
+        currentSelections,
+      );
+      this.conflictHistory.set(c.id, c);
+    });
 
-    // const constraintConflicts = this.detectConstraintConflicts(
-    //   newSpecId,
-    //   currentSelections
-    // );
+    const constraintConflicts = this.detectConstraintConflicts(
+      newSpecId,
+      currentSelections,
+    );
+    constraintConflicts.forEach((c) => {
+      c.resolutionOptions = this.generateResolutionOptions(
+        c,
+        currentSelections,
+      );
+      this.conflictHistory.set(c.id, c);
+    });
 
     // Convert data layer conflicts to standard Conflict format
-    const conflicts: Conflict[] = [...exclusuionConflicts];
-    // overwriteConflicts.forEach((oc) => {
-    //   const conflictId = `conflict-${Date.now()}-${Math.random()
-    //     .toString(36)
-    //     .substr(2, 9)}`;
-
-    //   const conflict: Conflict = {
-    //     id: conflictId,
-    //     type: oc.type as ConflictType,
-    //     affectedNodes: [oc.existingValue, oc.proposedValue],
-    //     description: oc.description,
-    //     resolution: oc.resolution,
-    //     resolutionOptions: this.generateResolutionOptions(
-    //       oc,
-    //       currentSelections
-    //     ),
-    //     cycleCount: 0,
-    //     firstDetected: new Date(),
-    //     lastUpdated: new Date(),
-    //   };
-
-    //   conflicts.push(conflict);
-
-    // this.conflictHistory.set(conflictId, conflict);
-    // });
+    const conflicts: Conflict[] = [
+      ...exclusuionConflicts,
+      ...overwriteConflicts,
+      ...cascadeConflicts,
+      ...constraintConflicts,
+    ];
 
     console.log(`[ConflictResolver]   → Found ${conflicts.length} conflicts`);
     return conflicts;
@@ -111,14 +113,14 @@ export class ConflictResolver {
         const proposed = ucDataLayer.getNodeName(_c.proposedValue);
         return [
           {
-            id: "keep-existing",
+            id: "option-a",
             description: `Keep ${existing}`,
             action: "keep_existing",
             targetNodes: [_c.existingValue],
             expectedOutcome: `${existing} remains selected`,
           },
           {
-            id: "apply-new",
+            id: "option-b",
             description: `Change to ${proposed}`,
             action: "apply_new",
             targetNodes: [_c.proposedValue],
@@ -132,18 +134,20 @@ export class ConflictResolver {
         const existing = ucDataLayer.getNodeName(_c.existingValue);
         const proposed = ucDataLayer.getNodeName(_c.proposedValue);
         if (_c.resolution) {
-          // TODO zeev conflict Question template available but not currently used for option generation
+          const { optionA, optionB } = this.parseQuestionTemplate(
+            _c.resolution,
+          );
           return [
             {
               id: "option-a",
-              description: existing,
+              description: optionA || existing,
               action: "select_option_a",
               targetNodes: [_c.existingValue],
               expectedOutcome: `Keep ${existing}`,
             },
             {
               id: "option-b",
-              description: proposed,
+              description: optionB || proposed,
               action: "select_option_b",
               targetNodes: [_c.proposedValue],
               expectedOutcome: `Select ${proposed}`,
@@ -156,20 +160,65 @@ export class ConflictResolver {
       case "cascade": {
         const _c = conflict as CascadeConflict;
         const impact = this.getConflictImpact(_c, currentSelections);
+        const proposedName = ucDataLayer.getNodeName(_c.proposedValue);
+        const dependencySet = new Set(
+          ucDataLayer.getRequiredNodes(_c.proposedValue),
+        );
+        const existingNodes = currentSelections.filter(
+          (nodeId) => nodeId !== _c.proposedValue,
+        );
+        const dependenciesToKeep = currentSelections.filter((nodeId) =>
+          dependencySet.has(nodeId),
+        );
+        const proposedNodes = Array.from(
+          new Set([_c.proposedValue, ...dependenciesToKeep]),
+        );
         return [
           {
-            id: "cancel",
-            description: "Cancel change",
+            id: "option-a",
+            description: "Keep existing selections",
             action: "keep_existing",
-            targetNodes: _c.affectedNodes,
+            targetNodes: existingNodes,
             expectedOutcome: "No changes will be made",
           },
           {
-            id: "apply-cascade",
-            description: `Apply changes (affects ${impact.toRemove.length} items)`,
+            id: "option-b",
+            description: `Apply ${proposedName} (affects ${impact.toRemove.length} items)`,
             action: "apply_new",
-            targetNodes: [...impact.toRemove, ...impact.toAdd],
+            targetNodes: proposedNodes,
             expectedOutcome: `Will remove ${impact.toRemove.length} items and add ${impact.toAdd.length}`,
+          },
+        ];
+      }
+      case "field_constraint": {
+        const _c = conflict as ConstraintConflict;
+        const proposedName = ucDataLayer.getNodeName(_c.proposedValue);
+        const dependencySet = new Set(
+          ucDataLayer.getRequiredNodes(_c.proposedValue),
+        );
+        const existingNodes = currentSelections.filter(
+          (nodeId) => nodeId !== _c.proposedValue,
+        );
+        const dependenciesToKeep = currentSelections.filter((nodeId) =>
+          dependencySet.has(nodeId),
+        );
+        const proposedNodes = Array.from(
+          new Set([_c.proposedValue, ...dependenciesToKeep]),
+        );
+        return [
+          {
+            id: "option-a",
+            description: "Keep existing selections",
+            action: "keep_existing",
+            targetNodes: existingNodes,
+            expectedOutcome: `Keep existing options for "${_c.field}"`,
+          },
+          {
+            id: "option-b",
+            description: `Apply ${proposedName}`,
+            action: "apply_new",
+            targetNodes: proposedNodes,
+            expectedOutcome: `Applies ${proposedName} even if "${_c.field}" has no valid options`,
           },
         ];
       }
@@ -186,7 +235,6 @@ export class ConflictResolver {
    * Get all specs that would be affected by a conflict resolution
    */
   getConflictImpact(
-    // TODO zeev conflict reuse method if relevant
     conflict: Conflict,
     currentSelections: string[],
   ): {
@@ -328,6 +376,7 @@ export class ConflictResolver {
             newSpecId,
           ]),
           type: "cascade",
+          proposedValue: newSpecId,
           description: `Required by ${newSpecId}: ${c.description}`,
           affectedNodes: [c.existingValue, c.proposedValue, newSpecId],
         });
@@ -356,10 +405,11 @@ export class ConflictResolver {
         type: "field_constraint",
         field: fieldName,
         key: fieldName,
+        proposedValue: newSpecId,
         // existingValue: currentSelections.join(","),
         // proposedValue: newSpecId,
         description: `Adding ${newSpecId} would leave field "${fieldName}" with no valid options`,
-        affectedNodes: currentSelections,
+        affectedNodes: [...currentSelections, newSpecId],
       });
       console.log(
         `[UCDataLayer]   🚨 Field constraint violation for "${fieldName}"`,
@@ -412,6 +462,18 @@ export class ConflictResolver {
         expectedOutcome: `${proposed} will be selected`,
       },
     ];
+  }
+
+  private parseQuestionTemplate(template: string): {
+    optionA?: string;
+    optionB?: string;
+  } {
+    const match = template.match(/choose between (.+) or (.+)\??/i);
+    if (!match) return {};
+    return {
+      optionA: match[1].trim(),
+      optionB: match[2].trim(),
+    };
   }
 
   /**
