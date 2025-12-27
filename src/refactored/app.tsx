@@ -373,7 +373,8 @@ Please respond with A or B.`;
                 const substitutionNote = update.substitutionNote?.trim();
                 if (
                   substitutionNote &&
-                  substitutionNote !== "Cleared because no specification is selected"
+                  substitutionNote !==
+                    "Cleared because no specification is selected"
                 ) {
                   const id = `sub-${Date.now()}-${Math.random()
                     .toString(36)
@@ -1339,8 +1340,3 @@ Please respond with A or B.`;
     </div>
   );
 }
-
-
-
-
-

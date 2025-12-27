@@ -947,5 +947,3 @@ export class RespecService {
     return this.artifactManager;
   }
 }
-
-
