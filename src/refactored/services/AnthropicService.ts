@@ -663,9 +663,8 @@ Keep it friendly and conversational.
       await artifactManager.resolveConflict(conflict.id, resolutionId);
 
       // Step 7: Generate confirmation message
-      const remainingConflicts = conflictData.totalConflicts
-        ? conflictData.totalConflicts - 1
-        : 0;
+      const remainingConflicts =
+        artifactManager.getState().conflicts.active.length;
 
       let confirmation = `Got it! I've updated your configuration with ${selectedOption.label}.\n\n${selectedOption.outcome}`;
 

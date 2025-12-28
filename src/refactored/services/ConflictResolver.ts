@@ -543,8 +543,8 @@ export class ConflictResolver {
     const match = template.match(/choose between (.+) or (.+)\??/i);
     if (!match) return {};
     return {
-      optionA: match[1].trim(),
-      optionB: match[2].trim(),
+      optionA: match[1].trim().replace(/\?$/, ""),
+      optionB: match[2].trim().replace(/\?$/, ""),
     };
   }
 

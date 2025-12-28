@@ -649,6 +649,12 @@ export class RespecService {
         | "high",
     }));
 
+    console.log(
+      "[Conflicts] total",
+      structuredConflicts.length,
+      structuredConflicts,
+    );
+
     return {
       hasConflicts: true,
       count: activeConflicts.length, // Total count for transparency
