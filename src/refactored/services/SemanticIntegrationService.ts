@@ -18,7 +18,7 @@ import {
   ExtractedNode,
   MatchResult,
 } from "./SemanticMatchingService";
-import { EnhancedFormUpdate, ChatResult } from "./RespecService";
+import type { ChatResult } from "../types/GenericServiceTypes";
 import { ArtifactManager } from "./ArtifactManager";
 import { ucDataLayer } from "./DataLayer";
 import type { Maybe } from "../types/UCDataTypes";

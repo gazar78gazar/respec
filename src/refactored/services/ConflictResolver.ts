@@ -7,18 +7,24 @@ import { ucDataLayer } from "./DataLayer";
 import {
   Conflict,
   ResolutionOption,
-  ConflictResolution,
   OverwriteConflict,
   ExclusionConflict,
   CascadeConflict,
   ConstraintConflict,
   ExclusionResolutionOption,
   OverwriteResolutionOption,
+  Maybe,
 } from "../types/UCDataTypes";
+import type { ActiveConflict } from "../types/ArtifactTypes";
+import type {
+  ConflictResolutionPlan,
+  LocatedSpecification,
+} from "../types/GenericServiceTypes";
 
 export class ConflictResolver {
   private conflictHistory: Map<string, Conflict> = new Map();
-  private resolutionHistory: ConflictResolution[] = [];
+  // private resolutionHistory: ConflictResolution[] = [];
+  // Unused in refactored flow; kept for potential audit logging.
 
   /**
    * Main entry point - detect all conflicts for a proposed change
@@ -282,6 +288,68 @@ export class ConflictResolver {
     };
   }
 
+  /**
+   * Build a conflict resolution plan without mutating artifacts.
+   * ArtifactManager applies the plan and owns rollback.
+   */
+  planResolution(
+    conflict: ActiveConflict,
+    resolution: ResolutionOption,
+    helpers: {
+      findSpecificationWithLocation: (
+        specId: string,
+      ) => Maybe<LocatedSpecification>;
+      collectAssumptionDependencies: (specId: string) => LocatedSpecification[];
+    },
+  ): ConflictResolutionPlan {
+    if (!resolution.targetNodes || resolution.targetNodes.length === 0) {
+      throw new Error(
+        `[Resolution] Resolution ${resolution.id} must specify targetNodes`,
+      );
+    }
+
+    const winningSpecs: string[] = resolution.targetNodes;
+    const losingSpecs: string[] = conflict.affectedNodes.filter(
+      (nodeId) => !winningSpecs.includes(nodeId),
+    );
+
+    const removals: LocatedSpecification[] = [];
+    const planned = new Set<string>();
+
+    const planRemoval = (located: LocatedSpecification): void => {
+      if (planned.has(located.spec.id)) return;
+      planned.add(located.spec.id);
+      removals.push(located);
+    };
+
+    for (const nodeId of winningSpecs) {
+      const located = helpers.findSpecificationWithLocation(nodeId);
+      if (!located) {
+        throw new Error(
+          `[Resolution] Node ${nodeId} not found in mapped or respec artifact - cannot resolve. ` +
+            `This conflict may have already been resolved or the artifact state is corrupted.`,
+        );
+      }
+    }
+
+    for (const specId of losingSpecs) {
+      const located = helpers.findSpecificationWithLocation(specId);
+      if (!located) {
+        console.warn(
+          `[Resolution] Spec ${specId} not found in mapped or respec, skipping removal`,
+        );
+        continue;
+      }
+
+      planRemoval(located);
+
+      const dependents = helpers.collectAssumptionDependencies(specId);
+      dependents.forEach((dependent) => planRemoval(dependent));
+    }
+
+    return { winningSpecs, losingSpecs, removals };
+  }
+
   detectOverwriteConflicts(
     newSpecId: string,
     currentSelections: string[],
@@ -418,28 +486,31 @@ export class ConflictResolver {
     return conflicts;
   }
 
-  private generateDefaultOverwriteOptions(
-    conflict: OverwriteConflict,
-    existing: string,
-    proposed: string,
-  ): OverwriteResolutionOption[] {
-    return [
-      {
-        id: "option-a",
-        description: `Keep ${existing}`,
-        action: "keep_existing",
-        targetNodes: [conflict.existingValue],
-        expectedOutcome: `${existing} remains selected`,
-      },
-      {
-        id: "option-b",
-        description: `Select ${proposed}`,
-        action: "apply_new",
-        targetNodes: [conflict.proposedValue],
-        expectedOutcome: `${proposed} will be selected`,
-      },
-    ];
-  }
+  /*
+   * Unused in refactored flow; overwrite options are built inline.
+   */
+  // private generateDefaultOverwriteOptions(
+  //   conflict: OverwriteConflict,
+  //   existing: string,
+  //   proposed: string,
+  // ): OverwriteResolutionOption[] {
+  //   return [
+  //     {
+  //       id: "option-a",
+  //       description: `Keep ${existing}`,
+  //       action: "keep_existing",
+  //       targetNodes: [conflict.existingValue],
+  //       expectedOutcome: `${existing} remains selected`,
+  //     },
+  //     {
+  //       id: "option-b",
+  //       description: `Select ${proposed}`,
+  //       action: "apply_new",
+  //       targetNodes: [conflict.proposedValue],
+  //       expectedOutcome: `${proposed} will be selected`,
+  //     },
+  //   ];
+  // }
 
   private generateDefaultExclusionOptions(
     conflict: ExclusionConflict,
@@ -476,9 +547,9 @@ export class ConflictResolver {
     };
   }
 
-  /**
-   * Apply conflict resolution
-   */
+  // Unused in refactored flow; ArtifactManager applies ConflictResolver plans.
+  // Apply conflict resolution
+  /*
   async resolveConflict(
     conflictId: string,
     action: "keep_existing" | "apply_new",

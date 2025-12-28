@@ -1,11 +1,16 @@
-// Anthropic API Integration Service
+/**
+ * AnthropicService - LLM integration for requirement extraction and conflict routing.
+ *
+ * Handles prompt construction, fallback behavior, and conflict resolution parsing
+ * without mutating artifact state.
+ */
 import Anthropic from "@anthropic-ai/sdk";
 import { ArtifactManager } from "./ArtifactManager";
-import {
+import type {
   EntryResolutionOption,
   StructuredConflicts,
   StrucureConflictEntry,
-} from "./RespecService";
+} from "../types/GenericServiceTypes";
 
 export class AnthropicService {
   private client: Anthropic | null = null;

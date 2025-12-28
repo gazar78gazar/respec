@@ -1,3 +1,9 @@
+/**
+ * DataServices - Export/import/share/project utilities for the refactored UI.
+ *
+ * Provides browser-only helpers around localStorage persistence and file exports.
+ */
+
 import type { Maybe } from "../types/UCDataTypes";
 
 // TypeScript interfaces and types
@@ -118,6 +124,7 @@ class ExportService {
    * @param sessionId - Session identifier
    * @returns Promise<Blob> - JSON blob for download
    */
+  /* Unused in refactored flow; PDF export is the only wired export path.
   async exportToJSON(
     requirements: Requirements,
     sessionId: string,
@@ -140,12 +147,14 @@ class ExportService {
       );
     }
   }
+  */
 
   /**
    * Creates CSV with flat structure
    * @param requirements - The requirements data
    * @returns Promise<Blob> - CSV blob for download
    */
+  /* Unused in refactored flow; CSV export not wired in UI.
   async exportToCSV(requirements: Requirements): Promise<Blob> {
     try {
       const headers = [
@@ -178,12 +187,14 @@ class ExportService {
       );
     }
   }
+  */
 
   /**
    * Creates Excel with multiple sheets per section
    * @param requirements - The requirements data
    * @returns Promise<Blob> - Excel blob for download
    */
+  /* Unused in refactored flow; Excel export not wired in UI.
   async exportToExcel(requirements: Requirements): Promise<Blob> {
     try {
       // Import xlsx library dynamically
@@ -234,7 +245,9 @@ class ExportService {
       );
     }
   }
+  */
 
+  /* Unused in refactored flow; only needed by Excel export.
   private getFieldSection(fieldName: string): Maybe<string> {
     const fieldSections: Record<string, string> = {
       cpuType: "performanceComputing",
@@ -250,6 +263,7 @@ class ExportService {
     };
     return fieldSections[fieldName] || null;
   }
+  */
 }
 
 // Share Service Class
@@ -260,6 +274,7 @@ class ShareService {
    * @param expiryHours - Hours until link expires (default 72)
    * @returns Promise<string> - Shareable URL
    */
+  /* Unused in refactored flow; share links are not wired in UI.
   async generateShareableLink(
     sessionId: string,
     expiryHours: number = 72,
@@ -288,12 +303,13 @@ class ShareService {
       );
     }
   }
-
+  */
   /**
    * Copies text to clipboard with success feedback
    * @param text - Text to copy
    * @returns Promise<boolean> - Success status
    */
+  /* Unused in refactored flow; share UI not wired.
   async copyToClipboard(text: string): Promise<boolean> {
     try {
       await navigator.clipboard.writeText(text);
@@ -314,7 +330,7 @@ class ShareService {
       }
     }
   }
-
+  */
   /**
    * Prepares email with requirements data
    * @param recipients - Array of email addresses
@@ -322,6 +338,7 @@ class ShareService {
    * @param subject - Email subject
    * @returns string - mailto URL
    */
+  /* Unused in refactored flow; share UI not wired.
   shareViaEmail(
     recipients: string[],
     requirements: Requirements,
@@ -333,17 +350,19 @@ class ShareService {
     )}&body=${encodeURIComponent(body)}`;
     return mailto;
   }
-
+  */
   /**
    * Generates unique share ID
    * @returns string - Unique share token
    */
+  /* Unused in refactored flow; share UI not wired.
   createShareToken(): string {
     const timestamp = Date.now().toString(36);
     const randomStr = Math.random().toString(36).substring(2, 15);
     return `${timestamp}_${randomStr}`;
   }
-
+  */
+  /* Unused in refactored flow; share UI not wired.
   private formatRequirementsForEmail(requirements: Requirements): string {
     let body = "Requirements Summary:\n\n";
 
@@ -356,6 +375,7 @@ class ShareService {
 
     return body;
   }
+  */
 }
 
 // Import Service Class
@@ -365,6 +385,7 @@ class ImportService {
    * @param file - File object to import
    * @returns Promise<ImportResult> - Import result with data or errors
    */
+  /* Unused in refactored flow; import UI not wired.
   async importFromJSON(file: File): Promise<ImportResult> {
     try {
       const text = await file.text();
@@ -397,12 +418,13 @@ class ImportService {
       };
     }
   }
-
+  */
   /**
    * Parses CSV to requirements format
    * @param file - CSV file to import
    * @returns Promise<ImportResult> - Import result with converted data
    */
+  /* Unused in refactored flow; import UI not wired.
   async importFromCSV(file: File): Promise<ImportResult> {
     try {
       const text = await file.text();
@@ -457,12 +479,13 @@ class ImportService {
       };
     }
   }
-
+  */
   /**
    * Validates imported data structure and required fields
    * @param data - Data to validate
    * @returns ValidationResult - Validation results
    */
+  /* Unused in refactored flow; import UI not wired.
   validateImportedData(data: unknown): ValidationResult {
     const errors: string[] = [];
     const warnings: string[] = [];
@@ -519,13 +542,14 @@ class ImportService {
       warnings,
     };
   }
-
+  */
   /**
    * Smart merge logic for combining imported and existing data
    * @param imported - Imported requirements
    * @param existing - Existing requirements
    * @returns Requirements - Merged requirements
    */
+  /* Unused in refactored flow; import UI not wired.
   mergeWithExisting(
     imported: Requirements,
     existing: Requirements,
@@ -562,6 +586,7 @@ class ImportService {
 
     return merged;
   }
+  */
 }
 
 // Project Management Class
@@ -609,6 +634,7 @@ class ProjectManagement {
    * @param name - Project name
    * @returns Promise<SavedProject | null> - Project data or null if not found
    */
+  /* Unused in refactored flow; load UI not wired.
   async loadProject(name: string): Promise<Maybe<SavedProject>> {
     try {
       const projects = this.getStoredProjects();
@@ -626,11 +652,13 @@ class ProjectManagement {
       return null;
     }
   }
+  */
 
   /**
    * Returns array of saved projects
    * @returns Promise<SavedProject[]> - List of saved projects
    */
+  /* Unused in refactored flow; load UI not wired.
   async listProjects(): Promise<SavedProject[]> {
     try {
       const projects = this.getStoredProjects();
@@ -640,12 +668,14 @@ class ProjectManagement {
       return [];
     }
   }
+  */
 
   /**
    * Removes project from localStorage
    * @param name - Project name to delete
    * @returns Promise<boolean> - Success status
    */
+  /* Unused in refactored flow; delete UI not wired.
   async deleteProject(name: string): Promise<boolean> {
     try {
       const projects = this.getStoredProjects();
@@ -657,6 +687,7 @@ class ProjectManagement {
       return false;
     }
   }
+  */
 
   /**
    * Combines save and export functionality
@@ -666,6 +697,7 @@ class ProjectManagement {
    * @param format - Export format
    * @returns Promise<Blob> - Export blob
    */
+  /* Unused in refactored flow; export UI not wired.
   async exportProject(
     name: string,
     requirements: Requirements,
@@ -687,6 +719,7 @@ class ProjectManagement {
         return exportService.exportToJSON(requirements, name);
     }
   }
+  */
 
   /**
    * Debounced auto-save functionality
@@ -748,6 +781,7 @@ class HelperUtilities {
    * @param format - Target format
    * @returns any - Formatted data
    */
+  /* Unused in refactored flow; helper for export formats not wired.
   formatRequirementsForExport(
     requirements: Requirements,
     format: ExportFormat,
@@ -772,6 +806,7 @@ class HelperUtilities {
         return requirements;
     }
   }
+  */
 
   /**
    * Generates timestamp-based filename
@@ -789,6 +824,7 @@ class HelperUtilities {
    * @param data - Data to compress
    * @returns Promise<string> - Compressed data as base64
    */
+  /* Unused in refactored flow; compression not wired.
   async compressData(data: unknown): Promise<string> {
     try {
       const jsonString = JSON.stringify(data);
@@ -832,7 +868,9 @@ class HelperUtilities {
       return btoa(JSON.stringify(data));
     }
   }
+  */
 
+  /* Unused in refactored flow; helper for export formats not wired.
   private groupRequirementsBySection(requirements: Requirements): Record<
     string,
     Array<{
@@ -864,7 +902,9 @@ class HelperUtilities {
 
     return sections;
   }
+  */
 
+  /* Unused in refactored flow; helper for export formats not wired.
   private sortRequirementsByPriority(
     requirements: Requirements,
   ): Array<[string, Requirements[string]]> {
@@ -872,7 +912,9 @@ class HelperUtilities {
       ([, a], [, b]) => a.priority - b.priority,
     );
   }
+  */
 
+  /* Unused in refactored flow; helper for export formats not wired.
   private getFieldSection(fieldName: string): Maybe<string> {
     const fieldSections: Record<string, string> = {
       cpuType: "performanceComputing",
@@ -888,10 +930,11 @@ class HelperUtilities {
     };
     return fieldSections[fieldName] || null;
   }
+  */
 }
 
 // Main DataServices Class
-class DataServices {
+class DataServicesClass {
   public export: ExportService;
   public share: ShareService;
   public import: ImportService;
@@ -908,6 +951,6 @@ class DataServices {
 }
 
 // Singleton export
-export const dataServices = new DataServices();
+export const DataServices = new DataServicesClass();
 
 // Types are already exported above, no need to re-export

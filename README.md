@@ -220,6 +220,8 @@ npm run dev
 - Four-phase implementation pattern
 - Console-based debugging only
 - Bidirectional chat-form synchronization
+- Refactored services: conflict detection/resolution planning lives in `src/refactored/services/ConflictResolver.ts`, and `ArtifactManager` applies plans and mutates artifacts.
+- Shared service types live in `src/refactored/types/GenericServiceTypes.ts` for use across refactored services and `src/refactored/app.tsx`.
 
 ### Never Do
 - Fix unrelated TypeScript errors

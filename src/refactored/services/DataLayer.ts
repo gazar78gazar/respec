@@ -16,7 +16,6 @@ import {
   // UCSpecificationDependency,
   Maybe,
   UCUIField,
-  UCMetadata,
 } from "../types/UCDataTypes";
 
 type UCNode = UCScenario | UCRequirement | UCSpecification | UCComment;
@@ -78,6 +77,7 @@ export class UCDataLayer {
     return node || null;
   }
 
+  /* Unused in refactored flow; keep for future hierarchy tooling.
   getScenario(id: string): Maybe<UCScenario> {
     console.log(
       `[UCDataLayer] 🎬 getScenario(${id})`,
@@ -85,7 +85,9 @@ export class UCDataLayer {
     );
     return this.dataset!.scenarios?.[id];
   }
+  */
 
+  /* Unused in refactored flow; keep for future hierarchy tooling.
   getRequirement(id: string): Maybe<UCRequirement> {
     console.log(
       `[UCDataLayer] 📋 getRequirement(${id})`,
@@ -93,6 +95,7 @@ export class UCDataLayer {
     );
     return this.dataset!.requirements?.[id];
   }
+  */
 
   getSpecification(id: string): Maybe<UCSpecification> {
     console.log(
@@ -110,6 +113,7 @@ export class UCDataLayer {
     );
   }
 
+  /* Unused in refactored flow; keep for future annotation tooling.
   getComment(id: string): Maybe<UCComment> {
     console.log(
       `[UCDataLayer] 💬 getComment(${id})`,
@@ -117,6 +121,7 @@ export class UCDataLayer {
     );
     return this.dataset!.comments?.[id];
   }
+  */
 
   getAllSpecifications(): UCSpecification[] {
     console.log(
@@ -136,17 +141,21 @@ export class UCDataLayer {
     return Object.values(this.dataset!.scenarios || {});
   }
 
+  /* Unused in refactored flow; keep for future annotation tooling.
   getAllComments(): UCComment[] {
     console.log(`[UCDataLayer] 📦 getAllComments()`);
     return Object.values(this.dataset!.comments || {});
   }
+  */
 
   // ============= EXCLUSION QUERIES =============
 
+  /* Unused in refactored flow; keep for future UI inspection.
   getExclusion(id: string): Maybe<UCExclusion> {
     console.log(`[UCDataLayer] ⚠️ getExclusion(${id})`);
     return this.dataset!.exclusions?.[id];
   }
+  */
 
   /**
    * Get all exclusions that involve a specific node
@@ -168,10 +177,12 @@ export class UCDataLayer {
     return exclusions;
   }
 
+  /* Unused in refactored flow; keep for future reporting.
   getAllExclusions(): UCExclusion[] {
     console.log(`[UCDataLayer] ⚠️ getAllExclusions()`);
     return Object.values(this.dataset!.exclusions || {});
   }
+  */
 
   /**
    * Check if two nodes have an exclusion between them
@@ -196,6 +207,7 @@ export class UCDataLayer {
   /**
    * Get the exclusion object between two nodes (if exists)
    */
+  /* Unused in refactored flow; keep for future inspection tooling.
   getExclusionBetween(nodeId1: string, nodeId2: string): Maybe<UCExclusion> {
     const exclusions = Object.values(this.dataset!.exclusions || {});
 
@@ -206,6 +218,7 @@ export class UCDataLayer {
       ) || null
     );
   }
+  */
 
   // ============= DEPENDENCY QUERIES =============
 
@@ -241,6 +254,7 @@ export class UCDataLayer {
   /**
    * Get parent requirements for a specification
    */
+  /* Unused in refactored flow; keep for future hierarchy tooling.
   getParentRequirements(specId: string): UCRequirement[] {
     const spec = this.getSpecification(specId);
     if (!spec?.parent_requirements) return [];
@@ -249,10 +263,12 @@ export class UCDataLayer {
       .map((reqId: string) => this.getRequirement(reqId))
       .filter((req): req is UCRequirement => !!req);
   }
+  */
 
   /**
    * Get child specifications for a requirement
    */
+  /* Unused in refactored flow; keep for future hierarchy tooling.
   getChildSpecifications(reqId: string): UCSpecification[] {
     const req = this.getRequirement(reqId);
     if (!req?.specification_ids) return [];
@@ -261,10 +277,12 @@ export class UCDataLayer {
       .map((specId: string) => this.getSpecification(specId))
       .filter((spec): spec is UCSpecification => !!spec);
   }
+  */
 
   /**
    * Get parent scenarios for a requirement
    */
+  /* Unused in refactored flow; keep for future hierarchy tooling.
   getParentScenarios(reqId: string): UCScenario[] {
     const req = this.getRequirement(reqId);
     if (!req?.parent_scenarios) return [];
@@ -273,6 +291,7 @@ export class UCDataLayer {
       .map((scenarioId: string) => this.getScenario(scenarioId))
       .filter((scenario): scenario is UCScenario => !!scenario);
   }
+  */
 
   // ============= FORM MAPPING QUERIES =============
 
@@ -295,6 +314,7 @@ export class UCDataLayer {
   /**
    * Get all form fields (unique list)
    */
+  /* Unused in refactored flow; keep for future form inspection.
   getAllFormFields(): string[] {
     const fields = new Set<string>();
 
@@ -307,6 +327,7 @@ export class UCDataLayer {
     console.log(`[UCDataLayer] 📋 Found ${fields.size} unique form fields`);
     return Array.from(fields);
   }
+  */
 
   getUiFieldByFieldName(fieldName: string): Maybe<UCUIField> {
     return this.dataset!.ui_fields[fieldName];
@@ -383,9 +404,11 @@ export class UCDataLayer {
   /**
    * Get dataset metadata
    */
+  /* Unused in refactored flow; keep for future dataset reporting.
   getMetadata(): Maybe<UCMetadata> {
     return this.dataset?.metadata || null;
   }
+  */
 }
 
 // ============= SINGLETON EXPORT =============

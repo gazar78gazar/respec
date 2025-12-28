@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
-import {
-  RespecService,
-  EnhancedFormUpdate,
-  ChatResult,
-  StructuredConflicts,
+import { RespecService } from "./services/RespecService";
+import type {
   AutofillResult,
-} from "./services/RespecService";
-import { dataServices } from "./services/dataServices";
+  ChatResult,
+  EnhancedFormUpdate,
+  StructuredConflicts,
+} from "./types/GenericServiceTypes";
+import { DataServices } from "./services/dataServices";
 import { ArtifactManager } from "./services/ArtifactManager";
 import { ucDataLayer } from "./services/DataLayer";
 
@@ -1086,7 +1086,7 @@ Please respond with A or B.`;
         });
       });
       if (Object.keys(formattedRequirements).length > 0) {
-        dataServices.project.autoSave(formattedRequirements, projectName);
+        DataServices.project.autoSave(formattedRequirements, projectName);
       }
     }, 3000);
     return () => clearTimeout(timer);
@@ -1172,13 +1172,13 @@ Please respond with A or B.`;
         description: "Industrial requirements project",
       };
 
-      const blob = await dataServices.export.exportToPDF(
+      const blob = await DataServices.export.exportToPDF(
         formattedRequirements,
         metadata,
       );
-      dataServices.utils.downloadBlob(
+      DataServices.utils.downloadBlob(
         blob,
-        dataServices.utils.generateFilename(
+        DataServices.utils.generateFilename(
           projectName.replace(/\s+/g, "_"),
           "pdf",
         ),
@@ -1223,7 +1223,7 @@ Please respond with A or B.`;
                   lastModified: new Date(),
                   description: "Industrial requirements project",
                 };
-                await dataServices.project.saveProject(
+                await DataServices.project.saveProject(
                   projectName,
                   formattedRequirements,
                   metadata,

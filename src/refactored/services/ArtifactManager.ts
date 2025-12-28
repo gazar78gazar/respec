@@ -12,14 +12,9 @@
 
 import {
   ArtifactState,
-  RespecArtifact,
-  MappedArtifact,
-  UnmappedList,
   UCArtifactSpecification,
   ActiveConflict,
-  ArtifactValidationResult,
   createEmptyArtifactState,
-  ProcessingPriority,
   DependencyContext,
   Source,
   SpecificationId,
@@ -36,7 +31,7 @@ import type {
   ResolutionOption,
 } from "../types/UCDataTypes";
 import { conflictResolver } from "./ConflictResolver";
-import { EnhancedFormUpdate } from "./RespecService";
+import type { EnhancedFormUpdate } from "../types/GenericServiceTypes";
 
 type FormRequirements = Record<
   string,
@@ -77,28 +72,32 @@ export class ArtifactManager {
     return { ...this.state };
   }
 
-  getRespecArtifact(): RespecArtifact {
-    return { ...this.state.respec };
-  }
+  // getRespecArtifact(): RespecArtifact {
+  //   // Unused in refactored flow; keep for future inspection tooling.
+  //   return { ...this.state.respec };
+  // }
 
-  getMappedArtifact(): MappedArtifact {
-    return { ...this.state.mapped };
-  }
+  // getMappedArtifact(): MappedArtifact {
+  //   // Unused in refactored flow; keep for future inspection tooling.
+  //   return { ...this.state.mapped };
+  // }
 
-  getUnmappedList(): UnmappedList {
-    return { ...this.state.unmapped };
-  }
+  // getUnmappedList(): UnmappedList {
+  //   // Unused in refactored flow; keep for future inspection tooling.
+  //   return { ...this.state.unmapped };
+  // }
 
   // getConflictList(): ConflictList {
   //   return { ...this.state.conflicts };
   // }
 
-  isSystemBlocked(): boolean {
-    return (
-      this.state.priorityQueue.blocked ||
-      this.state.conflicts.metadata.systemBlocked
-    );
-  }
+  // isSystemBlocked(): boolean {
+  //   // Unused in refactored flow; keep for future UI status hooks.
+  //   return (
+  //     this.state.priorityQueue.blocked ||
+  //     this.state.conflicts.metadata.systemBlocked
+  //   );
+  // }
 
   // getBlockingReason(): string | undefined {
   //   if (this.state.conflicts.metadata.systemBlocked) {
@@ -742,28 +741,14 @@ export class ArtifactManager {
       `[ArtifactManager] Applying resolution ${resolution.id} to conflict ${conflict.id}`,
     );
 
-    // ========== PRE-VALIDATION ==========
-    if (!resolution.targetNodes || resolution.targetNodes.length === 0) {
-      throw new Error(
-        `[Resolution] Resolution ${resolution.id} must specify targetNodes`,
-      );
-    }
+    const plan = conflictResolver.planResolution(conflict, resolution, {
+      findSpecificationWithLocation:
+        this.findSpecificationWithLocation.bind(this),
+      collectAssumptionDependencies:
+        this.collectAssumptionDependencies.bind(this),
+    });
 
-    // Verify all target nodes exist in mapped or respec artifact
-    for (const nodeId of resolution.targetNodes) {
-      const spec = this.findSpecificationWithLocation(nodeId);
-      if (!spec) {
-        throw new Error(
-          `[Resolution] Node ${nodeId} not found in mapped or respec artifact - cannot resolve. ` +
-            `This conflict may have already been resolved or the artifact state is corrupted.`,
-        );
-      }
-    }
-
-    const winningSpecs: string[] = resolution.targetNodes;
-    const losingSpecs: string[] = conflict.affectedNodes.filter(
-      (n) => !winningSpecs.includes(n),
-    );
+    const { winningSpecs, losingSpecs } = plan;
 
     console.log(`[ArtifactManager] applyConflictResolution`, {
       conflict,
@@ -782,31 +767,12 @@ export class ArtifactManager {
 
     try {
       // Remove losing specifications
-      for (const specId of losingSpecs) {
-        const located = this.findSpecificationWithLocation(specId);
-
-        if (!located) {
-          console.warn(
-            `[Resolution] Spec ${specId} not found in mapped or respec, skipping removal`,
-          );
-          continue;
-        }
-
+      for (const located of plan.removals) {
         this.planRemoval(
           located.artifact,
           located.spec,
           removedSpecs,
           removalPlanned,
-        );
-
-        const dependents = this.collectAssumptionDependencies(specId);
-        dependents.forEach((dependent) =>
-          this.planRemoval(
-            dependent.artifact,
-            dependent.spec,
-            removedSpecs,
-            removalPlanned,
-          ),
         );
       }
 
@@ -1160,40 +1126,41 @@ export class ArtifactManager {
 
   // ============= VALIDATION =============
 
-  async validateArtifacts(): Promise<ArtifactValidationResult> {
-    const result: ArtifactValidationResult = {
-      isValid: true,
-      errors: [],
-      warnings: [],
-      suggestedActions: [],
-    };
-
-    // Validate each artifact
-    const respecValidation = await this.validateArtifact("respec");
-    const mappedValidation = await this.validateArtifact("mapped");
-
-    result.errors.push(...respecValidation.errors, ...mappedValidation.errors);
-    result.warnings.push(
-      ...respecValidation.warnings,
-      ...mappedValidation.warnings,
-    );
-
-    result.isValid = result.errors.length === 0;
-
-    return result;
-  }
-
-  private async validateArtifact(
-    _type: "mapped" | "respec",
-  ): Promise<ArtifactValidationResult> {
-    // TODO zeev Implementation would validate individual artifacts
-    return {
-      isValid: true,
-      errors: [],
-      warnings: [],
-      suggestedActions: [],
-    };
-  }
+  // async validateArtifacts(): Promise<ArtifactValidationResult> {
+  //   // Unused in refactored flow; validation is handled elsewhere.
+  //   const result: ArtifactValidationResult = {
+  //     isValid: true,
+  //     errors: [],
+  //     warnings: [],
+  //     suggestedActions: [],
+  //   };
+  //
+  //   // Validate each artifact
+  //   const respecValidation = await this.validateArtifact("respec");
+  //   const mappedValidation = await this.validateArtifact("mapped");
+  //
+  //   result.errors.push(...respecValidation.errors, ...mappedValidation.errors);
+  //   result.warnings.push(
+  //     ...respecValidation.warnings,
+  //     ...mappedValidation.warnings,
+  //   );
+  //
+  //   result.isValid = result.errors.length === 0;
+  //
+  //   return result;
+  // }
+  //
+  // private async validateArtifact(
+  //   _type: "mapped" | "respec",
+  // ): Promise<ArtifactValidationResult> {
+  //   // Unused in refactored flow; placeholder for future validation policy.
+  //   return {
+  //     isValid: true,
+  //     errors: [],
+  //     warnings: [],
+  //     suggestedActions: [],
+  //   };
+  // }
 
   /**
    * Build form updates from the current respec artifact (post-conflict resolution).
@@ -1269,27 +1236,29 @@ export class ArtifactManager {
 
   // ============= UTILITY METHODS =============
 
-  getCompletionStatus(): { respec: number; mapped: number; total: number } {
-    return {
-      respec: this.state.respec.metadata.totalNodes,
-      mapped: this.state.mapped.metadata.totalNodes,
-      total:
-        this.state.respec.metadata.totalNodes +
-        this.state.mapped.metadata.totalNodes,
-    };
-  }
-
-  getSystemStatus(): {
-    blocked: boolean;
-    priority: ProcessingPriority;
-    activeConflicts: number;
-    pendingValidation: number;
-  } {
-    return {
-      blocked: this.isSystemBlocked(),
-      priority: this.state.priorityQueue.currentPriority,
-      activeConflicts: this.state.conflicts.metadata.activeCount,
-      pendingValidation: this.state.mapped.metadata.pendingValidation.length,
-    };
-  }
+  // getCompletionStatus(): { respec: number; mapped: number; total: number } {
+  //   // Unused in refactored flow; kept for analytics dashboards.
+  //   return {
+  //     respec: this.state.respec.metadata.totalNodes,
+  //     mapped: this.state.mapped.metadata.totalNodes,
+  //     total:
+  //       this.state.respec.metadata.totalNodes +
+  //       this.state.mapped.metadata.totalNodes,
+  //   };
+  // }
+  //
+  // getSystemStatus(): {
+  //   blocked: boolean;
+  //   priority: ProcessingPriority;
+  //   activeConflicts: number;
+  //   pendingValidation: number;
+  // } {
+  //   // Unused in refactored flow; keep for future UI telemetry.
+  //   return {
+  //     blocked: this.isSystemBlocked(),
+  //     priority: this.state.priorityQueue.currentPriority,
+  //     activeConflicts: this.state.conflicts.metadata.activeCount,
+  //     pendingValidation: this.state.mapped.metadata.pendingValidation.length,
+  //   };
+  // }
 }

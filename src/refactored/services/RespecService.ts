@@ -14,6 +14,21 @@ import { ArtifactManager } from "./ArtifactManager";
 // Sprint 1: Import UC8 Data Layer
 import { ucDataLayer } from "./DataLayer";
 import type { Maybe } from "../types/UCDataTypes";
+import type {
+  AutofillResult,
+  ChatResult,
+  EnhancedFormUpdate,
+  FormProcessingResult,
+  FormUpdate,
+  StructuredConflicts,
+} from "../types/GenericServiceTypes";
+
+/**
+ * RespecService - Orchestrates chat processing and the refactored pipeline.
+ *
+ * Coordinates LLM extraction, semantic matching, and artifact state updates
+ * while exposing UI-ready responses and form updates.
+ */
 
 type FieldDefinitionInput = {
   type: string;
@@ -26,29 +41,6 @@ type FieldDefinitionInput = {
 };
 
 type FieldDefinitions = Record<string, Record<string, FieldDefinitionInput>>;
-
-// Simplified interfaces for the browser-only service
-export interface ChatResult {
-  success: boolean;
-  systemMessage: string;
-  formUpdates?: EnhancedFormUpdate[];
-  clarificationNeeded?: string;
-  confidence: number;
-  conflictData?: unknown; // Sprint 3 Week 1: Conflict information for agent
-}
-
-export interface FormUpdate {
-  section: string;
-  field: string;
-  value: unknown;
-  isAssumption: boolean;
-  confidence: number;
-}
-
-export interface EnhancedFormUpdate extends FormUpdate {
-  originalRequest?: string; // What user asked for
-  substitutionNote?: string; // Explanation if different
-}
 
 export interface FieldOptionsMap {
   [section: string]: {
@@ -63,42 +55,7 @@ export interface FieldOptionsMap {
   };
 }
 
-export interface FormProcessingResult {
-  acknowledged: boolean;
-  acknowledgment?: string;
-  suggestions?: FormUpdate[];
-}
-
-export interface AutofillResult {
-  message: string;
-  fields: FormUpdate[];
-  trigger: string;
-}
-
-export type EntryResolutionOption = {
-  id: string;
-  label: string;
-  outcome: string;
-};
-
-export type StrucureConflictEntry = {
-  id: string;
-  type: string;
-  description: string;
-  affectedNodes: unknown;
-  resolutionOptions: EntryResolutionOption[];
-  cycleCount: number;
-  priority: "critical" | "high";
-};
-
-export interface StructuredConflicts {
-  hasConflicts: boolean;
-  count: number; // Total count for transparency
-  currentConflict: number; // Currently handling first batch
-  totalConflicts: number; // For progress indicators
-  systemBlocked: boolean;
-  conflicts: StrucureConflictEntry[]; // ALL conflicts for agent aggregation
-}
+// Shared service types now live in ../types/GenericServiceTypes.ts
 
 export class RespecService {
   private sessionId: string;
@@ -919,31 +876,35 @@ export class RespecService {
   }
 
   // Debug and utility methods
-  getConversationHistory() {
-    return [...this.conversationHistory];
-  }
+  // getConversationHistory() {
+  //   // Unused in refactored flow; kept for future debugging hooks.
+  //   return [...this.conversationHistory];
+  // }
 
-  clearSession(): void {
-    this.conversationHistory = [];
-    localStorage.removeItem(`respec_session_${this.sessionId}`);
-    console.log("[SimplifiedRespec] Session cleared");
-  }
+  // clearSession(): void {
+  //   // Unused in refactored flow; keep for manual session reset tooling.
+  //   this.conversationHistory = [];
+  //   localStorage.removeItem(`respec_session_${this.sessionId}`);
+  //   console.log("[SimplifiedRespec] Session cleared");
+  // }
 
-  getDebugInfo() {
-    return {
-      sessionId: this.sessionId,
-      isInitialized: this.isInitialized,
-      conversationLength: this.conversationHistory.length,
-      lastActivity:
-        this.conversationHistory[this.conversationHistory.length - 1]
-          ?.timestamp,
-    };
-  }
+  // getDebugInfo() {
+  //   // Unused in refactored flow; keep for future diagnostics panel.
+  //   return {
+  //     sessionId: this.sessionId,
+  //     isInitialized: this.isInitialized,
+  //     conversationLength: this.conversationHistory.length,
+  //     lastActivity:
+  //       this.conversationHistory[this.conversationHistory.length - 1]
+  //         ?.timestamp,
+  //   };
+  // }
 
   /**
    * Sprint 3: Expose ArtifactManager for event listener setup
    */
-  getArtifactManager(): ArtifactManager | undefined {
-    return this.artifactManager;
-  }
+  // getArtifactManager(): ArtifactManager | undefined {
+  //   // Unused in refactored flow; keeping as a placeholder hook.
+  //   return this.artifactManager;
+  // }
 }

@@ -359,19 +359,20 @@ export class SemanticMatcher {
 
   // ============= UTILITY METHODS =============
 
-  private buildIntentDetectionPrompt(
-    message: string,
-    _context?: SemanticMatchingContext,
-  ): string {
-    // TODO: Build sophisticated prompts for LLM intent detection
-    return `Analyze this message for technical requirements: "${message}"`;
-  }
+  // private buildIntentDetectionPrompt(
+  //   message: string,
+  //   _context?: SemanticMatchingContext,
+  // ): string {
+  //   // Unused in refactored flow; placeholder for future LLM intent prompts.
+  //   return `Analyze this message for technical requirements: "${message}"`;
+  // }
 
-  getStats(): { artifactIntegration: boolean } {
-    return {
-      artifactIntegration: !!this.artifactManager,
-    };
-  }
+  // getStats(): { artifactIntegration: boolean } {
+  //   // Unused in refactored flow; keep for diagnostics.
+  //   return {
+  //     artifactIntegration: !!this.artifactManager,
+  //   };
+  // }
 }
 
 // Export singleton for easy use
