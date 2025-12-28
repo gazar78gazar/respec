@@ -1,6 +1,9 @@
 // TypeScript interfaces for Requirements system
 // This provides type safety while maintaining exact compatibility with existing code
 
+import type { FormUpdate } from "./service.types";
+import type { FieldValue } from "./mas.types";
+
 export interface FieldData {
   value: string | number | boolean;
   priority?: "high" | "medium" | "low";
@@ -10,73 +13,81 @@ export interface FieldData {
 }
 
 export interface CommercialSection {
-  budget_per_unit?: FieldData;
+  budgetPerUnit?: FieldData;
   quantity?: FieldData;
-  total_budget?: FieldData;
-  delivery_timeframe?: FieldData;
-  shipping_incoterms?: FieldData;
-  warranty_requirements?: FieldData;
+  totalBudget?: FieldData;
+  deliveryTimeframe?: FieldData;
+  shippingIncoterms?: FieldData;
+  warrantyRequirements?: FieldData;
 }
 
 export interface IOConnectivitySection {
-  digital_io?: FieldData;
-  analog_io?: FieldData;
-  ethernet_ports?: FieldData;
-  ethernet_speed?: FieldData;
-  ethernet_protocols?: FieldData;
-  usb_ports?: FieldData;
-  serial_ports_amount?: FieldData;
-  serial_port_type?: FieldData;
-  serial_protocol_support?: FieldData;
-  fieldbus_protocol_support?: FieldData;
-  wireless_extension?: FieldData;
+  digitalIO?: FieldData;
+  analogIO?: FieldData;
+  ethernetPorts?: FieldData;
+  ethernetSpeed?: FieldData;
+  ethernetProtocols?: FieldData;
+  usbPorts?: FieldData;
+  serialPortsAmount?: FieldData;
+  serialPortType?: FieldData;
+  serialProtocolSupport?: FieldData;
+  fieldbusProtocolSupport?: FieldData;
+  wirelessExtension?: FieldData;
 }
 
 export interface ComputePerformanceSection {
-  processor_type?: FieldData;
-  ai_gpu_acceleration?: FieldData;
-  memory_capacity?: FieldData;
-  memory_type?: FieldData;
-  storage_capacity?: FieldData;
-  storage_type?: FieldData;
-  time_sensitive_features?: FieldData;
-  response_latency?: FieldData;
-  operating_system?: FieldData;
+  processorType?: FieldData;
+  aiGpuAcceleration?: FieldData;
+  memoryCapacity?: FieldData;
+  memoryType?: FieldData;
+  storageCapacity?: FieldData;
+  storageType?: FieldData;
+  timeSensitiveFeatures?: FieldData;
+  responseLatency?: FieldData;
+  operatingSystem?: FieldData;
 }
 
 export interface FormFactorSection {
-  power_input?: FieldData;
-  max_power_consumption?: FieldData;
-  redundant_power?: FieldData;
+  powerInput?: FieldData;
+  maxPowerConsumption?: FieldData;
+  redundantPower?: FieldData;
   dimensions?: FieldData;
   mounting?: FieldData;
 }
 
 export interface EnvironmentStandardsSection {
-  operating_temperature?: FieldData;
+  operatingTemperature?: FieldData;
   humidity?: FieldData;
-  vibration_resistance?: FieldData;
-  ingress_protection?: FieldData;
-  vibration_protection?: FieldData;
+  vibrationResistance?: FieldData;
+  ingressProtection?: FieldData;
+  vibrationProtection?: FieldData;
   certifications?: FieldData;
 }
 
-export interface Requirements {
-  commercial?: CommercialSection;
-  io_connectivity?: IOConnectivitySection;
-  compute_performance?: ComputePerformanceSection;
-  form_factor?: FormFactorSection;
-  environment_standards?: EnvironmentStandardsSection;
-  [key: string]: any; // Allow for dynamic sections while maintaining known types
+export interface RequirementFieldState {
+  value?: FieldValue;
+  priority?: 1 | 2 | 3 | 4;
+  isAssumption?: boolean;
+  required?: boolean;
+  isComplete?: boolean;
+  dataSource?: string;
+  source?: string;
+  lastUpdated?: string;
+  toggleHistory?: unknown[];
 }
 
-// Cross-field validation error types
-export interface ValidationError {
-  severity: "error" | "warning" | "info";
-  message: string;
-}
+export type Requirements = Record<
+  string,
+  Record<string, RequirementFieldState>
+>;
 
-export type CrossFieldErrors = Record<string, ValidationError>;
+// Cross-field validation error types (unused in refactored flow)
+// export interface ValidationError {
+//   severity: "error" | "warning" | "info";
+//   message: string;
+// }
+//
+// export type CrossFieldErrors = Record<string, ValidationError>;
 
 // Chat message types
 export interface ChatMessage {
@@ -92,32 +103,27 @@ export interface ChatMessage {
   };
 }
 
-// Form update event types
-export interface FormUpdateEvent {
-  section: string;
-  field: string;
-  value: any;
-  isAssumption?: boolean;
-}
-
 // Respec communication types
 export interface MASCommunicationResult {
   success: boolean;
   message?: string;
-  formUpdates?: FormUpdateEvent[];
+  formUpdates?: FormUpdate[];
   systemMessage?: string;
-  triggered_updates?: FormUpdateEvent[];
-  fields?: FormUpdateEvent[];
+  triggeredUpdates?: FormUpdate[];
+  fields?: FormUpdate[];
+  newState?: string;
   error?: string;
 }
 
 // Export type guards for runtime checking
-export const isFieldData = (value: any): value is FieldData => {
-  return value && typeof value === "object" && "value" in value;
-};
+// const isFieldData = (value: unknown): value is FieldData => {
+//   // Unused in refactored flow; keep for future runtime checks.
+//   return value && typeof value === "object" && "value" in value;
+// };
 
-export const hasFieldValue = (field?: FieldData): boolean => {
-  return field?.value !== undefined && field.value !== "";
-};
+// const hasFieldValue = (field?: FieldData): boolean => {
+//   // Unused in refactored flow; keep for future helpers.
+//   return field?.value !== undefined && field.value !== "";
+// };
 
 export type UserRole = "assistant" | "user" | "system";

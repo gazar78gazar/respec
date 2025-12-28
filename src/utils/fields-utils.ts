@@ -3,7 +3,7 @@ import type {
   RequirementFieldState,
 } from "../types/requirements.types";
 import { formFieldsData, SECTION_MAPPING } from "../config/uiConfig";
-import * as uiUtils from "../../utils/uiUtilities";
+import * as uiUtils from "./ui-utils";
 import type { Maybe } from "../types/service.types";
 
 type RequirementsState = Record<string, Record<string, RequirementFieldState>>;
