@@ -8,67 +8,22 @@
  * 5. Integration with artifact state management
  */
 
-import { ArtifactManager } from "./ArtifactManager";
 import { ucDataLayer } from "./DataLayer";
-import type { Maybe, UCSpecification } from "../types/UCDataTypes";
-import type { Requirements } from "../types/requirements.types";
+import type {
+  IntentKey,
+  MessageIntent,
+  SemanticExtractionResult,
+  SemanticMatchingContext,
+  TechnicalExtraction,
+  UCCandidate,
+} from "../types/semantic.types";
 
 // ============= SEMANTIC MATCHING TYPES =============
-
-export interface SemanticExtractionResult {
-  hasRequirements: boolean;
-  extractions: TechnicalExtraction[];
-  intent: MessageIntent;
-  confidence: number;
-  processingTime: number;
-}
-
-export interface TechnicalExtraction {
-  category: string; // e.g., 'processor', 'memory', 'power'
-  value: string; // e.g., 'Intel Core i7', '16GB', '< 10W'
-  constraint?: string; // e.g., 'minimum', 'maximum', 'exactly'
-  context: string; // Original text context
-  confidence: number; // 0.0 - 1.0
-  ucCandidates: UCCandidate[];
-}
-
-export interface UCCandidate {
-  specId: string; // e.g., 'spc001'
-  specName: string; // e.g., 'processorType'
-  matchReason: string; // Why this spec was chosen
-  confidence: number; // 0.0 - 1.0
-  ucSpec: UCSpecification;
-}
-
-export interface MessageIntent {
-  type: "requirement" | "question" | "clarification" | "other";
-  subtype?: "specification" | "constraint" | "preference" | "comparison";
-  requiresResponse: boolean;
-  suggestedActions: string[];
-}
-
-type IntentKey = "requirement" | "question" | "clarification" | "other";
-
-export interface SemanticMatchingContext {
-  currentRequirements?: Requirements; // Current form state
-  artifactState?: unknown; // Current artifact state
-  chatHistory: Array<{ role?: string; content?: string }>; // Previous messages for context
-  userPreferences?: Record<string, unknown>; // Learned user patterns
-}
+// Types moved to ../types/semantic.types.ts
 
 // ============= MAIN SEMANTIC MATCHER CLASS =============
 
 export class SemanticMatcher {
-  private artifactManager: Maybe<ArtifactManager> = null;
-
-  // ============= INITIALIZATION =============
-
-  async initialize(artifactManager?: ArtifactManager): Promise<void> {
-    this.artifactManager = artifactManager || null;
-
-    console.log("[SemanticMatcher] Initialized");
-  }
-
   // ============= MAIN SEMANTIC PARSING =============
 
   async parseMessage(

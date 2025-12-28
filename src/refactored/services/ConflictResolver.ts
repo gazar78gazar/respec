@@ -4,6 +4,7 @@
  */
 import { v4 as uuidv4 } from "uuid";
 import { ucDataLayer } from "./DataLayer";
+import type { Maybe } from "../types/service.types";
 import {
   Conflict,
   ResolutionOption,
@@ -13,13 +14,12 @@ import {
   ConstraintConflict,
   ExclusionResolutionOption,
   OverwriteResolutionOption,
-  Maybe,
-} from "../types/UCDataTypes";
-import type { ActiveConflict } from "../types/ArtifactTypes";
+} from "../types/conflicts.types";
+import type { ActiveConflict } from "../types/artifacts.types";
 import type {
   ConflictResolutionPlan,
   LocatedSpecification,
-} from "../types/GenericServiceTypes";
+} from "../types/service.types";
 
 export class ConflictResolver {
   private conflictHistory: Map<string, Conflict> = new Map();

@@ -1,6 +1,8 @@
 // TypeScript interfaces for Requirements system
 // This provides type safety while maintaining exact compatibility with existing code
 
+import type { FormUpdate } from "./service.types";
+
 export interface FieldData {
   value: string | number | boolean;
   priority?: "high" | "medium" | "low";
@@ -70,13 +72,13 @@ export interface Requirements {
   [key: string]: unknown; // Allow for dynamic sections while maintaining known types
 }
 
-// Cross-field validation error types
-export interface ValidationError {
-  severity: "error" | "warning" | "info";
-  message: string;
-}
-
-export type CrossFieldErrors = Record<string, ValidationError>;
+// Cross-field validation error types (unused in refactored flow)
+// export interface ValidationError {
+//   severity: "error" | "warning" | "info";
+//   message: string;
+// }
+//
+// export type CrossFieldErrors = Record<string, ValidationError>;
 
 // Chat message types
 export interface ChatMessage {
@@ -92,32 +94,26 @@ export interface ChatMessage {
   };
 }
 
-// Form update event types
-export interface FormUpdateEvent {
-  section: string;
-  field: string;
-  value: unknown;
-  isAssumption?: boolean;
-}
-
 // Respec communication types
 export interface MASCommunicationResult {
   success: boolean;
   message?: string;
-  formUpdates?: FormUpdateEvent[];
+  formUpdates?: FormUpdate[];
   systemMessage?: string;
-  triggeredUpdates?: FormUpdateEvent[];
-  fields?: FormUpdateEvent[];
+  triggeredUpdates?: FormUpdate[];
+  fields?: FormUpdate[];
   error?: string;
 }
 
 // Export type guards for runtime checking
-export const isFieldData = (value: unknown): value is FieldData => {
-  return value && typeof value === "object" && "value" in value;
-};
+// const isFieldData = (value: unknown): value is FieldData => {
+//   // Unused in refactored flow; keep for future runtime checks.
+//   return value && typeof value === "object" && "value" in value;
+// };
 
-export const hasFieldValue = (field?: FieldData): boolean => {
-  return field?.value !== undefined && field.value !== "";
-};
+// const hasFieldValue = (field?: FieldData): boolean => {
+//   // Unused in refactored flow; keep for future helpers.
+//   return field?.value !== undefined && field.value !== "";
+// };
 
 export type UserRole = "assistant" | "user" | "system";

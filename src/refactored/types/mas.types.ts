@@ -1,11 +1,9 @@
 // MAS action typing for strongly-typed communicateWithMAS
 
+import type { Maybe } from "./service.types";
+
 export type FieldValue =
-  | string
-  | number
-  | boolean
-  | string[]
-  | null
+  | Maybe<string | number | boolean | string[]>
   | undefined;
 
 export type MASAction =

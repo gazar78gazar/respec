@@ -8,12 +8,19 @@ import Anthropic from "@anthropic-ai/sdk";
 import { ArtifactManager } from "./ArtifactManager";
 import type {
   EntryResolutionOption,
+  Maybe,
   StructuredConflicts,
   StrucureConflictEntry,
-} from "../types/GenericServiceTypes";
+} from "../types/service.types";
+import type {
+  AnthropicAnalysisResult,
+  AnthropicAnalysisContext,
+  ConflictResponseParseResult,
+  ConflictResolutionOutcome,
+} from "../types/semantic.types";
 
 export class AnthropicService {
-  private client: Anthropic | null = null;
+  private client: Maybe<Anthropic> = null;
   private apiKey: string;
   private isInitialized = false;
   private fieldMappings: Record<string, string[]> = {};
@@ -58,20 +65,8 @@ export class AnthropicService {
 
   async analyzeRequirements(
     message: string,
-    context?: string,
-  ): Promise<{
-    requirements: Array<{
-      section: string;
-      field: string;
-      value: string;
-      confidence: number;
-      isAssumption: boolean;
-      originalRequest?: string;
-      substitutionNote?: string;
-    }>;
-    response: string;
-    clarificationNeeded?: string;
-  }> {
+    context?: string | AnthropicAnalysisContext,
+  ): Promise<AnthropicAnalysisResult> {
     if (!this.isInitialized) {
       await this.initialize();
     }
@@ -158,7 +153,7 @@ export class AnthropicService {
     }
   }
 
-  private getFallbackResponse(message: string): any {
+  private getFallbackResponse(message: string): AnthropicAnalysisResult {
     // Simple pattern matching fallback with correct field names
     const patterns = {
       digital_io: /(\d+)\s*(digital\s*(inputs?|outputs?|i\/o)|DI|DO)/i,
@@ -395,13 +390,7 @@ CRITICAL:
   async parseConflictResponse(
     userMessage: string,
     _activeConflict: StrucureConflictEntry,
-  ): Promise<{
-    isResolution: boolean;
-    choice: "a" | "b" | null;
-    confidence: number;
-    rawResponse: string;
-    reasoning?: string;
-  }> {
+  ): Promise<ConflictResponseParseResult> {
     if (!this.client) {
       // Fallback: Simple parsing for non-API mode
       const message = userMessage.toLowerCase().trim();
@@ -457,7 +446,7 @@ Determine:
 Respond ONLY with valid JSON:
 {
   "isResolution": true/false,
-  "choice": "a" | "b" | null,
+  "choice": "a" or "b" or null,
   "confidence": 0.0-1.0,
   "reasoning": "brief explanation"
 }
@@ -592,13 +581,7 @@ Keep it friendly and conversational.
     userMessage: string,
     conflictData: StructuredConflicts,
     artifactManager: ArtifactManager,
-  ): Promise<{
-    response: string;
-    mode: string;
-    conflictId?: string;
-    chosenOption?: EntryResolutionOption;
-    cycleCount?: number;
-  }> {
+  ): Promise<ConflictResolutionOutcome> {
     console.log("[AnthropicService] Handling conflict resolution", {
       userMessage,
       conflictData,

@@ -13,29 +13,19 @@
  * - Transformation between formats
  */
 
-import {
-  SemanticMatchingService,
+import { SemanticMatchingService } from "./SemanticMatchingService";
+import type {
+  EnhancedChatResult,
   ExtractedNode,
   MatchResult,
-} from "./SemanticMatchingService";
-import type { ChatResult } from "../types/GenericServiceTypes";
+  SemanticProcessingOptions,
+} from "../types/semantic.types";
 import { ArtifactManager } from "./ArtifactManager";
 import { ucDataLayer } from "./DataLayer";
-import type { Maybe } from "../types/UCDataTypes";
+import type { Maybe } from "../types/service.types";
 
 // ============= INTEGRATION TYPES =============
-
-export interface EnhancedChatResult extends ChatResult {
-  matchResults?: MatchResult[];
-  extractionSummary?: string;
-  conflictsDetected?: unknown[];
-  nextSuggestions?: string[];
-}
-
-export interface SemanticProcessingOptions {
-  confidenceThreshold: number;
-  includeDebugInfo: boolean;
-}
+// Types moved to ../types/semantic.types.ts
 
 // ============= MAIN INTEGRATION SERVICE =============
 

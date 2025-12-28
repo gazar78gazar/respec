@@ -13,7 +13,6 @@ import { ArtifactManager } from "./ArtifactManager";
 
 // Sprint 1: Import UC8 Data Layer
 import { ucDataLayer } from "./DataLayer";
-import type { Maybe } from "../types/UCDataTypes";
 import type {
   AutofillResult,
   ChatResult,
@@ -21,7 +20,13 @@ import type {
   FormProcessingResult,
   FormUpdate,
   StructuredConflicts,
-} from "../types/GenericServiceTypes";
+  Maybe,
+} from "../types/service.types";
+import type {
+  FieldDefinitionInput,
+  FieldDefinitions,
+  AnthropicAnalysisResult,
+} from "../types/semantic.types";
 
 /**
  * RespecService - Orchestrates chat processing and the refactored pipeline.
@@ -30,17 +35,7 @@ import type {
  * while exposing UI-ready responses and form updates.
  */
 
-type FieldDefinitionInput = {
-  type: string;
-  options?: string[];
-  min?: number;
-  max?: number;
-  validation?: string;
-  label?: string;
-  group?: string;
-};
-
-type FieldDefinitions = Record<string, Record<string, FieldDefinitionInput>>;
+// Field definition types now live in ../types/semantic.types
 
 export interface FieldOptionsMap {
   [section: string]: {
@@ -55,7 +50,7 @@ export interface FieldOptionsMap {
   };
 }
 
-// Shared service types now live in ../types/GenericServiceTypes.ts
+// Shared service types now live in ../types/service.types.ts
 
 export class RespecService {
   private sessionId: string;
@@ -491,13 +486,11 @@ export class RespecService {
       console.log(
         `[SimplifiedRespec] 📝 Step 1: Agent extracting requirements...`,
       );
-      const anthropicResult = await this.anthropicService.analyzeRequirements(
-        contextPrompt,
-        {
+      const anthropicResult: AnthropicAnalysisResult =
+        await this.anthropicService.analyzeRequirements(contextPrompt, {
           conversationHistory: this.conversationHistory.slice(-5), // Last 5 messages for context
           sessionId: this.sessionId,
-        },
-      );
+        });
       console.log(
         `[SimplifiedRespec] ✅ Agent extracted:`,
         anthropicResult.requirements.length,

@@ -1,8 +1,8 @@
 /**
- * GenericServiceTypes - Shared service-level types used across refactored services.
+ * ServiceTypes - Shared service-level types used across refactored services.
  */
 
-import type { UCArtifactSpecification } from "./ArtifactTypes";
+import type { UCArtifactSpecification } from "./artifacts.types";
 
 export interface FormUpdate {
   section: string;
@@ -11,6 +11,8 @@ export interface FormUpdate {
   isAssumption: boolean;
   confidence: number;
 }
+
+export type Maybe<T> = T | null;
 
 export interface EnhancedFormUpdate extends FormUpdate {
   originalRequest?: string;

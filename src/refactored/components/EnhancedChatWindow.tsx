@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { MASCommunicationResult } from "../types/requirements.types";
+import type { Maybe } from "../types/service.types";
 
 // Enhanced ChatWindow with semantic feedback, confidence indicators, and conflict detection
 interface ChatMessage {
@@ -43,7 +44,7 @@ interface ClarificationPrompt {
 interface EnhancedChatWindowProps {
   onSendMessage: (message: string) => Promise<MASCommunicationResult>;
   messages: ChatMessage[];
-  pendingClarification?: ClarificationPrompt | null;
+  pendingClarification?: Maybe<ClarificationPrompt>;
   isLoading: boolean;
   width: number;
   onMouseDown: (e: React.MouseEvent) => void;

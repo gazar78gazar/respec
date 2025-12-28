@@ -8,8 +8,8 @@
  * 4. Conflict List: Isolated conflicting nodes
  */
 
-import { FieldPayloadData } from "./mas";
-import { ConflictType, ResolutionOption, UCSpecification } from "./UCDataTypes";
+import type { UCSpecification } from "./uc-data.types";
+import type { ConflictType, ResolutionOption } from "./conflicts.types";
 
 // ============= BASE INTERFACES =============
 
@@ -199,46 +199,47 @@ export interface ArtifactState {
 
 // ============= VALIDATION RESULTS =============
 
-export interface ArtifactValidationResult {
-  isValid: boolean;
-  errors: ArtifactValidationError[];
-  warnings: ArtifactValidationWarning[];
-  suggestedActions: string[];
-}
-
-export interface ArtifactValidationError {
-  artifactType: "respec" | "mapped" | "unmapped" | "conflicts";
-  nodeId?: string;
-  errorType: "structure" | "constraint" | "dependency" | "conflict";
-  message: string;
-  details?: unknown;
-}
-
-export interface ArtifactValidationWarning {
-  artifactType: "respec" | "mapped" | "unmapped" | "conflicts";
-  nodeId?: string;
-  warningType: "performance" | "data_quality" | "user_attention";
-  message: string;
-  details?: unknown;
-}
+// export interface ArtifactValidationResult {
+//   // Unused in refactored flow; validation is currently stubbed.
+//   isValid: boolean;
+//   errors: ArtifactValidationError[];
+//   warnings: ArtifactValidationWarning[];
+//   suggestedActions: string[];
+// }
+//
+// export interface ArtifactValidationError {
+//   artifactType: "respec" | "mapped" | "unmapped" | "conflicts";
+//   nodeId?: string;
+//   errorType: "structure" | "constraint" | "dependency" | "conflict";
+//   message: string;
+//   details?: unknown;
+// }
+//
+// export interface ArtifactValidationWarning {
+//   artifactType: "respec" | "mapped" | "unmapped" | "conflicts";
+//   nodeId?: string;
+//   warningType: "performance" | "data_quality" | "user_attention";
+//   message: string;
+//   details?: unknown;
+// }
 
 // ============= HELPER TYPES =============
 
-export type ArtifactType = "respec" | "mapped" | "unmapped" | "conflicts";
-
-export type ProcessingPriority = "CONFLICTS" | "CLEARING" | "PROCESSING";
-
-export interface SyncResult {
-  success: boolean;
-  updated: string[]; // Field paths that were updated
-  errors: string[];
-  warnings: string[];
-}
-
-export interface FieldsUpdatesData {
-  updates: FieldPayloadData[];
-  source: Source;
-}
+// export type ArtifactType = "respec" | "mapped" | "unmapped" | "conflicts";
+//
+// export type ProcessingPriority = "CONFLICTS" | "CLEARING" | "PROCESSING";
+//
+// export interface SyncResult {
+//   success: boolean;
+//   updated: string[]; // Field paths that were updated
+//   errors: string[];
+//   warnings: string[];
+// }
+//
+// export interface FieldsUpdatesData {
+//   updates: FieldPayloadData[];
+//   source: Source;
+// }
 
 // ============= FACTORY FUNCTIONS =============
 

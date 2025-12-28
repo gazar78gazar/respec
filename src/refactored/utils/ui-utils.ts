@@ -1,4 +1,4 @@
-import type { Maybe } from "../types/UCDataTypes";
+import type { Maybe } from "../types/service.types";
 
 // TypeScript interfaces and types
 export interface Requirements {

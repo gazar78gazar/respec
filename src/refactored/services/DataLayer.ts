@@ -14,9 +14,9 @@ import {
   UCComment,
   UCExclusion,
   // UCSpecificationDependency,
-  Maybe,
   UCUIField,
-} from "../types/UCDataTypes";
+} from "../types/uc-data.types";
+import type { Maybe } from "../types/service.types";
 
 type UCNode = UCScenario | UCRequirement | UCSpecification | UCComment;
 

@@ -6,7 +6,7 @@ import type {
   ChatResult,
   EnhancedFormUpdate,
   StructuredConflicts,
-} from "./types/GenericServiceTypes";
+} from "./types/service.types";
 import { DataServices } from "./services/dataServices";
 import { ArtifactManager } from "./services/ArtifactManager";
 import { ucDataLayer } from "./services/DataLayer";
@@ -22,7 +22,7 @@ import type {
 } from "./types/requirements.types";
 import EnhancedChatWindow from "./components/EnhancedChatWindow";
 import type { FieldDef } from "./components/FormField";
-import type { MASAction, PayloadMap } from "./types/mas";
+import type { MASAction, PayloadMap } from "./types/mas.types";
 import { StepProgressIndicator } from "./components/StepProgressIndicator";
 import { TabsNav } from "./components/TabsNav";
 import { ProgressSummary } from "./components/ProgressSummary";
@@ -45,7 +45,7 @@ import {
   resolveFieldLocation,
   focusAndScrollField,
 } from "./utils/fields-utils";
-import type { Maybe } from "./types/UCDataTypes";
+import type { Maybe } from "./types/service.types";
 
 // Safe index helpers for dynamic section keys (string index access)
 type FieldDefExt = FieldDef & { group?: string };

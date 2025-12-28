@@ -1,7 +1,7 @@
 import type { Requirements } from "../types/requirements.types";
 import { formFieldsData, SECTION_MAPPING } from "../config/uiConfig";
 import * as uiUtils from "../../utils/uiUtilities";
-import type { Maybe } from "../types/UCDataTypes";
+import type { Maybe } from "../types/service.types";
 
 type RequirementFieldState = {
   value?: unknown;

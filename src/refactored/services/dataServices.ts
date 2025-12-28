@@ -4,54 +4,12 @@
  * Provides browser-only helpers around localStorage persistence and file exports.
  */
 
-import type { Maybe } from "../types/UCDataTypes";
-
-// TypeScript interfaces and types
-export interface Requirements {
-  [fieldName: string]: {
-    value?: unknown;
-    priority: 1 | 2 | 3 | 4;
-    isAssumption?: boolean;
-    required?: boolean;
-  };
-}
-
-export interface ProjectMetadata {
-  name: string;
-  created: Date;
-  lastModified: Date;
-  version?: string;
-  description?: string;
-}
-
-export interface SavedProject {
-  name: string;
-  requirements: Requirements;
-  metadata: ProjectMetadata;
-  timestamp: number;
-}
-
-export interface ShareableData {
-  sessionId: string;
-  requirements: Requirements;
-  metadata: ProjectMetadata;
-  expiresAt: Date;
-}
-
-export interface ImportResult {
-  success: boolean;
-  data?: Requirements;
-  errors?: string[];
-  warnings?: string[];
-}
-
-export interface ValidationResult {
-  isValid: boolean;
-  errors: string[];
-  warnings: string[];
-}
-
-export type ExportFormat = "pdf" | "json" | "csv" | "excel";
+import type { Maybe } from "../types/service.types";
+import type {
+  ProjectMetadata,
+  Requirements,
+  SavedProject,
+} from "../types/data-services.types";
 
 // Export Service Class
 class ExportService {
@@ -632,7 +590,7 @@ class ProjectManagement {
   /**
    * Retrieves project from localStorage
    * @param name - Project name
-   * @returns Promise<SavedProject | null> - Project data or null if not found
+   * @returns Promise<Maybe<SavedProject>> - Project data or null if not found
    */
   /* Unused in refactored flow; load UI not wired.
   async loadProject(name: string): Promise<Maybe<SavedProject>> {

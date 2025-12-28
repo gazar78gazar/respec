@@ -12,50 +12,15 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { ucDataLayer } from "./DataLayer";
-import type { Maybe, UCUIField } from "../types/UCDataTypes";
+import type { Maybe } from "../types/service.types";
+import type {
+  ExtractedNode,
+  MatchResult,
+  UCSchemaContext,
+} from "../types/semantic.types";
 
 // ============= TYPES =============
-
-export interface ExtractedNode {
-  text: string; // Original extracted text from user
-  category?: string; // Optional hint: 'processor', 'memory', etc.
-  value?: unknown; // Extracted value if applicable
-  context?: string; // Original user message for context
-}
-
-export interface MatchResult {
-  extractedNode: ExtractedNode;
-  ucMatch: UCMatch;
-  value?: unknown; // Final value (may be transformed)
-  extractedText: string;
-}
-
-export interface UCMatch {
-  id: string; // e.g., 'spc001', 'req001', 'dom001'
-  name: string; // e.g., 'processorType'
-  type: "scenario" | "requirement" | "specification";
-  confidence: number; // 0.0 - 1.0
-  matchType: "exact" | "fuzzy" | "semantic";
-  rationale?: string; // Why this match was chosen
-}
-
-interface UCSchemaContext {
-  scenarios: Array<{ id: string; name: string; description: string }>;
-  requirements: Array<{
-    id: string;
-    name: string;
-    description: string;
-    parent_scenarios?: string[];
-  }>;
-  specifications: Array<{
-    id: string;
-    name: string;
-    description: string;
-    parent_requirements?: string[];
-    options?: string[];
-    form_mapping?: UCUIField;
-  }>;
-}
+// Types moved to ../types/semantic.types.ts
 
 // ============= MAIN SERVICE =============
 

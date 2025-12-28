@@ -1,13 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { AlertCircle, AlertTriangle, Check, Info } from "lucide-react";
-import type { Maybe } from "../types/UCDataTypes";
+import type { Maybe } from "../types/service.types";
 
 export type FieldValue =
-  | string
-  | number
-  | boolean
-  | string[]
-  | null
+  | Maybe<string | number | boolean | string[]>
   | undefined;
 
 export type FieldDef = {

@@ -18,20 +18,20 @@ import {
   DependencyContext,
   Source,
   SpecificationId,
-} from "../types/ArtifactTypes";
+} from "../types/artifacts.types";
 
 // Sprint 1: Import UC8 Data Layer (full integration in Sprint 2)
 import { ucDataLayer } from "./DataLayer";
+import type { UCSpecification } from "../types/uc-data.types";
+import type { Maybe } from "../types/service.types";
 import type {
-  UCSpecification,
-  ConflictResult,
-  Maybe,
   Conflict,
+  ConflictResult,
   ConflictType,
   ResolutionOption,
-} from "../types/UCDataTypes";
+} from "../types/conflicts.types";
 import { conflictResolver } from "./ConflictResolver";
-import type { EnhancedFormUpdate } from "../types/GenericServiceTypes";
+import type { EnhancedFormUpdate } from "../types/service.types";
 
 type FormRequirements = Record<
   string,
@@ -1176,7 +1176,7 @@ export class ArtifactManager {
       string,
       {
         spec: (typeof respecArtifact.specifications)[keyof typeof respecArtifact.specifications];
-        selected: string | null;
+        selected: Maybe<string>;
       }
     > = {};
 
