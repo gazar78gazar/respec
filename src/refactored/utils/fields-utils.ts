@@ -1,17 +1,10 @@
-import type { Requirements } from "../types/requirements.types";
+import type {
+  Requirements,
+  RequirementFieldState,
+} from "../types/requirements.types";
 import { formFieldsData, SECTION_MAPPING } from "../config/uiConfig";
 import * as uiUtils from "../../utils/uiUtilities";
 import type { Maybe } from "../types/service.types";
-
-type RequirementFieldState = {
-  value?: unknown;
-  priority?: number;
-  isAssumption?: boolean;
-  isComplete?: boolean;
-  dataSource?: string;
-  source?: string;
-  toggleHistory?: unknown[];
-};
 
 type RequirementsState = Record<string, Record<string, RequirementFieldState>>;
 
@@ -208,13 +201,13 @@ export const validateSystemFieldUpdate = (
   return true;
 };
 
-export const getPriority = (fieldKey: string): number => {
+export const getPriority = (fieldKey: string): 1 | 2 | 3 | 4 => {
   const priorityLevels = formFieldsData.priority_system
     .priority_levels as PriorityLevels;
 
   for (const [level, config] of Object.entries(priorityLevels)) {
     if (config.fields.includes(fieldKey)) {
-      return parseInt(level);
+      return parseInt(level) as 1 | 2 | 3 | 4;
     }
   }
   return 4;
@@ -223,14 +216,14 @@ export const getPriority = (fieldKey: string): number => {
 export const calculateCompletion = (requirements: Requirements): number => {
   const formatted: Record<
     string,
-    { value?: unknown; priority?: number; isAssumption?: boolean }
+    { value?: unknown; priority: 1 | 2 | 3 | 4; isAssumption?: boolean }
   > = {};
   Object.entries(requirements).forEach(([_, fields]) => {
     const sectionFields = fields as Record<string, RequirementFieldState>;
     Object.entries(sectionFields).forEach(([fieldKey, fieldData]) => {
       formatted[fieldKey] = {
         value: fieldData.value,
-        priority: fieldData.priority,
+        priority: (fieldData.priority || 4) as 1 | 2 | 3 | 4,
         isAssumption: fieldData.isAssumption,
       };
     });
@@ -440,7 +433,14 @@ export const validateField = (
           });
         }
       }
-      if (fieldKey === "budgetPerUnit" && value && value < 0) {
+      if (
+        fieldKey === "budgetPerUnit" &&
+        value !== undefined &&
+        value !== null &&
+        value !== "" &&
+        !Number.isNaN(numValue) &&
+        numValue < 0
+      ) {
         errors.push({
           severity: "error",
           message: "Budget cannot be negative",
@@ -452,7 +452,12 @@ export const validateField = (
       break;
 
     case "date":
-      if (value) {
+      if (
+        value &&
+        (typeof value === "string" ||
+          typeof value === "number" ||
+          value instanceof Date)
+      ) {
         const selectedDate = new Date(value);
         const today = new Date();
         today.setHours(0, 0, 0, 0);

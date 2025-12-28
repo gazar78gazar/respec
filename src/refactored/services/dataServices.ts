@@ -72,7 +72,8 @@ class ExportService {
 
       return new Blob([doc.output("blob")], { type: "application/pdf" });
     } catch (error: unknown) {
-      throw new Error(`PDF export failed: ${error?.message}`);
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`PDF export failed: ${message}`);
     }
   }
 

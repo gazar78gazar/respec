@@ -1,5 +1,5 @@
 /**
- * ServiceTypes - Shared service-level types used across refactored services.
+ * service.types - Shared service-level types used across refactored services.
  */
 
 import type { UCArtifactSpecification } from "./artifacts.types";

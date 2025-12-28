@@ -2,6 +2,7 @@
 // This provides type safety while maintaining exact compatibility with existing code
 
 import type { FormUpdate } from "./service.types";
+import type { FieldValue } from "./mas.types";
 
 export interface FieldData {
   value: string | number | boolean;
@@ -63,14 +64,22 @@ export interface EnvironmentStandardsSection {
   certifications?: FieldData;
 }
 
-export interface Requirements {
-  commercial?: CommercialSection;
-  IOConnectivity?: IOConnectivitySection;
-  computePerformance?: ComputePerformanceSection;
-  formFactor?: FormFactorSection;
-  environmentStandards?: EnvironmentStandardsSection;
-  [key: string]: unknown; // Allow for dynamic sections while maintaining known types
+export interface RequirementFieldState {
+  value?: FieldValue;
+  priority?: 1 | 2 | 3 | 4;
+  isAssumption?: boolean;
+  required?: boolean;
+  isComplete?: boolean;
+  dataSource?: string;
+  source?: string;
+  lastUpdated?: string;
+  toggleHistory?: unknown[];
 }
+
+export type Requirements = Record<
+  string,
+  Record<string, RequirementFieldState>
+>;
 
 // Cross-field validation error types (unused in refactored flow)
 // export interface ValidationError {
@@ -102,6 +111,7 @@ export interface MASCommunicationResult {
   systemMessage?: string;
   triggeredUpdates?: FormUpdate[];
   fields?: FormUpdate[];
+  newState?: string;
   error?: string;
 }
 

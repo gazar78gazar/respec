@@ -24,6 +24,11 @@ import type {
 // ============= MAIN SEMANTIC MATCHER CLASS =============
 
 export class SemanticMatcher {
+  // Unused in refactored flow; kept for compatibility with RespecService.
+  initialize(_artifactManager?: unknown): void {
+    // No-op initialization hook.
+  }
+
   // ============= MAIN SEMANTIC PARSING =============
 
   async parseMessage(
@@ -106,6 +111,7 @@ export class SemanticMatcher {
         /\b(not sure|don't know|unclear|confused|unsure|help me)\b/i,
         /\b(more details|explain|help me understand|what should)\b/i,
       ],
+      other: [],
     };
 
     // Pattern-based detection (fast)

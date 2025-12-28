@@ -4,13 +4,14 @@ import { Check } from "lucide-react";
 export interface StepHeaderProps {
   currentStep: number;
   setCurrentStage: (stage: number) => void;
+  chatWindowWidth?: number;
 }
 
 export const StepProgressIndicator: React.FC<StepHeaderProps> = ({
   currentStep,
   setCurrentStage,
   chatWindowWidth = 384,
-}: StepHeaderProps & { chatWindowWidth?: number }) => {
+}: StepHeaderProps) => {
   const steps = [
     {
       id: 1,

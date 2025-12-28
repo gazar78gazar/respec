@@ -86,15 +86,15 @@ export type ResolutionOption =
   | CascadeResolutionOption
   | ConstraintResolutionOption;
 
-// export interface ConflictResolution {
-//   // Unused in refactored flow; resolution history is not tracked.
-//   conflictId: string;
-//   action: "keep_existing" | "apply_new" | "manual_override";
-//   nodeToRemove?: string;
-//   nodeToAdd?: string;
-//   userChoice: string;
-//   timestamp: Date;
-// }
+export interface ConflictResolution {
+  // Unused in refactored flow; resolution history is not wired to UI.
+  conflictId: string;
+  action: "keep_existing" | "apply_new";
+  nodeToRemove?: string;
+  nodeToAdd?: string;
+  userChoice: string;
+  timestamp: Date;
+}
 
 export interface ConflictResult {
   hasConflict: boolean;

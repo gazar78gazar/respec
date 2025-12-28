@@ -14,6 +14,9 @@ import {
   ConstraintConflict,
   ExclusionResolutionOption,
   OverwriteResolutionOption,
+  CascadeResolutionOption,
+  ConstraintResolutionOption,
+  ConflictResolution,
 } from "../types/conflicts.types";
 import type { ActiveConflict } from "../types/artifacts.types";
 import type {
@@ -23,7 +26,7 @@ import type {
 
 export class ConflictResolver {
   private conflictHistory: Map<string, Conflict> = new Map();
-  // private resolutionHistory: ConflictResolution[] = [];
+  private resolutionHistory: ConflictResolution[] = [];
   // Unused in refactored flow; kept for potential audit logging.
 
   /**
@@ -68,7 +71,7 @@ export class ConflictResolver {
       c.resolutionOptions = this.generateResolutionOptions(
         c,
         currentSelections,
-      );
+      ) as CascadeResolutionOption[];
       this.conflictHistory.set(c.id, c);
     });
 
@@ -80,7 +83,7 @@ export class ConflictResolver {
       c.resolutionOptions = this.generateResolutionOptions(
         c,
         currentSelections,
-      );
+      ) as ConstraintResolutionOption[];
       this.conflictHistory.set(c.id, c);
     });
 
@@ -229,9 +232,7 @@ export class ConflictResolver {
         ];
       }
       default:
-        alert(
-          `unhandled type of conflict ${conflict.type} - make correct exception`,
-        );
+        alert("unhandled type of conflict - make correct exception");
         return [];
       // return this.generateDefaultOptions(conflict, existing, proposed);
     }

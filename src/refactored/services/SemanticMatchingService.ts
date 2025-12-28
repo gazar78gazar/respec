@@ -241,7 +241,8 @@ Match ALL provided nodes. If no good match exists, use confidence < 0.5.`;
         name: spec.name,
         description: spec.description || "",
         parent_requirements: spec.parent_requirements || [],
-        form_mapping: ucDataLayer.getUiFieldByFieldName(spec.field_name),
+        form_mapping:
+          ucDataLayer.getUiFieldByFieldName(spec.field_name) || undefined,
       });
     });
 

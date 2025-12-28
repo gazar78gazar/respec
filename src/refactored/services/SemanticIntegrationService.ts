@@ -165,7 +165,11 @@ export class SemanticIntegrationService {
         text: `${requirement.field}: ${requirement.value}`,
         category: requirement.section,
         value: requirement.value,
-        context: requirement.originalRequest || requirement.value,
+        context: requirement.originalRequest
+          ? String(requirement.originalRequest)
+          : requirement.value !== undefined
+            ? String(requirement.value)
+            : "",
       };
     });
   }
@@ -331,7 +335,7 @@ export class SemanticIntegrationService {
             // Check source - preserve user selections
             if (
               existingInMapped.source === "user" ||
-              existingInMapped.source === "direct_extraction"
+              existingInMapped.source === "llm"
             ) {
               console.log(
                 `[Route] ⚠️  Skipping ${spec.id} - user-selected value already exists in mapped ` +
@@ -394,10 +398,9 @@ export class SemanticIntegrationService {
         .length,
       requirement: matches.filter((m) => m.ucMatch.type === "requirement")
         .length,
-      // domain: matches.filter(m => m.ucMatch.type === 'domain').length
     };
 
-    return `Matched ${matches.length} nodes: ${byType.specification} specs, ${byType.requirement} reqs, ${byType.domain} domains`;
+    return `Matched ${matches.length} nodes: ${byType.specification} specs, ${byType.requirement} reqs`;
   }
 
   private calculateAverageConfidence(matches: MatchResult[]): number {

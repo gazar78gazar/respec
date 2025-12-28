@@ -15,6 +15,7 @@ import {
   UCExclusion,
   // UCSpecificationDependency,
   UCUIField,
+  UCMetadata,
 } from "../types/uc-data.types";
 import type { Maybe } from "../types/service.types";
 
@@ -404,11 +405,9 @@ export class UCDataLayer {
   /**
    * Get dataset metadata
    */
-  /* Unused in refactored flow; keep for future dataset reporting.
   getMetadata(): Maybe<UCMetadata> {
     return this.dataset?.metadata || null;
   }
-  */
 }
 
 // ============= SINGLETON EXPORT =============

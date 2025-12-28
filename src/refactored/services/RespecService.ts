@@ -40,7 +40,7 @@ import type {
 export interface FieldOptionsMap {
   [section: string]: {
     [field: string]: {
-      type: "dropdown" | "text" | "number" | "multiselect" | "date";
+      type: FieldDefinitionInput["type"];
       options?: string[]; // For dropdown/multiselect
       min?: number; // For number fields
       max?: number; // For number fields
@@ -334,6 +334,10 @@ export class RespecService {
       analog: ["IOConnectivity.analogIO"],
       temperature: ["environmentStandards.operatingTemperature"],
       temp: ["environmentStandards.operatingTemperature"],
+      power: ["formFactor.maxPowerConsumption"],
+      "power consumption": ["formFactor.maxPowerConsumption"],
+      "max power": ["formFactor.maxPowerConsumption"],
+      watt: ["formFactor.maxPowerConsumption"],
       budget: ["commercial.budgetPerUnit"],
       price: ["commercial.budgetPerUnit"],
       cost: ["commercial.budgetPerUnit"],
@@ -587,14 +591,28 @@ export class RespecService {
    */
   getActiveConflictsForAgent(): StructuredConflicts {
     if (!this.artifactManager) {
-      return { hasConflicts: false, conflicts: [] };
+      return {
+        hasConflicts: false,
+        count: 0,
+        currentConflict: 0,
+        totalConflicts: 0,
+        systemBlocked: false,
+        conflicts: [],
+      };
     }
 
     const state = this.artifactManager.getState();
     let activeConflicts = state.conflicts.active;
 
     if (activeConflicts.length === 0) {
-      return { hasConflicts: false, conflicts: [] };
+      return {
+        hasConflicts: false,
+        count: 0,
+        currentConflict: 0,
+        totalConflicts: 0,
+        systemBlocked: false,
+        conflicts: [],
+      };
     }
 
     // Sprint 3 Week 2: Sort by priority
@@ -626,7 +644,9 @@ export class RespecService {
         outcome: option.expectedOutcome,
       })),
       cycleCount: conflict.cycleCount,
-      priority: conflict.type === "field_overwrite" ? "critical" : "high",
+      priority: (conflict.type === "field_overwrite" ? "critical" : "high") as
+        | "critical"
+        | "high",
     }));
 
     return {
@@ -648,26 +668,16 @@ export class RespecService {
     value?: unknown;
     hierarchy?: { domain: string; requirement: string };
   } {
-    if (!this.artifactManager) return {};
+    if (!this.artifactManager) return { name: nodeId };
 
-    // const hierarchy = this.ucEngine.getHierarchy(nodeId);
-    const hierarchy = null;
     const spec = this.artifactManager.findSpecificationInArtifact(
       "mapped",
       nodeId,
     );
 
-    if (!hierarchy) return { name: nodeId };
-
     return {
       name: spec?.name || nodeId,
       value: spec?.value,
-      hierarchy: hierarchy
-        ? {
-            domain: hierarchy.domain,
-            requirement: hierarchy.requirement,
-          }
-        : undefined,
     };
   }
 

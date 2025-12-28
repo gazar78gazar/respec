@@ -21,7 +21,7 @@ import type {
   UserRole,
 } from "./types/requirements.types";
 import EnhancedChatWindow from "./components/EnhancedChatWindow";
-import type { FieldDef } from "./components/FormField";
+import type { FieldDef, FieldValue } from "./components/FormField";
 import type { MASAction, PayloadMap } from "./types/mas.types";
 import { StepProgressIndicator } from "./components/StepProgressIndicator";
 import { TabsNav } from "./components/TabsNav";
@@ -48,11 +48,20 @@ import {
 import type { Maybe } from "./types/service.types";
 
 // Safe index helpers for dynamic section keys (string index access)
-type FieldDefExt = FieldDef & { group?: string };
+type FieldDefExt = FieldDef & { group?: string; autofill_default?: FieldValue };
 type FieldDefsMap = Record<string, Record<string, FieldDefExt>>;
 type FieldGroupsMap = Record<
   string,
   Record<string, { label: string; fields: string[]; defaultOpen?: boolean }>
+>;
+type ExportRequirements = Record<
+  string,
+  {
+    value?: unknown;
+    priority: 1 | 2 | 3 | 4;
+    isAssumption?: boolean;
+    required?: boolean;
+  }
 >;
 const FIELD_DEFS = formFieldsData.field_definitions as unknown as FieldDefsMap;
 const FIELD_GROUPS = formFieldsData.field_groups as unknown as FieldGroupsMap;
@@ -61,7 +70,9 @@ export default function App() {
   const [currentStage, setCurrentStage] = useState<number>(1);
   const [activeTab, setActiveTab] = useState("Compute Performance");
   const [requirements, setRequirements] = useState<Requirements>({});
-  const [expandedGroups, setExpandedGroups] = useState({});
+  const [expandedGroups, setExpandedGroups] = useState<
+    Record<string, Record<string, boolean>>
+  >({});
 
   const [artifactManager, setArtifactManager] =
     useState<Maybe<ArtifactManager>>(null);
@@ -74,7 +85,7 @@ export default function App() {
       timestamp: new Date(),
     },
   ]);
-  const chatEndRef = useRef(null);
+  const chatEndRef = useRef<HTMLDivElement | null>(null);
 
   const [respecService] = useState(() => new RespecService());
   const [isProcessing, setIsProcessing] = useState(false);
@@ -293,13 +304,15 @@ Please respond with A or B.`;
                 );
 
                 setRequirements((prev) => {
-                  const newReqs = {
+                  const prevSection = prev[update.section] || {};
+                  const prevField = prevSection[update.field] || {};
+                  const newReqs: Requirements = {
                     ...prev,
                     [update.section]: {
-                      ...prev[update.section],
+                      ...prevSection,
                       [update.field]: {
-                        ...prev[update.section]?.[update.field],
-                        value: mappedValue,
+                        ...prevField,
+                        value: mappedValue as FieldValue,
                         isComplete:
                           mappedValue !== "" &&
                           mappedValue !== null &&
@@ -309,13 +322,10 @@ Please respond with A or B.`;
                           update.isAssumption || false
                             ? "assumption"
                             : "requirement",
-                        priority:
-                          prev[update.section]?.[update.field]?.priority || 1,
+                        priority: prevField.priority || 1,
                         source: "system",
                         lastUpdated: new Date().toISOString(),
-                        toggleHistory:
-                          prev[update.section]?.[update.field]?.toggleHistory ||
-                          [],
+                        toggleHistory: prevField.toggleHistory || [],
                       },
                     },
                   };
@@ -444,25 +454,27 @@ Please respond with A or B.`;
                 requirements[field.section]?.[field.field]?.value;
 
               if (!currentValue || currentValue === "") {
-                setRequirements((prev) => ({
-                  ...prev,
-                  [field.section]: {
-                    ...prev[field.section],
-                    [field.field]: {
-                      ...prev[field.section]?.[field.field],
-                      value: field.value,
-                      isComplete: true,
-                      isAssumption: true,
-                      dataSource: "assumption",
-                      priority:
-                        prev[field.section]?.[field.field]?.priority || 1,
-                      source: "system",
-                      lastUpdated: new Date().toISOString(),
-                      toggleHistory:
-                        prev[field.section]?.[field.field]?.toggleHistory || [],
+                setRequirements((prev) => {
+                  const prevSection = prev[field.section] || {};
+                  const prevField = prevSection[field.field] || {};
+                  return {
+                    ...prev,
+                    [field.section]: {
+                      ...prevSection,
+                      [field.field]: {
+                        ...prevField,
+                        value: field.value as FieldValue,
+                        isComplete: true,
+                        isAssumption: true,
+                        dataSource: "assumption",
+                        priority: prevField.priority || 1,
+                        source: "system",
+                        lastUpdated: new Date().toISOString(),
+                        toggleHistory: prevField.toggleHistory || [],
+                      },
                     },
-                  },
-                }));
+                  };
+                });
               }
             });
 
@@ -524,24 +536,25 @@ Please respond with A or B.`;
 
               setProcessingMessage("Updating field...");
               setRequirements((prev) => {
-                const newValue = {
+                const prevSection = prev[d.section] || {};
+                const prevField = prevSection[d.field] || {};
+                const newValue: Requirements = {
                   ...prev,
                   [d.section]: {
-                    ...prev[d.section],
+                    ...prevSection,
                     [d.field]: {
-                      ...prev[d.section]?.[d.field],
-                      value: mappedValue,
+                      ...prevField,
+                      value: mappedValue as FieldValue,
                       isComplete: true,
                       isAssumption: d.isSystemGenerated || false,
                       dataSource:
                         d.isSystemGenerated || false
                           ? "assumption"
                           : "requirement",
-                      priority: prev[d.section]?.[d.field]?.priority || 1,
+                      priority: prevField.priority || 1,
                       source: "system",
                       lastUpdated: new Date().toISOString(),
-                      toggleHistory:
-                        prev[d.section]?.[d.field]?.toggleHistory || [],
+                      toggleHistory: prevField.toggleHistory || [],
                     },
                   },
                 };
@@ -621,11 +634,12 @@ Please respond with A or B.`;
               );
               setProcessingMessage("Updating multiple fields...");
               setRequirements((prev) => {
-                const updated = { ...prev };
+                const updated: Requirements = { ...prev };
                 d.updates.forEach((update) => {
-                  if (!updated[update.section]) updated[update.section] = {};
+                  const sectionState = updated[update.section] || {};
+                  updated[update.section] = sectionState;
                   updated[update.section][update.field] = {
-                    ...updated[update.section]?.[update.field],
+                    ...(sectionState[update.field] || {}),
                     value: update.value,
                     isComplete: true,
                     isAssumption: update.isSystemGenerated || false,
@@ -633,13 +647,11 @@ Please respond with A or B.`;
                       update.isSystemGenerated || false
                         ? "assumption"
                         : "requirement",
-                    priority:
-                      updated[update.section]?.[update.field]?.priority || 1,
+                    priority: sectionState[update.field]?.priority || 1,
                     source: "system",
                     lastUpdated: new Date().toISOString(),
                     toggleHistory:
-                      updated[update.section]?.[update.field]?.toggleHistory ||
-                      [],
+                      sectionState[update.field]?.toggleHistory || [],
                   };
                 });
                 return updated;
@@ -689,9 +701,9 @@ Please respond with A or B.`;
               setRequirements((prev) => ({
                 ...prev,
                 [section]: {
-                  ...prev[section],
+                  ...(prev[section] || {}),
                   [field]: {
-                    ...prev[section][field],
+                    ...((prev[section] || {})[field] || {}),
                     isAssumption: !currentField.isAssumption,
                     dataSource: newState,
                     toggleHistory: [
@@ -817,8 +829,8 @@ Please respond with A or B.`;
 
   useEffect(() => {
     const initializeApp = async () => {
-      const initialRequirements = {};
-      const initialExpanded = {};
+      const initialRequirements: Requirements = {};
+      const initialExpanded: Record<string, Record<string, boolean>> = {};
 
       Object.entries(formFieldsData.field_definitions).forEach(
         ([section, fields]) => {
@@ -944,11 +956,11 @@ Please respond with A or B.`;
     syncToArtifacts();
   }, [requirements, artifactManager]);
 
-  const toggleGroup = (section, group) => {
+  const toggleGroup = (section: string, group: string) => {
     setExpandedGroups((prev) => ({
       ...prev,
       [section]: {
-        ...prev[section],
+        ...(prev[section] || {}),
         [group]: !prev[section]?.[group],
       },
     }));
@@ -1042,15 +1054,16 @@ Please respond with A or B.`;
         }
       }
 
+      const groupKey = fieldDef?.group;
       if (
-        fieldDef?.group &&
+        groupKey &&
         formFieldsData.priority_system.must_fields.includes(field)
       ) {
         setExpandedGroups((prev) => ({
           ...prev,
           [section]: {
-            ...prev[section],
-            [fieldDef.group]: true,
+            ...(prev[section] || {}),
+            [groupKey]: true,
           },
         }));
       }
@@ -1062,7 +1075,7 @@ Please respond with A or B.`;
       communicateWithMAS("form_update", {
         section,
         field,
-        value,
+        value: value as FieldValue,
         source: source === "system" ? "system" : "user",
       });
     },
@@ -1071,13 +1084,13 @@ Please respond with A or B.`;
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      const formattedRequirements = {};
+      const formattedRequirements: ExportRequirements = {};
       Object.entries(requirements).forEach(([_, fields]) => {
         Object.entries(fields).forEach(([fieldKey, fieldData]) => {
           if (fieldData.value && fieldData.value !== "") {
             formattedRequirements[fieldKey] = {
               value: fieldData.value,
-              priority: fieldData.priority,
+              priority: (fieldData.priority || 4) as 1 | 2 | 3 | 4,
               isAssumption: fieldData.isAssumption,
               required:
                 formFieldsData.priority_system.must_fields.includes(fieldKey),
@@ -1099,7 +1112,7 @@ Please respond with A or B.`;
       setExpandedGroups((prev) => ({
         ...prev,
         [loc.section]: {
-          ...prev[loc.section],
+          ...(prev[loc.section] || {}),
           [loc.group!]: true,
         },
       }));
@@ -1120,27 +1133,29 @@ Please respond with A or B.`;
   const autofillSection = (tabName: string) => {
     communicateWithMAS("autofill", { section: tabName });
 
-    const sections = SECTION_MAPPING[tabName];
-    const updatedRequirements = { ...requirements };
+    const sections =
+      (SECTION_MAPPING as Record<string, string[]>)[tabName] || [];
+    const updatedRequirements: Requirements = { ...requirements };
 
     sections.forEach((section) => {
+      const sectionState = updatedRequirements[section] || {};
+      updatedRequirements[section] = sectionState;
       Object.entries(FIELD_DEFS[section] || {}).forEach(
         ([fieldKey, fieldDef]) => {
           if (
-            !updatedRequirements[section][fieldKey].isComplete &&
+            !sectionState[fieldKey]?.isComplete &&
             fieldDef.autofill_default
           ) {
-            updatedRequirements[section][fieldKey] = {
-              ...updatedRequirements[section][fieldKey],
+            sectionState[fieldKey] = {
+              ...(sectionState[fieldKey] || {}),
               value: fieldDef.autofill_default,
               isComplete: true,
               isAssumption: true,
               dataSource: "assumption",
-              priority: updatedRequirements[section][fieldKey]?.priority || 1,
+              priority: sectionState[fieldKey]?.priority || 1,
               source: "system",
               lastUpdated: new Date().toISOString(),
-              toggleHistory:
-                updatedRequirements[section][fieldKey]?.toggleHistory || [],
+              toggleHistory: sectionState[fieldKey]?.toggleHistory || [],
             };
           }
         },
@@ -1152,12 +1167,12 @@ Please respond with A or B.`;
 
   const handleExport = useCallback(async () => {
     try {
-      const formattedRequirements = {};
+      const formattedRequirements: ExportRequirements = {};
       Object.entries(requirements).forEach(([_, fields]) => {
         Object.entries(fields).forEach(([fieldKey, fieldData]) => {
           formattedRequirements[fieldKey] = {
             value: fieldData.value,
-            priority: fieldData.priority,
+            priority: (fieldData.priority || 4) as 1 | 2 | 3 | 4,
             isAssumption: fieldData.isAssumption,
             required:
               formFieldsData.priority_system.must_fields.includes(fieldKey),
@@ -1185,7 +1200,10 @@ Please respond with A or B.`;
       );
     } catch (error: unknown) {
       console.error("Export failed:", error);
-      alert("Export failed: " + error.message);
+      alert(
+        "Export failed: " +
+          (error instanceof Error ? error.message : String(error)),
+      );
     }
   }, [projectName, requirements]);
 
@@ -1201,13 +1219,13 @@ Please respond with A or B.`;
             e.preventDefault();
             (async () => {
               try {
-                const formattedRequirements = {};
+                const formattedRequirements: ExportRequirements = {};
                 Object.entries(requirements).forEach(([_, fields]) => {
                   Object.entries(fields).forEach(([fieldKey, fieldData]) => {
                     if (fieldData.value && fieldData.value !== "") {
                       formattedRequirements[fieldKey] = {
                         value: fieldData.value,
-                        priority: fieldData.priority,
+                        priority: (fieldData.priority || 4) as 1 | 2 | 3 | 4,
                         isAssumption: fieldData.isAssumption,
                         required:
                           formFieldsData.priority_system.must_fields.includes(

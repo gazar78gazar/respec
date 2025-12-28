@@ -25,7 +25,7 @@ export interface ValidationMsg {
 export interface FormFieldProps {
   fieldKey: string;
   fieldDef: FieldDef;
-  data?: { value?: FieldValue; isAssumption?: boolean };
+  data?: { value?: FieldValue; isAssumption?: boolean; isComplete?: boolean };
   section: string;
   required?: boolean;
   validation?: Maybe<ValidationMsg>;

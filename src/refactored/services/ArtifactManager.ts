@@ -14,6 +14,7 @@ import {
   ArtifactState,
   UCArtifactSpecification,
   ActiveConflict,
+  EscalatedConflict,
   createEmptyArtifactState,
   DependencyContext,
   Source,
@@ -42,7 +43,8 @@ type FormRequirements = Record<
 
 export class ArtifactManager {
   private state: ArtifactState;
-  private listeners: Map<string, () => void> = new Map();
+  // private listeners: Map<string, () => void> = new Map();
+  // Unused in refactored flow; event emitter hooks are currently disabled.
   // Sprint 2: Store UC8 conflict data for resolution options
   private conflictData: Map<string, Conflict> = new Map();
 
@@ -697,10 +699,10 @@ export class ArtifactManager {
     const conflict = this.state.conflicts.active[conflictIndex];
 
     // Move to escalated list
-    const escalatedConflict = {
+    const escalatedConflict: EscalatedConflict = {
       ...conflict,
       escalatedAt: new Date(),
-      escalationReason: "Max resolution cycles reached (3)",
+      escalationReason: "max_cycles",
     };
 
     this.state.conflicts.escalated.push(escalatedConflict);

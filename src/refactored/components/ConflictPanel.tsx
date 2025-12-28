@@ -163,18 +163,20 @@ export const ConflictPanel: React.FC<ConflictPanelProps> = ({
             ⚡ Conflicts Detected ({conflicts.length})
           </h3>
           <div className="flex space-x-2 text-xs">
-            {Object.entries(groupedConflicts).map(
-              ([severity, conflictList]) => (
-                <span
-                  key={severity}
-                  className={`px-2 py-1 rounded-full ${getSeverityColor(
-                    severity,
-                  )}`}
-                >
-                  {getSeverityIcon(severity)} {conflictList.length}
-                </span>
-              ),
-            )}
+            {(
+              Object.entries(groupedConflicts) as Array<
+                [FieldConflict["severity"], FieldConflict[]]
+              >
+            ).map(([severity, conflictList]) => (
+              <span
+                key={severity}
+                className={`px-2 py-1 rounded-full ${getSeverityColor(
+                  severity,
+                )}`}
+              >
+                {getSeverityIcon(severity)} {conflictList.length}
+              </span>
+            ))}
           </div>
         </div>
       </div>
