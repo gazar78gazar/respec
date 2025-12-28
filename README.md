@@ -20,6 +20,7 @@ npx tsc --noEmit
 npm test
 ```
 
+
 ## 📁 Project Structure
 
 ```
@@ -58,6 +59,11 @@ Respec/
 
 ```
 
+Refactored UI and services live under `src/refactored/`:
+- `src/refactored/app.tsx` is the refactored UI entry (not wired to `src/main.tsx`).
+- `src/refactored/services` contains the refactored pipeline and artifact/conflict services.
+- `src/refactored/types` holds shared types for the refactored code path.
+
 ## 📚 Documentation
 
 ### 🎓 Getting Started (Read in Order)
@@ -86,103 +92,38 @@ Respec/
 - **[docs/tests/TEST_REPORT_SPRINT2_WEEK1.md](./docs/tests/TEST_REPORT_SPRINT2_WEEK1.md)** - Sprint 2 Week 1 test results
 - **Root test-*.cjs files** - Automated test scripts for validation
 
-## 🎯 Current Status (October 2025)
+## ?? Current Status (December 2025)
 
-### ✅ Completed (Sprint 1 & Sprint 2)
+- Active entrypoint: `src/main.tsx` renders `src/app.tsx` (legacy UI and services in `src/services/respec`).
+- Refactored UI and services live in `src/refactored` and are not wired to the default entrypoint.
+- Refactored pipeline uses a UC8-only data layer (`/uc_8.0_2.2.json`) plus centralized conflict detection/resolution in `src/refactored/services/ConflictResolver.ts`.
+- TypeScript baseline: ~218 errors (maintained).
 
-**Sprint 1: Foundation** ✅
-- Multi-artifact state structure (respec, mapped, unmapped, conflicts)
-- UC1ValidationEngine for schema handling
-- Basic ArtifactManager structure
-- Compatibility layer for existing code
+## ??? Architecture Overview
 
-**Sprint 2: LLM Semantic Matching** ✅
-- **Week 1**: Semantic matching and routing layer
-  - SemanticMatchingService (stateless UC1 matcher)
-  - SemanticIntegrationService_NEW (routing layer)
-  - Enhanced AnthropicService prompts
-  - Form update preservation
-- **Week 2**: Artifact population and conflict detection wiring
-  - Artifact population methods (addSpecificationToMapped, addRequirementToMapped, addDomainToMapped)
-  - Conflict detection triggering
-  - System blocking when conflicts detected
-  - Basic conflict detection framework
+### Pipelines
 
-### 🚀 Current Sprint: Sprint 3 - Conflict Detection & Resolution
+Legacy (current app)
+- `src/app.tsx` uses `src/services/respec/SimplifiedRespecService` and the UC1/UC8 hybrid services.
 
-**Sprint 3 Week 1: Enhanced Conflict Detection** (READY TO START)
-- Enhance UC1ValidationEngine with complete conflict types
-- Add cross-artifact conflict checking (mapped vs respec)
-- Complete applyConflictResolution() with safety policies
-- Structure conflict data for agent consumption
-- Return conflict data to SimplifiedRespecService → AnthropicService
-- Deprecate legacy ConflictDetectionService
+Refactored (in progress)
+- `src/refactored/app.tsx` uses `src/refactored/services/RespecService`.
+- `AnthropicService` extracts requirements and parses conflict responses.
+- `SemanticIntegrationService` routes extracted requirements into `SemanticMatchingService`.
+- `ArtifactManager` owns artifact state and defers conflict detection/resolution planning to `ConflictResolver`.
+- `ConflictResolver` detects exclusions, field overwrites, cascades, and field constraint conflicts, and returns resolution options/plans.
 
-**Sprint 3 Week 2: Agent-Driven Resolution Flow** (Future)
-- Agent semantic parsing of user resolution responses (A/B)
-- Agent-orchestrated conflict resolution
-- Priority queue management
-- Cycle management (3 attempts max)
+### Refactored Processing Flow
 
-### 📊 Progress Metrics
-
-- **Overall Progress**: 35% complete (14/40 days)
-- **Sprint 1**: 100% ✅
-- **Sprint 2 Week 1**: 100% ✅
-- **Sprint 2 Week 2**: 100% ✅
-- **Sprint 3 Week 1**: 0% (Ready to begin)
-- **TypeScript Baseline**: 218 errors (maintained)
-
-## 🏗️ Architecture Overview
-
-### Three-Layer Architecture
-
-```
-┌────────────────────────────────────────────┐
-│         ORCHESTRATION LAYER                │
-│       SimplifiedRespecService              │
-│  (Session context, conversation history)   │
-└────────────────┬───────────────────────────┘
-                 ↓
-┌────────────────────────────────────────────┐
-│         PROCESSING LAYER                   │
-├────────────────┬───────────────────────────┤
-│  Extraction    │  Matching & Routing       │
-│ AnthropicServ. │ SemanticMatchingService   │
-│ (Stateful LLM) │ (Stateless LLM) +         │
-│                │ SemanticIntegrationService│
-└────────────────┴───────────────────────────┘
-                 ↓
-┌────────────────────────────────────────────┐
-│      STATE MANAGEMENT LAYER                │
-├──────────┬─────────┬──────────┬────────────┤
-│Artifacts │Conflicts│   UC1    │   Form     │
-│Manager   │Detection│Validation│  Updates   │
-└──────────┴─────────┴──────────┴────────────┘
-```
-
-### Processing Flow
-
-```
-User Input → SimplifiedRespecService.processChatMessage()
-    ↓
-AnthropicService.analyzeRequirements() (Extraction)
-    ↓
-SemanticIntegrationService.processMessage() (Routing)
-    ↓
-SemanticMatchingService.matchToUC1() (Matching)
-    ↓
-ArtifactManager.addToMapped() (State Update)
-    ↓
-ArtifactManager.detectConflicts() (Validation)
-    ↓
-If NO conflicts: moveToRespec() + updateForm()
-If CONFLICT: isolateConflict() + generateQuestion()
-```
+1. `RespecService.processChatMessage` -> `AnthropicService.analyzeRequirements`
+2. `SemanticIntegrationService.processExtractedRequirements` -> `SemanticMatchingService.matchExtractedNodesToUC`
+3. `ArtifactManager.addSpecificationToMapped` -> `ConflictResolver.detectAllConflictsForSpecification`
+4. If conflicts: `AnthropicService.handleConflictResolution` -> `ArtifactManager.resolveConflict`
+5. If no conflicts: `ArtifactManager.moveNonConflictingToRespec` -> `ArtifactManager.generateFormUpdatesFromRespec`
 
 Manual form edits in the refactored UI map field values back to UC8 specs
-(by `selected_value`/`name`) and run conflict detection so A/B resolutions
-stay aligned with `option-a`/`option-b` IDs.
+(by `selected_value` or `name`) and run conflict detection so A/B resolutions
+stay aligned with `option-a` and `option-b` IDs.
 
 ## 🧪 Testing
 
@@ -221,7 +162,7 @@ npm run dev
 - Console-based debugging only
 - Bidirectional chat-form synchronization
 - Refactored services: conflict detection/resolution planning lives in `src/refactored/services/ConflictResolver.ts`, and `ArtifactManager` applies plans and mutates artifacts.
-- Shared service types live in `src/refactored/types/GenericServiceTypes.ts` for use across refactored services and `src/refactored/app.tsx`.
+- Shared refactored service types live in `src/refactored/types/*.types.ts` (notably `service.types.ts` and `semantic.types.ts`).
 
 ### Never Do
 - Fix unrelated TypeScript errors
@@ -238,7 +179,7 @@ npm run dev
 - **Vite** for build tooling
 - **Anthropic Claude API** for LLM processing
 - **Tailwind CSS** for styling
-- **UC1.json** for schema-driven validation
+- **UC datasets** in `public/` (`uc1.json`, `uc_8.0_2.2.json`) for schema-driven matching and validation
 
 ## 📞 Development Workflow
 
@@ -249,17 +190,16 @@ npm run dev
 5. **Test continuously**: Run test scripts after changes
 6. **Document changes**: Update relevant docs in `docs/` folder
 
-## 🎯 Next Steps
+## ?? Next Steps
 
-To continue development on **Sprint 3 Week 1**, see:
-- **[docs/plans/respec-functional-tech-spec.md](./docs/plans/respec-functional-tech-spec.md)** - Lines 389-432 (Sprint 3 Week 1 tasks)
-- **[docs/plans/SPRINT3_WEEK1_draft.md](./docs/plans/SPRINT3_WEEK1_draft.md)** - Detailed code analysis and implementation plan
+- Legacy pipeline planning lives in `docs/plans/` (see `docs/plans/respec-functional-tech-spec.md`).
+- Refactored pipeline work is tracked in `src/refactored/services` and tests under `src/refactored/services/__tests__`.
 
 ---
 
 **Version**: 3.0
-**Last Updated**: October 3, 2025
-**Current Sprint**: Sprint 3 Week 1 (Conflict Detection Enhancement)
+**Last Updated**: December 28, 2025
+**Current Focus**: Refactored services and conflict resolution flow in `src/refactored`
 
 For questions or issues, see the comprehensive documentation in the `docs/` folder.
 
