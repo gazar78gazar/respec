@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "lint": "eslint \"src/**/*.ts*\" --ignore-pattern \"**/__tests__/**\" --fix",
-    "ts:check": "npx tsc --noEmit",
+    "ts:check": "npx tsc --noEmit -p tsconfig.precommit.json",
     "format": "prettier --write \"src/**/*.ts*\"",
     "preview": "vite preview",
     "test": "vitest",
