@@ -22,7 +22,6 @@ describe("ArtifactManager.generateFormUpdatesFromRespec", () => {
         id: "P1",
         type: "specification",
         name: "Spec One",
-        parent_requirements: [],
         field_name: "field_a",
       },
       attribution: "requirement",
@@ -55,7 +54,6 @@ describe("ArtifactManager.generateFormUpdatesFromRespec", () => {
           id: "P1",
           type: "specification",
           name: "Spec One",
-          parent_requirements: [],
           field_name: "field_a",
           selected_value: "Spec One",
         };

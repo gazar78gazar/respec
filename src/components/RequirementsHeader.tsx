@@ -13,7 +13,7 @@ export const RequirementsHeader: React.FC<RequirementsHeaderProps> = ({
   return (
     <div className="px-6 py-4 border-b flex items-center justify-between">
       <h3 className="text-lg font-medium text-gray-800">
-        {activeTabTitle} Specifications
+        {activeTabTitle} Requirements
       </h3>
       <div className="flex items-center space-x-4">
         <button

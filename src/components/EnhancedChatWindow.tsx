@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { MASCommunicationResult } from "../types/requirements.types";
+import { MASCommunicationResult } from "../types/form-state.types";
 import type { Maybe } from "../types/service.types";
 
 // Enhanced ChatWindow with semantic feedback, confidence indicators, and conflict detection

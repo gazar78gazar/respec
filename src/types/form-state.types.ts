@@ -1,4 +1,4 @@
-// TypeScript interfaces for Requirements system
+// TypeScript interfaces for form state requirements
 // This provides type safety while maintaining exact compatibility with existing code
 
 import type { FormUpdate } from "./service.types";

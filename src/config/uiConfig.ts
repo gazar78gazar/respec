@@ -301,7 +301,7 @@ export const formFieldsData = {
         ],
         group: "environment",
       },
-      ingress_protection: {
+      ingressProtection: {
         type: "dropdown",
         label: "Ingress Protection",
         options: [
@@ -458,7 +458,7 @@ export const formFieldsData = {
           "operatingTemperature",
           "humidity",
           "vibrationResistance",
-          "ingress_protection",
+          "ingressProtection",
         ],
         defaultOpen: true,
       },
@@ -508,7 +508,7 @@ export const formFieldsData = {
       "2": {
         fields: ["processorType", "memoryCapacity", "storageCapacity"],
       },
-      "3": { fields: ["operatingTemperature", "ingress_protection"] },
+      "3": { fields: ["operatingTemperature", "ingressProtection"] },
       "4": {
         fields: ["serialPortsAmount", "usbPorts", "deliveryTimeframe"],
       },

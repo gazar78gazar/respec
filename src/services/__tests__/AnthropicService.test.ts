@@ -50,7 +50,7 @@ describe("AnthropicService (refactored)", () => {
 
     it("stores field mappings when provided", async () => {
       const fieldMappings = {
-        io_connectivity: ["digital_io", "analog_io"],
+        IOConnectivity: ["digitalIO", "analogIO"],
       };
       const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
@@ -76,8 +76,8 @@ describe("AnthropicService (refactored)", () => {
 
       expect(result.requirements).toHaveLength(1);
       expect(result.requirements[0]).toEqual({
-        section: "io_connectivity",
-        field: "digital_io",
+        section: "IOConnectivity",
+        field: "digitalIO",
         value: "16",
         confidence: 0.8,
         isAssumption: false,
@@ -91,8 +91,8 @@ describe("AnthropicService (refactored)", () => {
 
       expect(result.requirements).toHaveLength(1);
       expect(result.requirements[0]).toEqual({
-        section: "io_connectivity",
-        field: "analog_io",
+        section: "IOConnectivity",
+        field: "analogIO",
         value: "8",
         confidence: 0.8,
         isAssumption: false,
@@ -106,8 +106,8 @@ describe("AnthropicService (refactored)", () => {
 
       expect(result.requirements).toHaveLength(1);
       expect(result.requirements[0]).toEqual({
-        section: "io_connectivity",
-        field: "ethernet_ports",
+        section: "IOConnectivity",
+        field: "ethernetPorts",
         value: "2",
         confidence: 0.8,
         isAssumption: false,
@@ -121,8 +121,8 @@ describe("AnthropicService (refactored)", () => {
 
       expect(result.requirements).toHaveLength(1);
       expect(result.requirements[0]).toEqual({
-        section: "compute_performance",
-        field: "processor_type",
+        section: "computePerformance",
+        field: "processorType",
         value: "Intel Core i7",
         confidence: 0.8,
         isAssumption: false,
@@ -134,8 +134,8 @@ describe("AnthropicService (refactored)", () => {
 
       expect(result.requirements).toHaveLength(1);
       expect(result.requirements[0]).toEqual({
-        section: "compute_performance",
-        field: "memory_capacity",
+        section: "computePerformance",
+        field: "memoryCapacity",
         value: "8",
         confidence: 0.8,
         isAssumption: false,
@@ -148,11 +148,11 @@ describe("AnthropicService (refactored)", () => {
       );
 
       expect(result.requirements).toHaveLength(2);
-      expect(result.requirements.map((r) => r.field)).toContain("digital_io");
-      expect(result.requirements.map((r) => r.field)).toContain("analog_io");
+      expect(result.requirements.map((r) => r.field)).toContain("digitalIO");
+      expect(result.requirements.map((r) => r.field)).toContain("analogIO");
     });
 
-    it("returns clarification request when no requirements found", async () => {
+    it("returns clarification request when no specifications found", async () => {
       const result = await service.analyzeRequirements("Hello there");
 
       expect(result.requirements).toHaveLength(0);
@@ -168,15 +168,15 @@ describe("AnthropicService (refactored)", () => {
       expect(result.requirements).toHaveLength(2);
       const fields = result.requirements.map((r) => r.field);
       expect(fields).toContain("quantity");
-      expect(fields).toContain("budget_per_unit");
+      expect(fields).toContain("budgetPerUnit");
     });
   });
 
   describe("buildSystemPrompt", () => {
     it("includes field mappings in system prompt when available", async () => {
       const fieldMappings = {
-        io_connectivity: ["digital_io", "analog_io"],
-        compute_performance: ["processor_type", "memory_capacity"],
+        IOConnectivity: ["digitalIO", "analogIO"],
+        computePerformance: ["processorType", "memoryCapacity"],
       };
 
       await service.initialize(fieldMappings);
@@ -185,9 +185,9 @@ describe("AnthropicService (refactored)", () => {
         service as { buildSystemPrompt: () => string }
       ).buildSystemPrompt();
 
-      expect(prompt).toContain("io_connectivity: digital_io, analog_io");
+      expect(prompt).toContain("IOConnectivity: digitalIO, analogIO");
       expect(prompt).toContain(
-        "compute_performance: processor_type, memory_capacity",
+        "computePerformance: processorType, memoryCapacity",
       );
     });
 
@@ -198,9 +198,9 @@ describe("AnthropicService (refactored)", () => {
         service as { buildSystemPrompt: () => string }
       ).buildSystemPrompt();
 
-      expect(prompt).toContain("compute_performance: processor_type");
-      expect(prompt).toContain("io_connectivity: digital_io");
-      expect(prompt).toContain("commercial: budget_per_unit");
+      expect(prompt).toContain("computePerformance: processorType");
+      expect(prompt).toContain("IOConnectivity: digitalIO");
+      expect(prompt).toContain("commercial: budgetPerUnit");
     });
   });
 

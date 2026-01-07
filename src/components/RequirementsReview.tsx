@@ -1,5 +1,5 @@
 import React from "react";
-import type { Requirements } from "../types/requirements.types";
+import type { Requirements } from "../types/form-state.types";
 
 export interface RequirementsReviewProps {
   requirements: Requirements;

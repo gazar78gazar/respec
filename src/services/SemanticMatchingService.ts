@@ -3,8 +3,8 @@
  *
  * Purpose: Matches already-extracted requirements to UC schema nodes
  * - Receives: Extracted data nodes from Agent
- * - Does: Semantic matching to UC (domain/requirement/specification)
- * - Returns: Best UC match with confidence score
+ * - Does: Semantic matching to UC specifications (P##)
+ * - Returns: Best UC spec match with confidence score
  *
  * This is a STATELESS service - each call is independent
  * Full UC schema is loaded on every call for semantic matching
@@ -130,24 +130,22 @@ export class SemanticMatchingService {
 
 Your task:
 1. Receive extracted technical requirements from user input
-2. Match each extraction to the best UC8 node (scenario, requirement, or specification)
+2. Match each extraction to the best UC8 specification (P##)
 3. Provide confidence score and match rationale
 
 IMPORTANT: Return specification IDs in P## format (e.g., P01, P82, P27) - NOT spc### format.
 
 Matching rules:
 - Use semantic similarity, not just exact text match
-- "budget friendly" should match to budget-related requirements
+- "budget friendly" should match to budget-related specifications
 - "fast response" should match to response time specifications
-- "outdoor" should match to environmental requirements
+- "outdoor" should match to environmental specifications
 - "high performance processor" should match to processor specifications (e.g., P82 for Core i9)
 - "low power" or "<10W" should match to power consumption specifications (e.g., P27)
-- "thermal imaging" should match to thermal monitoring requirements
+- "thermal imaging" should match to thermal monitoring specifications
 
 Classification hints:
 - Specifications have specific values and map to form fields (IDs start with P)
-- Requirements are functional needs that group specifications (IDs start with R)
-- Scenarios are high-level use cases (IDs start with S)
 
 Confidence scoring:
 - 1.0 = Exact match (user said "Intel Core i9", dataset has that option)
@@ -198,8 +196,6 @@ Match ALL provided nodes. If no good match exists, use confidence < 0.5.`;
 
   private prepareUCContext(): UCSchemaContext {
     const context: UCSchemaContext = {
-      scenarios: [],
-      requirements: [],
       specifications: [],
     };
 
@@ -209,27 +205,6 @@ Match ALL provided nodes. If no good match exists, use confidence < 0.5.`;
       return context;
     }
 
-    // Add scenarios (UC8 equivalent of domains)
-    const scenarios = ucDataLayer.getAllScenarios();
-    scenarios.forEach((scenario) => {
-      context.scenarios.push({
-        id: scenario.id,
-        name: scenario.name,
-        description: scenario.description || "",
-      });
-    });
-
-    // Add requirements
-    const requirements = ucDataLayer.getAllRequirements();
-    requirements.forEach((req) => {
-      context.requirements.push({
-        id: req.id,
-        name: req.name,
-        description: req.description || "",
-        parent_scenarios: req.parent_scenarios || [],
-      });
-    });
-
     // Add specifications (with P## IDs)
     const specifications = ucDataLayer.getAllSpecifications();
     specifications.forEach((spec) => {
@@ -237,7 +212,6 @@ Match ALL provided nodes. If no good match exists, use confidence < 0.5.`;
         id: spec.id, // P## format from UC8
         name: spec.name,
         description: spec.description || "",
-        parent_requirements: spec.parent_requirements || [],
         form_mapping:
           ucDataLayer.getUiFieldByFieldName(spec.field_name) || undefined,
       });
@@ -245,10 +219,6 @@ Match ALL provided nodes. If no good match exists, use confidence < 0.5.`;
 
     console.log(
       "[SemanticMatching] 📦 UC8 Context (P## IDs):",
-      context.scenarios.length,
-      "scenarios,",
-      context.requirements.length,
-      "requirements,",
       context.specifications.length,
       "specifications",
     );
@@ -278,7 +248,7 @@ Match ALL provided nodes. If no good match exists, use confidence < 0.5.`;
         ucMatch: {
           id: match.ucMatch.id,
           name: match.ucMatch.name,
-          type: match.ucMatch.type,
+          type: "specification",
           confidence: match.ucMatch.confidence,
           matchType: match.ucMatch.matchType || "semantic",
           rationale: match.ucMatch.rationale,

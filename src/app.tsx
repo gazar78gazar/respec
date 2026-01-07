@@ -19,7 +19,7 @@ import type {
   ChatMessage,
   MASCommunicationResult,
   UserRole,
-} from "./types/requirements.types";
+} from "./types/form-state.types";
 import EnhancedChatWindow from "./components/EnhancedChatWindow";
 import type { FieldDef, FieldValue } from "./components/FormField";
 import type { MASAction, PayloadMap } from "./types/mas.types";

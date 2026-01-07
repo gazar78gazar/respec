@@ -8,7 +8,6 @@ const createUcSpec = (id: string, fieldName = "field"): UCSpecification => ({
   id,
   type: "specification",
   name: id,
-  parent_requirements: [],
   field_name: fieldName,
 });
 
@@ -18,7 +17,6 @@ describe("SemanticIntegrationService.processExtractedRequirements", () => {
   const detectExclusionConflicts = vi.fn();
   const moveNonConflictingToRespec = vi.fn();
   const generateFormUpdatesFromRespec = vi.fn();
-  const findSpecificationInArtifact = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -28,7 +26,7 @@ describe("SemanticIntegrationService.processExtractedRequirements", () => {
     vi.restoreAllMocks();
   });
 
-  it("returns empty updates when no extracted requirements", async () => {
+  it("returns empty updates when no extracted specifications", async () => {
     const semanticMatchingService = {
       matchExtractedNodesToUC,
     } as unknown as {
@@ -41,11 +39,11 @@ describe("SemanticIntegrationService.processExtractedRequirements", () => {
 
     const result = await service.processExtractedRequirements(
       [],
-      "No requirements",
+      "No specifications",
     );
 
     expect(result.success).toBe(true);
-    expect(result.systemMessage).toBe("No requirements");
+    expect(result.systemMessage).toBe("No specifications");
     expect(result.formUpdates).toEqual([]);
     expect(matchExtractedNodesToUC).not.toHaveBeenCalled();
   });
@@ -177,44 +175,34 @@ describe("SemanticIntegrationService.processExtractedRequirements", () => {
     expect(result.confidence).toBeCloseTo(0.4);
   });
 
-  it("routes requirement matches by adding child specifications", async () => {
-    const childSpec = createUcSpec("P10", "memory");
-    vi.spyOn(ucDataLayer, "getSpecificationsByRequirement").mockReturnValue([
-      childSpec,
-    ]);
-
+  it("skips non-spec matches", async () => {
     const semanticMatchingService = {
       matchExtractedNodesToUC: matchExtractedNodesToUC.mockResolvedValue([
         {
           extractedNode: {
-            text: "req: memory requirements",
-            value: null,
+            text: "note: comment",
+            value: "comment",
           },
           ucMatch: {
-            id: "R01",
-            name: "Memory Requirements",
-            type: "requirement",
-            confidence: 0.9,
+            id: "C01",
+            name: "comment",
+            type: "comment",
+            confidence: 0.95,
             matchType: "semantic",
-            rationale: "matches requirement",
+            rationale: "comment match",
           },
-          value: null,
-        },
-      ] satisfies MatchResult[]),
+          value: "comment",
+        } as unknown as MatchResult,
+      ]),
     };
 
-    findSpecificationInArtifact.mockReturnValue(null);
-    detectExclusionConflicts.mockResolvedValue({
-      hasConflict: false,
-      conflicts: [],
-    });
+    generateFormUpdatesFromRespec.mockReturnValue([]);
 
     const artifactManager = {
       addSpecificationToMapped,
       detectExclusionConflicts,
       moveNonConflictingToRespec,
       generateFormUpdatesFromRespec,
-      findSpecificationInArtifact,
     };
 
     const service = new SemanticIntegrationService(
@@ -222,24 +210,20 @@ describe("SemanticIntegrationService.processExtractedRequirements", () => {
       artifactManager as any,
     );
 
-    await service.processExtractedRequirements(
+    const result = await service.processExtractedRequirements(
       [
         {
-          field: "memory",
-          value: "16GB",
-          section: "compute",
+          field: "comment",
+          value: "comment",
+          section: "notes",
         },
       ],
-      "Requirement match",
+      "Ignored",
     );
 
-    expect(addSpecificationToMapped).toHaveBeenCalledWith(
-      childSpec,
-      null,
-      "From requirement R01",
-      "Auto-added as part of requirement R01",
-      "llm",
-    );
-    expect(moveNonConflictingToRespec).toHaveBeenCalled();
+    expect(addSpecificationToMapped).not.toHaveBeenCalled();
+    expect(detectExclusionConflicts).not.toHaveBeenCalled();
+    expect(moveNonConflictingToRespec).not.toHaveBeenCalled();
+    expect(result.formUpdates).toEqual([]);
   });
 });

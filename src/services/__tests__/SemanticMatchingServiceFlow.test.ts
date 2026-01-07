@@ -5,33 +5,12 @@ import { ucDataLayer } from "../DataLayer";
 describe("SemanticMatchingService flow", () => {
   beforeEach(() => {
     vi.spyOn(ucDataLayer, "isLoaded").mockReturnValue(true);
-    vi.spyOn(ucDataLayer, "getAllScenarios").mockReturnValue([
-      {
-        id: "S1",
-        type: "scenario",
-        name: "Scenario One",
-        description: "Scenario",
-        use_case_tags: [],
-        requirement_ids: ["R1"],
-      },
-    ]);
-    vi.spyOn(ucDataLayer, "getAllRequirements").mockReturnValue([
-      {
-        id: "R1",
-        type: "requirement",
-        name: "Requirement One",
-        description: "Requirement",
-        parent_scenarios: ["S1"],
-        specification_ids: ["P1"],
-      },
-    ]);
     vi.spyOn(ucDataLayer, "getAllSpecifications").mockReturnValue([
       {
         id: "P1",
         type: "specification",
         name: "Spec One",
         description: "Spec",
-        parent_requirements: ["R1"],
         field_name: "field_a",
       },
     ]);

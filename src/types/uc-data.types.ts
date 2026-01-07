@@ -9,43 +9,16 @@ export interface UCMetadata {
   created_at: string;
   updated_at: string;
   id_format: {
-    scenarios: string;
-    requirements: string;
     specifications: string;
     comments: string;
     exclusions: string;
   };
 }
 
-export interface UCScenario {
-  id: string;
-  type: "scenario";
-  name: string;
-  description: string;
-  use_case_tags: string[];
-  requirement_ids: string[];
-  metadata?: {
-    implementation_percentage?: string;
-    typical_application?: string;
-  };
-}
-
-export interface UCRequirement {
-  id: string;
-  type: "requirement";
-  name: string;
-  description: string;
-  parent_scenarios: string[];
-  specification_ids: string[];
-  category?: string;
-  metadata?: Record<string, unknown>;
-}
-
 export interface UCSpecification {
   id: string;
   type: "specification";
   name: string;
-  parent_requirements: string[];
   field_name: string;
   requires?: UCSpecificationDependency;
   description?: string;
@@ -73,8 +46,6 @@ export interface UCComment {
   id: string;
   type: "comment";
   name: string;
-  parent_requirements: string[];
-  parent_scenarios: string[];
   content: string;
   technical_context?: Record<string, unknown>;
 }
@@ -87,7 +58,6 @@ export interface UCExclusion {
     | "performance_mismatch"
     | "performance_warning"
     | "efficiency_warning";
-  category: "spec_spec" | "req_req" | "scenario_scenario" | "scenario_spec";
   reason: string;
   resolution_priority: 1 | 2 | 3 | 4; // 1 = highest (blocks form)
   question_template: string;
@@ -95,8 +65,6 @@ export interface UCExclusion {
 
 export interface UCDataset {
   metadata: UCMetadata;
-  scenarios: Record<string, UCScenario>;
-  requirements: Record<string, UCRequirement>;
   specifications: Record<string, UCSpecification>;
   comments: Record<string, UCComment>;
   exclusions: Record<string, UCExclusion>;

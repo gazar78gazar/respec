@@ -1,7 +1,7 @@
 import type {
   Requirements,
   RequirementFieldState,
-} from "../types/requirements.types";
+} from "../types/form-state.types";
 import { formFieldsData, SECTION_MAPPING } from "../config/uiConfig";
 import * as uiUtils from "./ui-utils";
 import type { Maybe } from "../types/service.types";

@@ -1,5 +1,5 @@
 /**
- * AnthropicService - LLM integration for requirement extraction and conflict routing.
+ * AnthropicService - LLM integration for specification extraction and conflict routing.
  *
  * Handles prompt construction, fallback behavior, and conflict resolution parsing
  * without mutating artifact state.
@@ -39,7 +39,7 @@ export class AnthropicService {
   async initialize(fieldMappings?: Record<string, string[]>): Promise<void> {
     if (this.isInitialized) return;
 
-    // Store field mappings from UC1.json
+    // Store field mappings from UC json
     if (fieldMappings) {
       this.fieldMappings = fieldMappings;
       console.log("[AnthropicService] Received field mappings:", fieldMappings);
@@ -126,8 +126,9 @@ export class AnthropicService {
         const jsonMatch = responseText.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0]);
+          const extracted = parsed.specifications || parsed.requirements || [];
           return {
-            requirements: parsed.requirements || [],
+            requirements: extracted,
             response: parsed.response || responseText,
             clarificationNeeded: parsed.clarificationNeeded,
           };
@@ -156,23 +157,23 @@ export class AnthropicService {
   private getFallbackResponse(message: string): AnthropicAnalysisResult {
     // Simple pattern matching fallback with correct field names
     const patterns = {
-      digital_io: /(\d+)\s*(digital\s*(inputs?|outputs?|i\/o)|DI|DO)/i,
-      analog_io: /(\d+)\s*(analog\s*(inputs?|outputs?|i\/o)|AI|AO)/i,
-      ethernet_ports: /(\d+)\s*(ethernet\s*ports?)/i,
-      processor_type: /(intel\s*(core\s*)?(i[357]|atom|xeon)|processor)/i,
-      memory_capacity: /(\d+)\s*GB\s*(memory|ram)/i,
+      digitalIO: /(\d+)\s*(digital\s*(inputs?|outputs?|i\/o)|DI|DO)/i,
+      analogIO: /(\d+)\s*(analog\s*(inputs?|outputs?|i\/o)|AI|AO)/i,
+      ethernetPorts: /(\d+)\s*(ethernet\s*ports?)/i,
+      processorType: /(intel\s*(core\s*)?(i[357]|atom|xeon)|processor)/i,
+      memoryCapacity: /(\d+)\s*GB\s*(memory|ram)/i,
       quantity: /quantity\s*[:=]?\s*(\d+)/i,
-      budget_per_unit: /budget\s*per\s*unit\s*[:=]?\s*(\d+)/i,
+      budgetPerUnit: /budget\s*per\s*unit\s*[:=]?\s*(\d+)/i,
     };
 
     const requirements = [];
 
     // Check digital I/O
-    const digitalMatch = message.match(patterns.digital_io);
+    const digitalMatch = message.match(patterns.digitalIO);
     if (digitalMatch) {
       requirements.push({
-        section: "io_connectivity",
-        field: "digital_io",
+        section: "IOConnectivity",
+        field: "digitalIO",
         value: digitalMatch[1],
         confidence: 0.8,
         isAssumption: false,
@@ -180,11 +181,11 @@ export class AnthropicService {
     }
 
     // Check analog I/O
-    const analogMatch = message.match(patterns.analog_io);
+    const analogMatch = message.match(patterns.analogIO);
     if (analogMatch) {
       requirements.push({
-        section: "io_connectivity",
-        field: "analog_io",
+        section: "IOConnectivity",
+        field: "analogIO",
         value: analogMatch[1],
         confidence: 0.8,
         isAssumption: false,
@@ -193,7 +194,7 @@ export class AnthropicService {
 
     // Check other patterns
     for (const [field, pattern] of Object.entries(patterns)) {
-      if (field === "digital_io" || field === "analog_io") continue;
+      if (field === "digitalIO" || field === "analogIO") continue;
 
       const match = message.match(pattern);
       if (match) {
@@ -201,10 +202,10 @@ export class AnthropicService {
           field.startsWith("budget") || field === "quantity"
             ? "commercial"
             : field.startsWith("ethernet")
-              ? "io_connectivity"
+              ? "IOConnectivity"
               : field.startsWith("processor") || field.startsWith("memory")
-                ? "compute_performance"
-                : "io_connectivity";
+                ? "computePerformance"
+                : "IOConnectivity";
 
         requirements.push({
           section,
@@ -226,18 +227,17 @@ export class AnthropicService {
 
     return {
       requirements: [],
-      response: `I understand you mentioned: "${message}". Could you provide more specific details about quantities or specifications?`,
+      response: `I understand you mentioned: "${message}". Could you provide more specific details about quantities or requirements?`,
       clarificationNeeded:
         "Please specify the type and quantity of I/O or other requirements.",
     };
   }
 
   private buildSystemPrompt(): string {
-    // Use dynamic field mappings from UC1.json if available, otherwise use defaults
     let fieldsDescription = "";
 
     if (this.fieldMappings) {
-      // Build prompt from UC1.json mappings
+      // Build prompt from UC json mappings
       Object.entries(this.fieldMappings).forEach(([section, fields]) => {
         if (Array.isArray(fields) && fields.length > 0) {
           fieldsDescription += `- ${section}: ${fields.join(", ")}\n`;
@@ -247,11 +247,11 @@ export class AnthropicService {
 
     // If no mappings or empty, use defaults based on actual form fields
     if (!fieldsDescription) {
-      fieldsDescription = `- compute_performance: processor_type, ai_gpu_acceleration, memory_capacity, memory_type, storage_capacity, storage_type, time_sensitive_features, response_latency, operating_system
-- io_connectivity: digital_io, analog_io, ethernet_ports, ethernet_speed, ethernet_protocols, usb_ports, serial_ports_amount, serial_port_type, serial_protocol_support, fieldbus_protocol_support, wireless_extension
-- form_factor: power_input, max_power_consumption, redundant_power, dimensions, mounting
-- environment_standards: operating_temperature, humidity, vibration_resistance, ingress_protection, vibration_protection, certifications
-- commercial: budget_per_unit, quantity, total_budget, delivery_timeframe, shipping_incoterms, warranty_requirements`;
+      fieldsDescription = `- computePerformance: processorType, gpuAcceleration, memoryCapacity, memoryType, storageCapacity, storageType, timeSensitiveFeatures, responseLatency, operatingSystem
+- IOConnectivity: digitalIO, analogIO, ethernetPorts, ethernetSpeed, ethernetProtocols, usbPorts, serialPortsAmount, serialPortType, serialProtocolSupport, fieldbusProtocolSupport, wirelessExtension
+- formFactor: powerInput, maxPowerConsumption, redundantPower, dimensions, mounting
+- environmentStandards: operatingTemperature, humidity, vibrationResistance, ingressProtection, vibrationProtection, certifications
+- commercial: budgetPerUnit, quantity, totalBudget, deliveryTimeframe, shippingIncoterms, warrantyRequirements`;
     }
 
     return `You are a technical requirements extraction assistant for industrial electronic systems.
@@ -306,10 +306,10 @@ CRITICAL: Field-Aware Value Selection
 - Include originalRequest when you make substitutions
 
 Important notes:
-- For "digital_io" and "analog_io" fields, these represent combined I/O counts
+- For "digitalIO" and "analogIO" fields, these represent combined I/O counts
 - Commercial fields can be updated from user input but should NOT be autofilled
-- When users mention "analog inputs" or "analog outputs", map to "analog_io" field
-- When users mention "digital inputs" or "digital outputs", map to "digital_io" field
+- When users mention "analog inputs" or "analog outputs", map to "analogIO" field
+- When users mention "digital inputs" or "digital outputs", map to "digitalIO" field
 - Values should match the dropdown options where applicable
 
 Instructions:
@@ -326,8 +326,8 @@ Return JSON format:
 {
   "requirements": [
     {
-      "section": "compute_performance",
-      "field": "storage_capacity",
+      "section": "computePerformance",
+      "field": "storageCapacity",
       "value": "512GB",
       "confidence": 0.9,
       "isAssumption": false,

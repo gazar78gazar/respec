@@ -72,7 +72,7 @@ export interface ExtractedNode {
 export interface UCMatch {
   id: string;
   name: string;
-  type: "scenario" | "requirement" | "specification";
+  type: "specification";
   confidence: number;
   matchType: "exact" | "fuzzy" | "semantic";
   rationale?: string;
@@ -86,18 +86,10 @@ export interface MatchResult {
 }
 
 export interface UCSchemaContext {
-  scenarios: Array<{ id: string; name: string; description: string }>;
-  requirements: Array<{
-    id: string;
-    name: string;
-    description: string;
-    parent_scenarios?: string[];
-  }>;
   specifications: Array<{
     id: string;
     name: string;
     description: string;
-    parent_requirements?: string[];
     options?: string[];
     form_mapping?: UCUIField;
   }>;

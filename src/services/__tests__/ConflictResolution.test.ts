@@ -19,7 +19,6 @@ const createUCSpec = (
   id,
   type: "specification",
   name,
-  parent_requirements: [],
   field_name: fieldName,
 });
 
@@ -188,7 +187,6 @@ describe("ConflictResolver conflict detection", () => {
         id: "ex-1",
         nodes: ["P-existing", "P-new"],
         type: "hard_incompatible",
-        category: "spec_spec",
         reason: "Incompatible",
         resolution_priority: 1,
         question_template: "choose between Option A or Option B?",
@@ -228,7 +226,6 @@ describe("ConflictResolver conflict detection", () => {
         id: "ex-2",
         nodes: ["P-existing", "P-new"],
         type: "hard_incompatible",
-        category: "spec_spec",
         reason: "Incompatible",
         resolution_priority: 1,
         question_template: "",

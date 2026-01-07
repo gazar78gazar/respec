@@ -8,8 +8,6 @@
 
 import {
   UCDataset,
-  UCScenario,
-  UCRequirement,
   UCSpecification,
   UCComment,
   UCExclusion,
@@ -19,7 +17,7 @@ import {
 } from "../types/uc-data.types";
 import type { Maybe } from "../types/service.types";
 
-type UCNode = UCScenario | UCRequirement | UCSpecification | UCComment;
+type UCNode = UCSpecification | UCComment;
 
 export class UCDataLayer {
   private dataset: Maybe<UCDataset> = null;
@@ -38,8 +36,6 @@ export class UCDataLayer {
     }
 
     console.log(`[UCDataLayer] ✅ Loaded:`, {
-      scenarios: Object.keys(this.dataset.scenarios || {}).length,
-      requirements: Object.keys(this.dataset.requirements || {}).length,
       specifications: Object.keys(this.dataset.specifications || {}).length,
       exclusions: Object.keys(this.dataset.exclusions || {}).length,
       comments: Object.keys(this.dataset.comments || {}).length,
@@ -54,16 +50,13 @@ export class UCDataLayer {
 
   /**
    * Get any node by ID (auto-detects type from ID prefix)
-   * S## = scenario, R## = requirement, P## = specification, C## = comment
+   * P## = specification, C## = comment
    */
   getNode(id: string): Maybe<UCNode> {
     console.log(`[UCDataLayer] 🔍 getNode(${id})`);
 
     const node =
-      this.dataset!.scenarios?.[id] ||
-      this.dataset!.requirements?.[id] ||
-      this.dataset!.specifications?.[id] ||
-      this.dataset!.comments?.[id];
+      this.dataset!.specifications?.[id] || this.dataset!.comments?.[id];
 
     if (node) {
       console.log(
@@ -78,26 +71,6 @@ export class UCDataLayer {
     return node || null;
   }
 
-  /* Unused in refactored flow; keep for future hierarchy tooling.
-  getScenario(id: string): Maybe<UCScenario> {
-    console.log(
-      `[UCDataLayer] 🎬 getScenario(${id})`,
-      this.dataset!.scenarios?.[id],
-    );
-    return this.dataset!.scenarios?.[id];
-  }
-  */
-
-  /* Unused in refactored flow; keep for future hierarchy tooling.
-  getRequirement(id: string): Maybe<UCRequirement> {
-    console.log(
-      `[UCDataLayer] 📋 getRequirement(${id})`,
-      this.dataset!.requirements?.[id],
-    );
-    return this.dataset!.requirements?.[id];
-  }
-  */
-
   getSpecification(id: string): Maybe<UCSpecification> {
     console.log(
       `[UCDataLayer] 🔧 getSpecification(${id})`,
@@ -107,39 +80,12 @@ export class UCDataLayer {
     return this.dataset!.specifications?.[id];
   }
 
-  getSpecificationsByRequirement(requirementId: string): UCSpecification[] {
-    if (!this.dataset) return [];
-    return Object.values(this.dataset.specifications).filter((spec) =>
-      spec.parent_requirements.includes(requirementId),
-    );
-  }
-
-  /* Unused in refactored flow; keep for future annotation tooling.
-  getComment(id: string): Maybe<UCComment> {
-    console.log(
-      `[UCDataLayer] 💬 getComment(${id})`,
-      this.dataset!.comments?.[id],
-    );
-    return this.dataset!.comments?.[id];
-  }
-  */
-
   getAllSpecifications(): UCSpecification[] {
     console.log(
       `[UCDataLayer] 📦 getAllSpecifications()`,
       Object.values(this.dataset!.specifications || {}),
     );
     return Object.values(this.dataset!.specifications || {});
-  }
-
-  getAllRequirements(): UCRequirement[] {
-    console.log(`[UCDataLayer] 📦 getAllRequirements()`);
-    return Object.values(this.dataset!.requirements || {});
-  }
-
-  getAllScenarios(): UCScenario[] {
-    console.log(`[UCDataLayer] 📦 getAllScenarios()`);
-    return Object.values(this.dataset!.scenarios || {});
   }
 
   /* Unused in refactored flow; keep for future annotation tooling.
@@ -249,50 +195,6 @@ export class UCDataLayer {
     );
     return allRequired;
   }
-
-  // ============= HIERARCHY QUERIES =============
-
-  /**
-   * Get parent requirements for a specification
-   */
-  /* Unused in refactored flow; keep for future hierarchy tooling.
-  getParentRequirements(specId: string): UCRequirement[] {
-    const spec = this.getSpecification(specId);
-    if (!spec?.parent_requirements) return [];
-
-    return spec.parent_requirements
-      .map((reqId: string) => this.getRequirement(reqId))
-      .filter((req): req is UCRequirement => !!req);
-  }
-  */
-
-  /**
-   * Get child specifications for a requirement
-   */
-  /* Unused in refactored flow; keep for future hierarchy tooling.
-  getChildSpecifications(reqId: string): UCSpecification[] {
-    const req = this.getRequirement(reqId);
-    if (!req?.specification_ids) return [];
-
-    return req.specification_ids
-      .map((specId: string) => this.getSpecification(specId))
-      .filter((spec): spec is UCSpecification => !!spec);
-  }
-  */
-
-  /**
-   * Get parent scenarios for a requirement
-   */
-  /* Unused in refactored flow; keep for future hierarchy tooling.
-  getParentScenarios(reqId: string): UCScenario[] {
-    const req = this.getRequirement(reqId);
-    if (!req?.parent_scenarios) return [];
-
-    return req.parent_scenarios
-      .map((scenarioId: string) => this.getScenario(scenarioId))
-      .filter((scenario): scenario is UCScenario => !!scenario);
-  }
-  */
 
   // ============= FORM MAPPING QUERIES =============
 

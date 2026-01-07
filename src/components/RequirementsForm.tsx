@@ -1,5 +1,5 @@
 import React from "react";
-import type { Requirements } from "../types/requirements.types";
+import type { Requirements } from "../types/form-state.types";
 import { SectionAccordionGroup } from "./SectionAccordionGroup";
 import { FormField } from "./FormField";
 import type { FieldDef } from "./FormField";

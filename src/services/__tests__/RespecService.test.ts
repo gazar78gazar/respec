@@ -47,15 +47,14 @@ describe("RespecService (refactored)", () => {
       {
         id: "P01",
         type: "specification",
-        name: "digital_io",
-        parent_requirements: [],
-        field_name: "digital_io",
+        name: "digitalIO",
+        field_name: "digitalIO",
       },
     ]);
     vi.spyOn(ucDataLayer, "getUiFieldByFieldName").mockReturnValue({
-      section: "io_connectivity",
+      section: "IOConnectivity",
       category: "io",
-      field_name: "digital_io",
+      field_name: "digitalIO",
       ui_type: "dropdown",
       selection_type: "single_choice",
       options: [],
@@ -65,7 +64,7 @@ describe("RespecService (refactored)", () => {
     await service.initialize();
 
     expect(anthropicInstance.initialize).toHaveBeenCalledWith({
-      io_connectivity: ["digital_io"],
+      IOConnectivity: ["digitalIO"],
     });
   });
 
@@ -73,8 +72,8 @@ describe("RespecService (refactored)", () => {
     anthropicInstance.analyzeRequirements.mockResolvedValue({
       requirements: [
         {
-          section: "io_connectivity",
-          field: "digital_io",
+          section: "IOConnectivity",
+          field: "digitalIO",
           value: "8",
           confidence: 0.8,
           isAssumption: false,
@@ -91,8 +90,8 @@ describe("RespecService (refactored)", () => {
     expect(result.systemMessage).toBe("I found 8 digital inputs.");
     expect(result.formUpdates).toHaveLength(1);
     expect(result.formUpdates[0]).toEqual({
-      section: "io_connectivity",
-      field: "digital_io",
+      section: "IOConnectivity",
+      field: "digitalIO",
       value: "8",
       isAssumption: false,
       confidence: 0.8,
@@ -141,8 +140,8 @@ describe("RespecService (refactored)", () => {
         () =>
           [
             {
-              section: "io_connectivity",
-              field: "digital_io",
+              section: "IOConnectivity",
+              field: "digitalIO",
               value: "8",
               confidence: 1,
               isAssumption: false,
@@ -175,13 +174,13 @@ describe("RespecService (refactored)", () => {
     vi.spyOn(Math, "random").mockReturnValue(0);
 
     const result = await service.processFormUpdate(
-      "io_connectivity",
-      "digital_io",
+      "IOConnectivity",
+      "digitalIO",
       "8",
     );
 
     expect(result.acknowledged).toBe(true);
-    expect(result.acknowledgment).toContain("io_connectivity.digital_io");
+    expect(result.acknowledgment).toContain("IOConnectivity.digitalIO");
 
     const history = (service as any).conversationHistory;
     expect(history).toHaveLength(1);
