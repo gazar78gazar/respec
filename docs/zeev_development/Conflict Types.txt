@@ -1,56 +1,0 @@
-UC8 Conflict Types - Clarified Definitions
-Context
-Conflicts are detected when a new data node enters the MAPPED artifact and the system evaluates if it can safely move to the RESPEC artifact.
-
-1. FIELD_OVERWRITE
-Detection Trigger: New node in MAPPED could overwrite existing nodes in RESPEC
-What It Means:
-* NOT about form fields
-* Detects when incoming node would replace/overwrite existing data nodes already in RESPEC
-* Scans all potential overwrites before moving node from MAPPED ? RESPEC
-Example:
-RESPEC has: P82 = "Core i7"
-MAPPED gets: P82 = "Core i9"
-Conflict: Would overwrite existing P82 value
-
-2. EXCLUSION
-Detection Trigger: UC8 dataset mutual exclusion rules (107 rules total)
-What It Means:
-* Checks mutual/non-mutual exclusions at two levels: 
-1. Direct: The data node itself conflicts with existing nodes
-2. Hierarchical: Descendant nodes in lower hierarchies have exclusions
-Example:
-RESPEC has: P82 (High performance processor)
-MAPPED gets: P27 (Low power <10W)
-Conflict: UC8 rule says these are mutually exclusive
-
-3. CASCADE
-Detection Trigger: Dependency chains could cause overwrites
-What It Means:
-* When node enters MAPPED with "requires" dependencies
-* System checks if required nodes (and THEIR exclusions) would create overwrites in RESPEC
-* Prevents dependency-triggered conflicts before they happen
-Example:
-MAPPED gets: Feature X (requires Y and Z)
-Y excludes: Node A (already in RESPEC)
-Z excludes: Node B (already in RESPEC)
-Conflict: Adding X would cascade into removing A and B
-
-4. FIELD_CONSTRAINT
-Detection Trigger: No valid options remaining after applying exclusions
-What It Means:
-* At least one specification in RESPEC has zero compatible options left
-* All available "options" are excluded by other selections
-* System becomes unsolvable
-Example:
-P82 options: ["Entry (Intel Atom)", "Standard (Core i3)", "Performance (Core i5)", 
-              "Premium (Core i7)", "Extreme (Core i9)"]
-
-Current exclusions eliminate: Atom, i3, i5, i7, i9
-Result: P82 has no valid options remaining
-Conflict: field_constraint - specification cannot be satisfied
-
-Summary
-TypeDetectsScopefield_overwriteNode replacement/overwriteMAPPED ? RESPEC nodesexclusionMutual incompatibility (107 rules)Node itself + descendantscascadeDependency chain conflictsRequired nodes + their exclusionsfield_constraintZero valid optionsSpecification becomes unsolvableKey Insight
-All conflicts are evaluated before moving nodes from MAPPED to RESPEC, ensuring the RESPEC artifact remains consistent and valid at all times.
-

@@ -19,9 +19,6 @@ import type {
   UCSchemaContext,
 } from "../types/semantic.types";
 
-// ============= TYPES =============
-// Types moved to ../types/semantic.types.ts
-
 // ============= MAIN SERVICE =============
 
 export class SemanticMatchingService {

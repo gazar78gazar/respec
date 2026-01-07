@@ -1,6 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
 import { AnthropicService } from "./AnthropicService";
-import { SemanticMatcher, createSemanticMatcher } from "./SemanticMatcher";
 import {
   SemanticMatchingService,
   createSemanticMatchingService,
@@ -66,7 +65,6 @@ export class RespecService {
   private fieldOptionsMap: FieldOptionsMap = {};
 
   // New semantic matching system (Sprint 2)
-  private semanticMatcher: Maybe<SemanticMatcher> = null;
   private semanticMatchingService: Maybe<SemanticMatchingService> = null;
   private semanticIntegrationNew: Maybe<SemanticIntegrationServiceNew> = null;
 
@@ -135,10 +133,6 @@ export class RespecService {
         this.semanticMatchingService,
         artifactManager,
       );
-
-      // Keep old services for backward compatibility (temporarily)
-      this.semanticMatcher = createSemanticMatcher();
-      this.semanticMatcher.initialize(artifactManager);
 
       console.log(
         "[SimplifiedRespec] ✅ Sprint 2 semantic matching initialized",
