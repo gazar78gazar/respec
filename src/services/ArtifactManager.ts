@@ -21,7 +21,6 @@ import {
   SpecificationId,
 } from "../types/artifacts.types";
 
-// Sprint 1: Import UC8 Data Layer (full integration in Sprint 2)
 import { ucDataLayer } from "./DataLayer";
 import type { UCSpecification } from "../types/uc-data.types";
 import type { Maybe } from "../types/service.types";
@@ -45,7 +44,7 @@ export class ArtifactManager {
   private state: ArtifactState;
   // private listeners: Map<string, () => void> = new Map();
   // Unused in refactored flow; event emitter hooks are currently disabled.
-  // Sprint 2: Store UC8 conflict data for resolution options
+  // Store UC8 conflict data for resolution options
   private conflictData: Map<string, Conflict> = new Map();
 
   constructor() {
@@ -365,7 +364,7 @@ export class ArtifactManager {
 
   /**
    * Check for cross-artifact conflicts (mapped vs respec)
-   * Sprint 3 Week 1: Detects user attempts to override existing validated specs
+   * Week 1: Detects user attempts to override existing validated specs
    */
   // private async checkCrossArtifactConflicts(): Promise<ConflictResult> {
   //   const result: ConflictResult = {
@@ -647,7 +646,7 @@ export class ArtifactManager {
 
     console.log(`[ArtifactManager] Resolved conflict: ${conflictId}`);
 
-    // Sprint 3: After conflict resolved, move non-conflicting specs from MAPPED to RESPEC
+    // After conflict resolved, move non-conflicting specs from MAPPED to RESPEC
     // This triggers the normal flow: MAPPED → RESPEC → Form heals from RESPEC
     await this.moveNonConflictingToRespec();
 
@@ -656,7 +655,7 @@ export class ArtifactManager {
 
   /**
    * Increment conflict cycle count
-   * Sprint 3 Week 2: Track resolution attempts
+   * Track resolution attempts
    */
   incrementConflictCycle(conflictId: string): void {
     const conflictIndex = this.state.conflicts.active.findIndex(

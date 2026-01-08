@@ -36,14 +36,12 @@ export class AnthropicService {
     }
   }
 
-  async initialize(fieldMappings?: Record<string, string[]>): Promise<void> {
+  async initialize(fieldMappings: Record<string, string[]>): Promise<void> {
     if (this.isInitialized) return;
 
     // Store field mappings from UC json
-    if (fieldMappings) {
-      this.fieldMappings = fieldMappings;
-      console.log("[AnthropicService] Received field mappings:", fieldMappings);
-    }
+    this.fieldMappings = fieldMappings;
+    console.log("[AnthropicService] Received field mappings:", fieldMappings);
 
     if (this.apiKey) {
       try {
@@ -67,13 +65,11 @@ export class AnthropicService {
     message: string,
     context?: string | AnthropicAnalysisContext,
   ): Promise<AnthropicAnalysisResult> {
-    if (!this.isInitialized) {
-      await this.initialize();
-    }
-
-    // If no client, return fallback
-    if (!this.client) {
-      return this.getFallbackResponse(message);
+    if (!this.isInitialized || !this.client) {
+      console.error(
+        `[AnthropicService] analyzeRequirements. Client is not initialized return fallback`,
+      );
+      return this.getEmptyResponse(message);
     }
 
     try {
@@ -150,86 +146,15 @@ export class AnthropicService {
       };
     } catch (error) {
       console.error("[AnthropicService] API call failed:", error);
-      return this.getFallbackResponse(message);
+      return this.getEmptyResponse(message);
     }
   }
 
-  private getFallbackResponse(message: string): AnthropicAnalysisResult {
-    // Simple pattern matching fallback with correct field names
-    const patterns = {
-      digitalIO: /(\d+)\s*(digital\s*(inputs?|outputs?|i\/o)|DI|DO)/i,
-      analogIO: /(\d+)\s*(analog\s*(inputs?|outputs?|i\/o)|AI|AO)/i,
-      ethernetPorts: /(\d+)\s*(ethernet\s*ports?)/i,
-      processorType: /(intel\s*(core\s*)?(i[357]|atom|xeon)|processor)/i,
-      memoryCapacity: /(\d+)\s*GB\s*(memory|ram)/i,
-      quantity: /quantity\s*[:=]?\s*(\d+)/i,
-      budgetPerUnit: /budget\s*per\s*unit\s*[:=]?\s*(\d+)/i,
-    };
-
-    const requirements = [];
-
-    // Check digital I/O
-    const digitalMatch = message.match(patterns.digitalIO);
-    if (digitalMatch) {
-      requirements.push({
-        section: "IOConnectivity",
-        field: "digitalIO",
-        value: digitalMatch[1],
-        confidence: 0.8,
-        isAssumption: false,
-      });
-    }
-
-    // Check analog I/O
-    const analogMatch = message.match(patterns.analogIO);
-    if (analogMatch) {
-      requirements.push({
-        section: "IOConnectivity",
-        field: "analogIO",
-        value: analogMatch[1],
-        confidence: 0.8,
-        isAssumption: false,
-      });
-    }
-
-    // Check other patterns
-    for (const [field, pattern] of Object.entries(patterns)) {
-      if (field === "digitalIO" || field === "analogIO") continue;
-
-      const match = message.match(pattern);
-      if (match) {
-        const section =
-          field.startsWith("budget") || field === "quantity"
-            ? "commercial"
-            : field.startsWith("ethernet")
-              ? "IOConnectivity"
-              : field.startsWith("processor") || field.startsWith("memory")
-                ? "computePerformance"
-                : "IOConnectivity";
-
-        requirements.push({
-          section,
-          field,
-          value: match[1],
-          confidence: 0.8,
-          isAssumption: false,
-        });
-      }
-    }
-
-    if (requirements.length > 0) {
-      return {
-        requirements,
-        response: `I found ${requirements.length} requirement(s) in your message.`,
-        clarificationNeeded: undefined,
-      };
-    }
-
+  private getEmptyResponse(message: string): AnthropicAnalysisResult {
     return {
       requirements: [],
-      response: `I understand you mentioned: "${message}". Could you provide more specific details about quantities or requirements?`,
-      clarificationNeeded:
-        "Please specify the type and quantity of I/O or other requirements.",
+      response: `I understand you mentioned: "${message}". Empty response returned`,
+      clarificationNeeded: "",
     };
   }
 
@@ -381,11 +306,11 @@ CRITICAL:
 `;
   }
 
-  // ============= SPRINT 3 WEEK 2: CONFLICT RESOLUTION =============
+  // ============= CONFLICT RESOLUTION =============
 
   /**
    * Parse user response for conflict resolution
-   * Sprint 3 Week 2: Semantic interpretation of A/B choices
+   * Semantic interpretation of A/B choices
    */
   async parseConflictResponse(
     userMessage: string,
@@ -523,7 +448,7 @@ Examples:
 
   /**
    * Generate clarification for user questions during conflict resolution
-   * Sprint 3 Week 2: Handles user questions during resolution
+   * Handles user questions during resolution
    */
   private async generateClarification(
     userMessage: string,
@@ -575,7 +500,7 @@ Keep it friendly and conversational.
 
   /**
    * Orchestrate conflict resolution
-   * Sprint 3 Week 2: Complete resolution flow
+   * Complete resolution flow
    */
   async handleConflictResolution(
     userMessage: string,
