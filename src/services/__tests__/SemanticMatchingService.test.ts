@@ -1,37 +1,44 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
-import { SemanticMatchingService } from "../SemanticMatchingService";
+import { SemanticExtractor } from "../agents/SemanticExtractor";
 import { ucDataLayer } from "../DataLayer";
 
-describe("SemanticMatchingService", () => {
+const buildExtractor = (hasClient = true) =>
+  new SemanticExtractor(
+    {
+      hasClient: vi.fn().mockReturnValue(hasClient),
+      initialize: vi.fn(),
+      createMessage: vi.fn(),
+    } as unknown as any,
+    {
+      getPrompt: vi.fn().mockResolvedValue("system"),
+    } as unknown as any,
+  );
+
+describe("SemanticExtractor", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
   it("throws when client is not initialized", async () => {
-    const service = new SemanticMatchingService("");
+    const extractor = buildExtractor(false);
 
-    await expect(service.matchExtractedNodesToUC([])).rejects.toThrow(
+    await expect(extractor.matchExtractedNodesToUC([])).rejects.toThrow(
       "Client not initialized",
     );
   });
 
   it("throws when UCDataLayer is not loaded", async () => {
-    const service = new SemanticMatchingService("test-key");
-    (service as unknown as { client: unknown }).client = {
-      messages: {
-        create: vi.fn(),
-      },
-    };
+    const extractor = buildExtractor(true);
 
     vi.spyOn(ucDataLayer, "isLoaded").mockReturnValue(false);
 
-    await expect(service.matchExtractedNodesToUC([])).rejects.toThrow(
+    await expect(extractor.matchExtractedNodesToUC([])).rejects.toThrow(
       "UCDataLayer not loaded",
     );
   });
 
   it("parses match results from JSON response", () => {
-    const service = new SemanticMatchingService("test-key");
+    const extractor = buildExtractor(true);
     const response = `
       {
         "matches": [
@@ -52,7 +59,7 @@ describe("SemanticMatchingService", () => {
     `;
 
     const results = (
-      service as unknown as {
+      extractor as unknown as {
         parseMatchResults: (text: string) => Array<{
           extractedNode: { text: string; value: unknown };
           ucMatch: {

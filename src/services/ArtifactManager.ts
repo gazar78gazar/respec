@@ -687,7 +687,7 @@ export class ArtifactManager {
 
   /**
    * Escalate conflict after max cycles
-   * Sprint 3 Week 2: Auto-resolution or skip
+   * Auto-resolution or skip
    */
   private escalateConflict(conflictId: string): void {
     const conflictIndex = this.state.conflicts.active.findIndex(
@@ -732,7 +732,7 @@ export class ArtifactManager {
 
   /**
    * Apply conflict resolution with surgical precision
-   * Sprint 3 Week 1: Full implementation with safety policies
+   * Full implementation with safety policies
    */
   private async applyConflictResolution(
     conflict: ActiveConflict,
@@ -846,7 +846,7 @@ export class ArtifactManager {
 
   /**
    * Find specification in any artifact (public for user-selection preservation)
-   * Sprint 3 Week 1: Helper for preservation checks
+   * Helper for preservation checks
    */
   findSpecificationInArtifact(
     artifactName: "mapped" | "respec",
@@ -859,7 +859,7 @@ export class ArtifactManager {
 
   /**
    * Find specification in mapped artifact (internal helper)
-   * Sprint 3 Week 1: Helper for resolution operations
+   * Helper for resolution operations
    */
   private findSpecificationInMapped(
     specId: SpecificationId,
@@ -885,7 +885,7 @@ export class ArtifactManager {
 
   /**
    * Restore specification to mapped artifact (for rollback)
-   * Sprint 3 Week 1: Helper for rollback operations
+   * Helper for rollback operations
    */
   private restoreSpecificationToMapped(
     specId: string,

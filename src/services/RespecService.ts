@@ -1,16 +1,17 @@
 import { v4 as uuidv4 } from "uuid";
 import { AnthropicService } from "./AnthropicService";
+import { PreSaleEngineer } from "./agents/PreSaleEngineer";
 import {
-  SemanticMatchingService,
-  createSemanticMatchingService,
-} from "./SemanticMatchingService";
+  SemanticExtractor,
+  createSemanticExtractor,
+} from "./agents/SemanticExtractor";
+import { LocalPromptProvider } from "./prompts/PromptProvider";
 import {
-  SemanticIntegrationService as SemanticIntegrationServiceNew,
-  createSemanticIntegrationService as createSemanticIntegrationServiceNew,
+  SemanticIntegrationService,
+  createSemanticIntegrationService,
 } from "./SemanticIntegrationService";
 import { ArtifactManager } from "./ArtifactManager";
 
-// Sprint 1: Import UC8 Data Layer
 import { ucDataLayer } from "./DataLayer";
 import type {
   AutofillResult,
@@ -34,8 +35,6 @@ import type {
  * while exposing UI-ready responses and form updates.
  */
 
-// Field definition types now live in ../types/semantic.types
-
 export interface FieldOptionsMap {
   [section: string]: {
     [field: string]: {
@@ -49,8 +48,6 @@ export interface FieldOptionsMap {
   };
 }
 
-// Shared service types now live in ../types/service.types.ts
-
 export class RespecService {
   private sessionId: string;
   private conversationHistory: Array<{
@@ -60,15 +57,17 @@ export class RespecService {
   }> = [];
   private isInitialized = false;
   private anthropicService: AnthropicService;
+  private preSaleEngineer: PreSaleEngineer;
+  private promptProvider: LocalPromptProvider;
   private fieldMappings: Map<string, { section: string; field: string }> =
     new Map();
   private fieldOptionsMap: FieldOptionsMap = {};
 
-  // New semantic matching system (Sprint 2)
-  private semanticMatchingService: Maybe<SemanticMatchingService> = null;
-  private semanticIntegrationNew: Maybe<SemanticIntegrationServiceNew> = null;
+  // semantic matching system
+  private semanticExtractor: Maybe<SemanticExtractor> = null;
+  private semanticIntegration: Maybe<SemanticIntegrationService> = null;
 
-  // Sprint 3 Week 1: Core services for conflict detection and resolution
+  // Core services for conflict detection and resolution
   private artifactManager?: ArtifactManager;
 
   // Smart defaults based on common engineering requirements
@@ -105,6 +104,11 @@ export class RespecService {
   constructor() {
     this.sessionId = uuidv4();
     this.anthropicService = new AnthropicService();
+    this.promptProvider = new LocalPromptProvider();
+    this.preSaleEngineer = new PreSaleEngineer(
+      this.anthropicService,
+      this.promptProvider,
+    );
   }
 
   // Initialize semantic matching system (called externally with dependencies)
@@ -112,71 +116,64 @@ export class RespecService {
     artifactManager?: ArtifactManager,
   ): Promise<void> {
     try {
-      // Sprint 3 Week 1: Store core services for conflict detection
+      // Store core services for conflict detection
       this.artifactManager = artifactManager;
 
-      // SPRINT 3 FIX: Listen for respec artifact changes to update form (respec = source of truth)
+      // Listen for respec artifact changes to update form (respec = source of truth)
       // if (artifactManager) {
       //   artifactManager.on("specifications_moved", (data: any) => {
       //     this.handleRespecUpdate(data);
       //   });
       //   console.log(
-      //     "[SimplifiedRespec] ✅ Listening for respec artifact changes"
+      //     "[Respec] ✅ Listening for respec artifact changes"
       //   );
       // }
 
-      // Sprint 2: Initialize new SemanticMatchingService
-      this.semanticMatchingService = createSemanticMatchingService();
-      await this.semanticMatchingService.initialize();
+      this.semanticExtractor = createSemanticExtractor(
+        this.anthropicService,
+        this.promptProvider,
+      );
+      await this.semanticExtractor.initialize();
 
-      this.semanticIntegrationNew = createSemanticIntegrationServiceNew(
-        this.semanticMatchingService,
+      this.semanticIntegration = createSemanticIntegrationService(
+        this.semanticExtractor,
         artifactManager,
       );
 
-      console.log(
-        "[SimplifiedRespec] ✅ Sprint 2 semantic matching initialized",
-      );
-      console.log("[SimplifiedRespec] - SemanticMatchingService: ready");
-      console.log("[SimplifiedRespec] - SemanticIntegrationService: ready");
+      console.log("[Respec] ✅ semantic matching initialized");
+      console.log("[Respec] - SemanticExtractor: ready");
+      console.log("[Respec] - SemanticIntegrationService: ready");
     } catch (error) {
-      console.error(
-        "[SimplifiedRespec] Failed to initialize semantic matching:",
-        error,
-      );
+      console.error("[Respec] Failed to initialize semantic matching:", error);
     }
   }
 
   async initialize(fieldDefinitions?: FieldDefinitions): Promise<void> {
     if (this.isInitialized) {
-      console.log("[SimplifiedRespec] Already initialized");
+      console.log("[Respec] Already initialized");
       return;
     }
 
-    console.log(`[SimplifiedRespec] Initializing session: ${this.sessionId}`);
+    console.log(`[Respec] Initializing session: ${this.sessionId}`);
 
-    // Sprint 1: Use UC8 Data Layer for field mappings
     try {
       if (ucDataLayer.isLoaded()) {
-        console.log(
-          "[SimplifiedRespec] Using UC8 Data Layer for field mappings",
-        );
+        console.log("[Respec] Using UC8 Data Layer for field mappings");
         this.extractFieldMappingsFromDataLayer();
         console.log(
-          "[SimplifiedRespec] UC8 field mappings extracted:",
+          "[Respec] UC8 field mappings extracted:",
           this.fieldMappings.size,
           "mappings",
         );
       } else {
-        console.error("[SimplifiedRespec] UC8 not loaded");
+        console.error("[Respec] UC8 not loaded");
       }
     } catch (error) {
-      console.warn("[SimplifiedRespec] Failed to load field mappings:", error);
-      // this.loadFallbackMappings();
+      console.warn("[Respec] Failed to load field mappings:", error);
     }
 
     // Initialize Anthropic service with field mappings
-    await this.anthropicService.initialize(this.getFieldMappingsForPrompt());
+    await this.preSaleEngineer.initialize(this.getFieldMappingsForPrompt());
 
     // Load any persisted conversation or settings
     try {
@@ -188,34 +185,29 @@ export class RespecService {
         this.conversationHistory = data.conversationHistory || [];
       }
     } catch (error) {
-      console.warn("[SimplifiedRespec] Could not load saved session:", error);
+      console.warn("[Respec] Could not load saved session:", error);
     }
 
     // Build field options map if field definitions provided
     if (fieldDefinitions) {
       this.buildFieldOptionsMap(fieldDefinitions);
       console.log(
-        "[SimplifiedRespec] Field options map built with",
+        "[Respec] Field options map built with",
         Object.keys(this.fieldOptionsMap).length,
         "sections",
       );
     }
 
     this.isInitialized = true;
-    console.log("[SimplifiedRespec] Initialization complete");
+    console.log("[Respec] Initialization complete");
   }
 
-  /**
-   * Sprint 1: Extract field mappings from UC8 Data Layer
-   */
   private extractFieldMappingsFromDataLayer(): void {
-    console.log(
-      "[SimplifiedRespec] Extracting field mappings from UC8 Data Layer",
-    );
+    console.log("[Respec] Extracting field mappings from UC8 Data Layer");
 
     const specifications = ucDataLayer.getAllSpecifications();
     console.log(
-      `[SimplifiedRespec] Found ${specifications.length} specifications in UC8`,
+      `[Respec] Found ${specifications.length} specifications in UC8`,
       { specifications },
     );
 
@@ -249,7 +241,7 @@ export class RespecService {
     });
 
     console.log(
-      `[SimplifiedRespec] Extracted ${this.fieldMappings.size} field mappings from UC8`,
+      `[Respec] Extracted ${this.fieldMappings.size} field mappings from UC8`,
     );
   }
 
@@ -273,7 +265,7 @@ export class RespecService {
       },
     );
 
-    console.log("[SimplifiedRespec] Built field options map:", {
+    console.log("[Respec] Built field options map:", {
       sections: Object.keys(this.fieldOptionsMap).length,
       totalFields: Object.values(this.fieldOptionsMap).reduce(
         (sum, section) => sum + Object.keys(section).length,
@@ -406,19 +398,17 @@ export class RespecService {
       await this.initialize();
     }
 
-    console.log(`[SimplifiedRespec] Processing: "${message}"`);
+    console.log(`[Respec] Processing: "${message}"`);
 
-    // Sprint 3: Check for active conflicts FIRST - if yes, route to conflict resolution
+    // Check for active conflicts FIRST - if yes, route to conflict resolution
     const conflictStatus = this.getActiveConflictsForAgent();
 
     if (conflictStatus.hasConflicts && this.artifactManager) {
-      console.log(
-        `[SimplifiedRespec] 🎯 Conflict resolution mode - routing to agent`,
-      );
+      console.log(`[Respec] 🎯 Conflict resolution mode - routing to agent`);
 
-      // Use AnthropicService to handle conflict resolution (parse A/B, resolve, confirm)
+      // Use PreSaleEngineer to handle conflict resolution (parse A/B, resolve, confirm)
       const resolutionResult =
-        await this.anthropicService.handleConflictResolution(
+        await this.preSaleEngineer.handleConflictResolution(
           message,
           conflictStatus,
           this.artifactManager,
@@ -464,54 +454,48 @@ export class RespecService {
     });
 
     try {
-      // Sprint 2: New flow with Agent extraction + UC matching
+      //New flow with Agent extraction + UC matching
       console.log(
-        `[SimplifiedRespec] 🚀 Starting Sprint 2 flow: Agent → Integration → UC Matcher`,
+        `[Respec] 🚀 Starting flow: Agent → Integration → UC Matcher`,
       );
 
       // Identify relevant fields from the message
       const identifiedFields = this.identifyRelevantFields(message);
-      console.log(
-        `[SimplifiedRespec] Identified relevant fields:`,
-        identifiedFields,
-      );
+      console.log(`[Respec] Identified relevant fields:`, identifiedFields);
 
       // Build context with available options
-      const contextPrompt = this.buildContextPrompt(message, identifiedFields);
-      console.log(`[SimplifiedRespec] Built context prompt with field options`);
+      const contextPrompt = this.buildContextPrompt(message, identifiedFields); // TODO zeev prompt
+      console.log(`[Respec] Built context prompt with field options !!!`, {
+        contextPrompt,
+      });
 
       // Step 1: Agent extracts requirements (with conversational flow)
-      console.log(
-        `[SimplifiedRespec] 📝 Step 1: Agent extracting requirements...`,
-      );
+      console.log(`[Respec] 📝 Step 1: Agent extracting requirements...`);
       const anthropicResult: AnthropicAnalysisResult =
-        await this.anthropicService.analyzeRequirements(contextPrompt, {
+        await this.preSaleEngineer.analyzeRequirements(contextPrompt, {
           conversationHistory: this.conversationHistory.slice(-5), // Last 5 messages for context
           sessionId: this.sessionId,
         });
       console.log(
-        `[SimplifiedRespec] ✅ Agent extracted:`,
+        `[Respec] ✅ Agent extracted:`,
         anthropicResult.requirements.length,
         "requirements",
       );
 
       // Step 2: Route through new semantic integration (if available and requirements exist)
-      if (
-        this.semanticIntegrationNew &&
-        anthropicResult.requirements.length > 0
-      ) {
+      if (this.semanticIntegration && anthropicResult.requirements.length > 0) {
         console.log(
-          `[SimplifiedRespec] 🔍 Step 2: Routing to SemanticIntegrationService...`,
+          `[Respec] 🔍 Step 2: Routing to SemanticIntegrationService...`,
         );
 
         const enhancedResult =
-          await this.semanticIntegrationNew.processExtractedRequirements(
+          await this.semanticIntegration.processExtractedRequirements(
             anthropicResult.requirements,
             anthropicResult.response,
           );
 
         console.log(
-          `[SimplifiedRespec] ✅ Sprint 2 processing complete:`,
+          `[Respec] ✅ processing complete:`,
           enhancedResult.formUpdates?.length || 0,
           "form updates",
         );
@@ -531,7 +515,7 @@ export class RespecService {
 
       // Fallback: Use legacy flow if semantic integration not available or no requirements
       console.log(
-        `[SimplifiedRespec] ⚠️  No semantic integration or no requirements, using legacy flow`,
+        `[Respec] ⚠️  No semantic integration or no requirements, using legacy flow`,
       );
 
       // Convert Anthropic requirements to EnhancedFormUpdate format
@@ -573,15 +557,15 @@ export class RespecService {
 
       return result;
     } catch (error) {
-      console.error("[SimplifiedRespec] ❌ LLM processing failed:", error);
-      throw error; // Fail fast for MVP (Sprint 2 requirement)
+      console.error("[Respec] ❌ LLM processing failed:", error);
+      throw error; // Fail fast for MVP
     }
   }
 
   /**
    * Get active conflicts formatted for agent consumption
-   * Sprint 3 Week 1: Returns structured conflict data to agent for binary question generation
-   * Sprint 3 Week 2: Enhanced with priority queue (one conflict at a time)
+   * Returns structured conflict data to agent for binary question generation
+   * Enhanced with priority queue (one conflict at a time)
    */
   getActiveConflictsForAgent(): StructuredConflicts {
     if (!this.artifactManager) {
@@ -609,7 +593,7 @@ export class RespecService {
       };
     }
 
-    // Sprint 3 Week 2: Sort by priority
+    // Sort by priority
     const priorityOrder: Record<string, number> = {
       exclusion: 1,
       field_overwrite: 2,
@@ -623,7 +607,7 @@ export class RespecService {
       return priorityA - priorityB;
     });
 
-    // SPRINT 3 FIX B: Return ALL conflicts (agent will aggregate into one question)
+    // Return ALL conflicts (agent will aggregate into one question)
     const structuredConflicts = activeConflicts.map((conflict) => ({
       id: conflict.id,
       type: conflict.type,
@@ -659,9 +643,15 @@ export class RespecService {
     };
   }
 
+  async generateConflictQuestion(
+    conflictStatus: StructuredConflicts,
+  ): Promise<string> {
+    return this.preSaleEngineer.generateConflictQuestion(conflictStatus);
+  }
+
   /**
    * Get node details for conflict display
-   * Sprint 3 Week 1: Helper for structuring conflict data
+   * Helper for structuring conflict data
    */
   private getNodeDetails(nodeId: string): {
     name: string;
@@ -686,9 +676,7 @@ export class RespecService {
     field: string,
     value: unknown,
   ): Promise<FormProcessingResult> {
-    console.log(
-      `[SimplifiedRespec] Form update: ${section}.${field} = ${value}`,
-    );
+    console.log(`[Respec] Form update: ${section}.${field} = ${value}`);
 
     // Generate contextual acknowledgment
     const acknowledgment = this.generateFormAcknowledgment(
@@ -718,7 +706,7 @@ export class RespecService {
    * This ensures respec is the single source of truth
    */
   // private handleRespecUpdate(data: any): void {
-  //   console.log("[SimplifiedRespec] 🔔 Respec artifact updated:", data);
+  //   console.log("[Respec] 🔔 Respec artifact updated:", data);
 
   // TODO: For now, this logs the update. In async conflict resolution scenarios,
   // we'll need to generate form updates and push them to the UI through a callback
@@ -730,7 +718,7 @@ export class RespecService {
   // }
 
   async triggerAutofill(trigger: string): Promise<AutofillResult> {
-    console.log(`[SimplifiedRespec] Autofill triggered: ${trigger}`);
+    console.log(`[Respec] Autofill triggered: ${trigger}`);
 
     // Determine context from conversation history
     const context = this.determineApplicationContext();
@@ -874,7 +862,7 @@ export class RespecService {
         JSON.stringify(sessionData),
       );
     } catch (error) {
-      console.warn("[SimplifiedRespec] Could not save session:", error);
+      console.warn("[Respec] Could not save session:", error);
     }
   }
 
@@ -888,7 +876,7 @@ export class RespecService {
   //   // Unused in refactored flow; keep for manual session reset tooling.
   //   this.conversationHistory = [];
   //   localStorage.removeItem(`respec_session_${this.sessionId}`);
-  //   console.log("[SimplifiedRespec] Session cleared");
+  //   console.log("[Respec] Session cleared");
   // }
 
   // getDebugInfo() {

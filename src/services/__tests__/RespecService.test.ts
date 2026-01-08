@@ -3,14 +3,15 @@ import { RespecService } from "../RespecService";
 import { ucDataLayer } from "../DataLayer";
 import type { EnhancedFormUpdate } from "../../types/service.types";
 
-let anthropicInstance: {
+let preSaleEngineerInstance: {
   initialize: ReturnType<typeof vi.fn>;
   analyzeRequirements: ReturnType<typeof vi.fn>;
   handleConflictResolution: ReturnType<typeof vi.fn>;
+  generateConflictQuestion: ReturnType<typeof vi.fn>;
 };
 
-vi.mock("../AnthropicService", () => ({
-  AnthropicService: vi.fn(() => anthropicInstance),
+vi.mock("../agents/PreSaleEngineer", () => ({
+  PreSaleEngineer: vi.fn(() => preSaleEngineerInstance),
 }));
 
 const localStorageMock = {
@@ -24,10 +25,11 @@ vi.stubGlobal("localStorage", localStorageMock);
 
 describe("RespecService (refactored)", () => {
   beforeEach(() => {
-    anthropicInstance = {
+    preSaleEngineerInstance = {
       initialize: vi.fn(),
       analyzeRequirements: vi.fn(),
       handleConflictResolution: vi.fn(),
+      generateConflictQuestion: vi.fn(),
     };
     vi.clearAllMocks();
   });
@@ -63,13 +65,13 @@ describe("RespecService (refactored)", () => {
     const service = new RespecService();
     await service.initialize();
 
-    expect(anthropicInstance.initialize).toHaveBeenCalledWith({
+    expect(preSaleEngineerInstance.initialize).toHaveBeenCalledWith({
       IOConnectivity: ["digitalIO"],
     });
   });
 
   it("processes chat message via fallback flow when no semantic integration", async () => {
-    anthropicInstance.analyzeRequirements.mockResolvedValue({
+    preSaleEngineerInstance.analyzeRequirements.mockResolvedValue({
       requirements: [
         {
           section: "IOConnectivity",
@@ -100,7 +102,7 @@ describe("RespecService (refactored)", () => {
     });
   });
 
-  it("routes conflict resolution through AnthropicService when conflicts exist", async () => {
+  it("routes conflict resolution through PreSaleEngineer when conflicts exist", async () => {
     const artifactManager = {
       getState: vi.fn(() => ({
         conflicts: {
@@ -153,7 +155,7 @@ describe("RespecService (refactored)", () => {
       findSpecificationInArtifact: vi.fn(),
     };
 
-    anthropicInstance.handleConflictResolution.mockResolvedValue({
+    preSaleEngineerInstance.handleConflictResolution.mockResolvedValue({
       response: "Resolved",
       mode: "resolution_success",
     });
@@ -164,9 +166,45 @@ describe("RespecService (refactored)", () => {
 
     const result = await service.processChatMessage("Pick A");
 
-    expect(anthropicInstance.handleConflictResolution).toHaveBeenCalled();
+    expect(preSaleEngineerInstance.handleConflictResolution).toHaveBeenCalled();
     expect(result.systemMessage).toBe("Resolved");
     expect(result.formUpdates).toHaveLength(1);
+  });
+
+  it("delegates conflict question generation to PreSaleEngineer", async () => {
+    const conflictStatus = {
+      hasConflicts: true,
+      count: 1,
+      currentConflict: 1,
+      totalConflicts: 1,
+      systemBlocked: true,
+      conflicts: [
+        {
+          id: "conflict-1",
+          description: "Conflict",
+          affectedNodes: [],
+          resolutionOptions: [
+            { id: "option-a", label: "Keep A", outcome: "Keep A" },
+            { id: "option-b", label: "Keep B", outcome: "Keep B" },
+          ],
+          cycleCount: 0,
+          priority: "high",
+          type: "exclusion",
+        },
+      ],
+    };
+
+    preSaleEngineerInstance.generateConflictQuestion.mockResolvedValue(
+      "Question",
+    );
+
+    const service = new RespecService();
+    const result = await service.generateConflictQuestion(conflictStatus);
+
+    expect(
+      preSaleEngineerInstance.generateConflictQuestion,
+    ).toHaveBeenCalledWith(conflictStatus);
+    expect(result).toBe("Question");
   });
 
   it("acknowledges form updates and records history", async () => {

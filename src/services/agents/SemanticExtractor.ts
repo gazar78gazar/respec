@@ -1,5 +1,5 @@
 /**
- * SemanticMatchingService - Stateless LLM for UC Semantic Matching
+ * SemanticExtractor - Stateless LLM for UC Semantic Matching
  *
  * Purpose: Matches already-extracted requirements to UC schema nodes
  * - Receives: Extracted data nodes from Agent
@@ -10,80 +10,74 @@
  * Full UC schema is loaded on every call for semantic matching
  */
 
-import Anthropic from "@anthropic-ai/sdk";
-import { ucDataLayer } from "./DataLayer";
-import type { Maybe } from "../types/service.types";
+import { ucDataLayer } from "../DataLayer";
+import { AnthropicService } from "../AnthropicService";
+import {
+  LocalPromptProvider,
+  type PromptProvider,
+} from "../prompts/PromptProvider";
 import type {
   ExtractedNode,
   MatchResult,
   UCSchemaContext,
-} from "../types/semantic.types";
+} from "../../types/semantic.types";
 
-// ============= MAIN SERVICE =============
+export class SemanticExtractor {
+  private anthropicService: AnthropicService;
+  private promptProvider: PromptProvider;
 
-export class SemanticMatchingService {
-  private client: Maybe<Anthropic> = null;
-  private apiKey: string;
-
-  constructor(apiKey?: string) {
-    this.apiKey = apiKey || import.meta.env.VITE_ANTHROPIC_API_KEY || "";
-
-    if (!this.apiKey) {
-      console.warn(
-        "[SemanticMatching] No API key - service will fail on calls",
-      );
-    }
+  constructor(
+    anthropicService?: AnthropicService,
+    promptProvider?: PromptProvider,
+  ) {
+    this.anthropicService = anthropicService || new AnthropicService();
+    this.promptProvider = promptProvider || new LocalPromptProvider();
   }
 
   async initialize(): Promise<void> {
-    if (this.apiKey) {
-      this.client = new Anthropic({
-        apiKey: this.apiKey,
-        dangerouslyAllowBrowser: true,
-      });
-      console.log("[SemanticMatching] ✅ Initialized with Anthropic client");
+    await this.anthropicService.initialize();
+
+    if (this.anthropicService.hasClient()) {
+      console.log("[SemanticExtractor] ✅ Initialized with Anthropic client");
     }
   }
-
-  // ============= MAIN MATCHING METHOD =============
 
   async matchExtractedNodesToUC(
     extractedNodes: ExtractedNode[],
   ): Promise<MatchResult[]> {
-    if (!this.client) {
+    if (!this.anthropicService.hasClient()) {
       throw new Error(
-        "[SemanticMatching] ❌ Client not initialized. Call initialize() first.",
+        "[SemanticExtractor] ❌ Client not initialized. Call initialize() first.",
       );
     }
 
-    // SPRINT 3 FIX: Check UCDataLayer instead of UCValidationEngine
     if (!ucDataLayer.isLoaded()) {
       throw new Error(
-        "[SemanticMatching] ❌ UCDataLayer not loaded - ensure ucDataLayer.load() is called at startup",
+        "[SemanticExtractor] ❌ UCDataLayer not loaded - ensure ucDataLayer.load() is called at startup",
       );
     }
 
     console.log(
-      "[SemanticMatching] 🔍 Matching",
+      "[SemanticExtractor] 🔍 Matching",
       extractedNodes.length,
       "nodes to UC8 (P## IDs)",
     );
 
-    // Prepare condensed UC schema (full schema would be too large)
     const ucContext = this.prepareUCContext();
 
-    // Build prompt
     const prompt = this.buildMatchingPrompt(extractedNodes, ucContext);
 
     try {
       const startTime = Date.now();
 
-      // Call stateless LLM
-      const completion = await this.client.messages.create({
+      const system = await this.buildSystemPrompt();
+      console.log("[SemanticMathingService] system prompt !!!", { system });
+
+      const completion = await this.anthropicService.createMessage({
         model: import.meta.env.VITE_LLM_MODEL || "claude-opus-4-1-20250805",
         max_tokens: parseInt(import.meta.env.VITE_LLM_MAX_TOKENS || "2500"),
         temperature: parseFloat(import.meta.env.VITE_LLM_TEMPERATURE || "0.3"),
-        system: this.buildSystemPrompt(),
+        system,
         messages: [
           {
             role: "user",
@@ -94,19 +88,19 @@ export class SemanticMatchingService {
 
       const duration = Date.now() - startTime;
       console.log(
-        "[SemanticMatching] ⏱️  Matching completed in",
+        "[SemanticExtractor] ⏱️  Matching completed in",
         duration,
         "ms",
       );
 
-      // Parse response
+      const primaryContent = completion.content[0];
       const responseText =
-        completion.content[0].type === "text" ? completion.content[0].text : "";
+        primaryContent?.type === "text" ? primaryContent.text || "" : "";
 
       const matchResults = this.parseMatchResults(responseText);
 
       console.log(
-        "[SemanticMatching] ✅ Matched",
+        "[SemanticExtractor] ✅ Matched",
         matchResults.length,
         "nodes",
       );
@@ -118,43 +112,13 @@ export class SemanticMatchingService {
 
       return matchResults;
     } catch (error) {
-      console.error("[SemanticMatching] ❌ Matching failed:", error);
-      throw error; // Fail fast for MVP
+      console.error("[SemanticExtractor] ❌ Matching failed:", error);
+      throw error;
     }
   }
 
-  // ============= PROMPT BUILDING =============
-
-  private buildSystemPrompt(): string {
-    return `You are a semantic matching engine for UC8 (Power Substation Management) dataset.
-
-Your task:
-1. Receive extracted technical requirements from user input
-2. Match each extraction to the best UC8 specification (P##)
-3. Provide confidence score and match rationale
-
-IMPORTANT: Return specification IDs in P## format (e.g., P01, P82, P27) - NOT spc### format.
-
-Matching rules:
-- Use semantic similarity, not just exact text match
-- "budget friendly" should match to budget-related specifications
-- "fast response" should match to response time specifications
-- "outdoor" should match to environmental specifications
-- "high performance processor" should match to processor specifications (e.g., P82 for Core i9)
-- "low power" or "<10W" should match to power consumption specifications (e.g., P27)
-- "thermal imaging" should match to thermal monitoring specifications
-
-Classification hints:
-- Specifications have specific values and map to form fields (IDs start with P)
-
-Confidence scoring:
-- 1.0 = Exact match (user said "Intel Core i9", dataset has that option)
-- 0.9 = High confidence semantic match
-- 0.8 = Good semantic match with some interpretation
-- 0.7 = Acceptable match but ambiguous
-- <0.7 = Low confidence, should ask for clarification
-
-Return ONLY valid JSON with P## IDs, no additional text.`;
+  private async buildSystemPrompt(): Promise<string> {
+    return this.promptProvider.getPrompt("semantic-extractor");
   }
 
   private buildMatchingPrompt(
@@ -191,25 +155,20 @@ CRITICAL: Use P## format IDs (P82, P27, etc.) NOT spc### format.
 Match ALL provided nodes. If no good match exists, use confidence < 0.5.`;
   }
 
-  // ============= UC8 CONTEXT PREPARATION =============
-  // SPRINT 3 FIX: Now uses UCDataLayer to get P## IDs instead of UCValidationEngine spc### IDs
-
   private prepareUCContext(): UCSchemaContext {
     const context: UCSchemaContext = {
       specifications: [],
     };
 
-    // Check if UCDataLayer is loaded
     if (!ucDataLayer.isLoaded()) {
-      console.error("[SemanticMatching] ❌ UCDataLayer not loaded");
+      console.error("[SemanticExtractor] ❌ UCDataLayer not loaded");
       return context;
     }
 
-    // Add specifications (with P## IDs)
     const specifications = ucDataLayer.getAllSpecifications();
     specifications.forEach((spec) => {
       context.specifications.push({
-        id: spec.id, // P## format from UC8
+        id: spec.id,
         name: spec.name,
         description: spec.description || "",
         form_mapping:
@@ -218,7 +177,7 @@ Match ALL provided nodes. If no good match exists, use confidence < 0.5.`;
     });
 
     console.log(
-      "[SemanticMatching] 📦 UC8 Context (P## IDs):",
+      "[SemanticExtractor] 📦 UC8 Context (P## IDs):",
       context.specifications.length,
       "specifications",
     );
@@ -226,11 +185,8 @@ Match ALL provided nodes. If no good match exists, use confidence < 0.5.`;
     return context;
   }
 
-  // ============= RESPONSE PARSING =============
-
   private parseMatchResults(responseText: string): MatchResult[] {
     try {
-      // Extract JSON from response
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         throw new Error("No JSON found in LLM response");
@@ -239,7 +195,6 @@ Match ALL provided nodes. If no good match exists, use confidence < 0.5.`;
       const parsed = JSON.parse(jsonMatch[0]);
       const matches = parsed.matches || [];
 
-      // Convert to MatchResult format
       const results: MatchResult[] = matches.map((match: MatchResult) => ({
         extractedNode: {
           text: match.extractedText,
@@ -259,7 +214,7 @@ Match ALL provided nodes. If no good match exists, use confidence < 0.5.`;
       return results;
     } catch (error) {
       console.error(
-        "[SemanticMatching] ❌ Failed to parse LLM response:",
+        "[SemanticExtractor] ❌ Failed to parse LLM response:",
         error,
       );
       console.error("Response was:", responseText);
@@ -268,10 +223,9 @@ Match ALL provided nodes. If no good match exists, use confidence < 0.5.`;
   }
 }
 
-// ============= FACTORY FUNCTION =============
-
-export function createSemanticMatchingService(
-  apiKey?: string,
-): SemanticMatchingService {
-  return new SemanticMatchingService(apiKey);
+export function createSemanticExtractor(
+  anthropicService?: AnthropicService,
+  promptProvider?: PromptProvider,
+): SemanticExtractor {
+  return new SemanticExtractor(anthropicService, promptProvider);
 }

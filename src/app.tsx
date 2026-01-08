@@ -217,20 +217,13 @@ export default function App() {
     [],
   );
   const presentConflictQuestion = useCallback(
-    (conflictStatus: StructuredConflicts): MASCommunicationResult => {
+    async (
+      conflictStatus: StructuredConflicts,
+    ): Promise<MASCommunicationResult> => {
       console.log(`[APP] ?? Conflicts detected - presenting to user`);
 
-      const conflict = conflictStatus.conflicts[0];
-      const binaryQuestion = `I detected a conflict: ${conflict.description}
-
-Which would you prefer?
-A) ${conflict.resolutionOptions[0].label}
-   Outcome: ${conflict.resolutionOptions[0].outcome}
-
-B) ${conflict.resolutionOptions[1].label}
-   Outcome: ${conflict.resolutionOptions[1].outcome}
-
-Please respond with A or B.`;
+      const binaryQuestion =
+        await respecService.generateConflictQuestion(conflictStatus);
 
       addChatMessage(
         "assistant",
@@ -240,7 +233,7 @@ Please respond with A or B.`;
 
       return { success: true };
     },
-    [addChatMessage],
+    [addChatMessage, respecService],
   );
 
   const communicateWithMAS = useCallback(
@@ -255,7 +248,8 @@ Please respond with A or B.`;
       let chatResult: ChatResult;
       let conflictStatus: StructuredConflicts;
       let autofillResult: AutofillResult;
-      const handleConflicts = () => presentConflictQuestion(conflictStatus);
+      const handleConflicts = async () =>
+        await presentConflictQuestion(conflictStatus);
 
       try {
         switch (action) {
@@ -1020,7 +1014,7 @@ Please respond with A or B.`;
       if (conflictResult.hasConflict) {
         const conflictStatus = respecService.getActiveConflictsForAgent();
         if (conflictStatus.hasConflicts) {
-          presentConflictQuestion(conflictStatus);
+          await presentConflictQuestion(conflictStatus);
         }
         return;
       }

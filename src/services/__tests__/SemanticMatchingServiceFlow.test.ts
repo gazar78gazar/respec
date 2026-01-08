@@ -1,8 +1,20 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
-import { SemanticMatchingService } from "../SemanticMatchingService";
+import { SemanticExtractor } from "../agents/SemanticExtractor";
 import { ucDataLayer } from "../DataLayer";
 
-describe("SemanticMatchingService flow", () => {
+const buildExtractor = (createMessage: ReturnType<typeof vi.fn>) =>
+  new SemanticExtractor(
+    {
+      hasClient: vi.fn().mockReturnValue(true),
+      initialize: vi.fn(),
+      createMessage,
+    } as unknown as any,
+    {
+      getPrompt: vi.fn().mockResolvedValue("system"),
+    } as unknown as any,
+  );
+
+describe("SemanticExtractor flow", () => {
   beforeEach(() => {
     vi.spyOn(ucDataLayer, "isLoaded").mockReturnValue(true);
     vi.spyOn(ucDataLayer, "getAllSpecifications").mockReturnValue([
@@ -29,37 +41,33 @@ describe("SemanticMatchingService flow", () => {
   });
 
   it("matches extracted nodes and parses LLM response", async () => {
-    const service = new SemanticMatchingService("test-key");
+    const createMessage = vi.fn().mockResolvedValue({
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({
+            matches: [
+              {
+                extractedText: "field: value",
+                ucMatch: {
+                  id: "P1",
+                  name: "Spec One",
+                  type: "specification",
+                  confidence: 0.9,
+                  matchType: "semantic",
+                  rationale: "Match",
+                },
+                value: "value",
+              },
+            ],
+          }),
+        },
+      ],
+    });
 
-    (service as unknown as { client: unknown }).client = {
-      messages: {
-        create: vi.fn().mockResolvedValue({
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify({
-                matches: [
-                  {
-                    extractedText: "field: value",
-                    ucMatch: {
-                      id: "P1",
-                      name: "Spec One",
-                      type: "specification",
-                      confidence: 0.9,
-                      matchType: "semantic",
-                      rationale: "Match",
-                    },
-                    value: "value",
-                  },
-                ],
-              }),
-            },
-          ],
-        }),
-      },
-    };
+    const extractor = buildExtractor(createMessage);
 
-    const results = await service.matchExtractedNodesToUC([
+    const results = await extractor.matchExtractedNodesToUC([
       { text: "field: value", value: "value" },
     ]);
 
@@ -68,18 +76,14 @@ describe("SemanticMatchingService flow", () => {
   });
 
   it("throws when response has no JSON", async () => {
-    const service = new SemanticMatchingService("test-key");
+    const createMessage = vi.fn().mockResolvedValue({
+      content: [{ type: "text", text: "no json here" }],
+    });
 
-    (service as unknown as { client: unknown }).client = {
-      messages: {
-        create: vi.fn().mockResolvedValue({
-          content: [{ type: "text", text: "no json here" }],
-        }),
-      },
-    };
+    const extractor = buildExtractor(createMessage);
 
     await expect(
-      service.matchExtractedNodesToUC([{ text: "field: value" }]),
+      extractor.matchExtractedNodesToUC([{ text: "field: value" }]),
     ).rejects.toThrow("Failed to parse matching results");
   });
 });
