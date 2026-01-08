@@ -16,6 +16,7 @@ import {
   UCMetadata,
 } from "../types/uc-data.types";
 import type { Maybe } from "../types/service.types";
+import ucDatasetJson from "../config/uc_8.0_2.2.json";
 
 type UCNode = UCSpecification | UCComment;
 
@@ -24,12 +25,9 @@ export class UCDataLayer {
 
   // ============= INITIALIZATION =============
 
-  async load(): Promise<void> {
+  async load(datasetOverride?: UCDataset): Promise<void> {
     console.log(`[UCDataLayer] 📂 Loading dataset version`);
-
-    const path = "/uc_8.0_2.2.json";
-    const response = await fetch(path);
-    this.dataset = await response.json();
+    this.dataset = datasetOverride || (ucDatasetJson as unknown as UCDataset);
 
     if (!this.dataset) {
       throw new Error("Failed to load UC8 dataset");
@@ -88,22 +86,6 @@ export class UCDataLayer {
     return Object.values(this.dataset!.specifications || {});
   }
 
-  /* Unused in refactored flow; keep for future annotation tooling.
-  getAllComments(): UCComment[] {
-    console.log(`[UCDataLayer] 📦 getAllComments()`);
-    return Object.values(this.dataset!.comments || {});
-  }
-  */
-
-  // ============= EXCLUSION QUERIES =============
-
-  /* Unused in refactored flow; keep for future UI inspection.
-  getExclusion(id: string): Maybe<UCExclusion> {
-    console.log(`[UCDataLayer] ⚠️ getExclusion(${id})`);
-    return this.dataset!.exclusions?.[id];
-  }
-  */
-
   /**
    * Get all exclusions that involve a specific node
    */
@@ -124,13 +106,6 @@ export class UCDataLayer {
     return exclusions;
   }
 
-  /* Unused in refactored flow; keep for future reporting.
-  getAllExclusions(): UCExclusion[] {
-    console.log(`[UCDataLayer] ⚠️ getAllExclusions()`);
-    return Object.values(this.dataset!.exclusions || {});
-  }
-  */
-
   /**
    * Check if two nodes have an exclusion between them
    */
@@ -150,22 +125,6 @@ export class UCDataLayer {
 
     return !!found;
   }
-
-  /**
-   * Get the exclusion object between two nodes (if exists)
-   */
-  /* Unused in refactored flow; keep for future inspection tooling.
-  getExclusionBetween(nodeId1: string, nodeId2: string): Maybe<UCExclusion> {
-    const exclusions = Object.values(this.dataset!.exclusions || {});
-
-    return (
-      exclusions.find(
-        (e: UCExclusion) =>
-          e.nodes && e.nodes.includes(nodeId1) && e.nodes.includes(nodeId2),
-      ) || null
-    );
-  }
-  */
 
   // ============= DEPENDENCY QUERIES =============
 
@@ -213,24 +172,6 @@ export class UCDataLayer {
     );
     return specs;
   }
-
-  /**
-   * Get all form fields (unique list)
-   */
-  /* Unused in refactored flow; keep for future form inspection.
-  getAllFormFields(): string[] {
-    const fields = new Set<string>();
-
-    Object.values(this.dataset!.specifications || {}).forEach(
-      (spec: UCSpecification) => {
-        if (spec.field_name) fields.add(spec.field_name);
-      },
-    );
-
-    console.log(`[UCDataLayer] 📋 Found ${fields.size} unique form fields`);
-    return Array.from(fields);
-  }
-  */
 
   getUiFieldByFieldName(fieldName: string): Maybe<UCUIField> {
     return this.dataset!.ui_fields[fieldName];

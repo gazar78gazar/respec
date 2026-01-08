@@ -3,7 +3,12 @@
  */
 
 import type { UCSpecification, UCUIField } from "./uc-data.types";
-import type { ChatResult, EntryResolutionOption, Maybe } from "./service.types";
+import type {
+  ChatResult,
+  EntryResolutionOption,
+  Maybe,
+  SessionMessage,
+} from "./service.types";
 
 export interface AnthropicRequirement {
   section: string;
@@ -22,12 +27,7 @@ export interface AnthropicAnalysisResult {
 }
 
 export interface AnthropicAnalysisContext {
-  conversationHistory?: Array<{
-    role: "user" | "assistant";
-    content: string;
-    timestamp?: Date | string;
-  }>;
-  sessionId?: string;
+  conversationHistory?: SessionMessage[];
   [key: string]: unknown;
 }
 

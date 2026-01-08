@@ -5,6 +5,8 @@ import type { EnhancedFormUpdate } from "../../types/service.types";
 
 let preSaleEngineerInstance: {
   initialize: ReturnType<typeof vi.fn>;
+  getSessionId: ReturnType<typeof vi.fn>;
+  getAgentConfig: ReturnType<typeof vi.fn>;
   analyzeRequirements: ReturnType<typeof vi.fn>;
   handleConflictResolution: ReturnType<typeof vi.fn>;
   generateConflictQuestion: ReturnType<typeof vi.fn>;
@@ -27,20 +29,14 @@ describe("RespecService (refactored)", () => {
   beforeEach(() => {
     preSaleEngineerInstance = {
       initialize: vi.fn(),
+      getSessionId: vi.fn().mockReturnValue("session-1"),
+      getAgentConfig: vi.fn().mockReturnValue({ maxSessionTurns: 12 }),
       analyzeRequirements: vi.fn(),
       handleConflictResolution: vi.fn(),
       generateConflictQuestion: vi.fn(),
     };
     vi.clearAllMocks();
-  });
-
-  it("creates unique session IDs", () => {
-    const service1 = new RespecService();
-    const service2 = new RespecService();
-
-    expect(service1.getSessionId()).toBeDefined();
-    expect(service2.getSessionId()).toBeDefined();
-    expect(service1.getSessionId()).not.toBe(service2.getSessionId());
+    localStorageMock.getItem.mockReturnValue(null);
   });
 
   it("initializes and builds field mappings from UC data", async () => {
@@ -100,6 +96,50 @@ describe("RespecService (refactored)", () => {
       originalRequest: undefined,
       substitutionNote: undefined,
     });
+  });
+
+  it("uses semantic integration when initialized", async () => {
+    const anthropicResult = {
+      requirements: [
+        {
+          section: "IOConnectivity",
+          field: "digitalIO",
+          value: "8",
+          confidence: 0.8,
+          isAssumption: false,
+        },
+      ],
+      response: "Agent response",
+      clarificationNeeded: undefined,
+    };
+
+    const enhancedResult = {
+      success: true,
+      systemMessage: "Enhanced response",
+      formUpdates: [],
+      confidence: 0.9,
+    };
+
+    preSaleEngineerInstance.analyzeRequirements.mockResolvedValue(
+      anthropicResult,
+    );
+
+    const service = new RespecService();
+    const semanticIntegration = {
+      processExtractedRequirements: vi.fn().mockResolvedValue(enhancedResult),
+    };
+    (service as { semanticIntegration?: unknown }).semanticIntegration =
+      semanticIntegration;
+
+    const result = await service.processChatMessage("I need 8 digital inputs");
+
+    expect(
+      semanticIntegration.processExtractedRequirements,
+    ).toHaveBeenCalledWith(
+      anthropicResult.requirements,
+      anthropicResult.response,
+    );
+    expect(result).toEqual(enhancedResult);
   });
 
   it("routes conflict resolution through PreSaleEngineer when conflicts exist", async () => {
@@ -219,18 +259,27 @@ describe("RespecService (refactored)", () => {
 
     expect(result.acknowledged).toBe(true);
     expect(result.acknowledgment).toContain("IOConnectivity.digitalIO");
-
-    const history = (service as any).conversationHistory;
-    expect(history).toHaveLength(1);
+    expect(localStorageMock.setItem).toHaveBeenCalledWith(
+      expect.stringContaining("respec_session_session-1"),
+      expect.any(String),
+    );
   });
 
   it("returns autofill suggestions based on conversation context", async () => {
+    localStorageMock.getItem.mockReturnValue(
+      JSON.stringify({
+        history: [
+          {
+            role: "user",
+            content: "substation project",
+            timestamp: new Date().toISOString(),
+          },
+        ],
+        lastUpdated: new Date().toISOString(),
+      }),
+    );
+
     const service = new RespecService();
-    (service as any).conversationHistory.push({
-      role: "user",
-      content: "substation project",
-      timestamp: new Date(),
-    });
 
     const result = await service.triggerAutofill("button_header");
 

@@ -75,6 +75,31 @@ describe("SemanticExtractor flow", () => {
     expect(results[0].ucMatch.id).toBe("P1");
   });
 
+  it("calls createMessage with system prompt and user payload", async () => {
+    const createMessage = vi.fn().mockResolvedValue({
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({ matches: [] }),
+        },
+      ],
+    });
+
+    const extractor = buildExtractor(createMessage);
+
+    await extractor.matchExtractedNodesToUC([
+      { text: "field: value", value: "value" },
+    ]);
+
+    expect(createMessage).toHaveBeenCalledTimes(1);
+    const payload = createMessage.mock.calls[0][0];
+    expect(payload.system).toBe("system");
+    expect(payload.messages[0].content).toContain("EXTRACTED NODES:");
+    expect(payload.messages[0].content).toContain('"text": "field: value"');
+    expect(payload.messages[0].content).toContain("UC8 SCHEMA CONTEXT:");
+    expect(payload.messages[0].content).toContain('"id": "P1"');
+  });
+
   it("throws when response has no JSON", async () => {
     const createMessage = vi.fn().mockResolvedValue({
       content: [{ type: "text", text: "no json here" }],

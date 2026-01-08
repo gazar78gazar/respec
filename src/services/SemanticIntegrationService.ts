@@ -7,7 +7,7 @@
  * - Returns: Matched results with form updates
  *
  * This provides:
- * - Fault domain isolation (Agent ← → Matcher)
+ * - Fault domain isolation (Agent <-> Matcher)
  * - Logging at integration boundaries
  * - Error handling without breaking agent
  * - Transformation between formats
@@ -166,45 +166,6 @@ export class SemanticIntegrationService {
       };
     });
   }
-
-  /**
-   * Select best matching option from dropdown values
-   * Uses case-insensitive partial matching and semantic similarity
-   */
-  // private selectBestOption(
-  //   extractedValue: any,
-  //   extractedText: string,
-  //   availableOptions: string[]
-  // ): string {
-  //   // If extracted value is already in options, use it
-  //   if (availableOptions.includes(extractedValue)) {
-  //     return extractedValue;
-  //   }
-
-  //   // Try case-insensitive exact match
-  //   const lowerValue = String(extractedValue || '').toLowerCase();
-  //   const exactMatch = availableOptions.find(opt => opt.toLowerCase() === lowerValue);
-  //   if (exactMatch) return exactMatch;
-
-  //   // Try partial match (e.g., "fanless" matches "Fanless Operation")
-  //   const partialMatch = availableOptions.find(opt =>
-  //     opt.toLowerCase().includes(lowerValue) ||
-  //     lowerValue.includes(opt.toLowerCase())
-  //   );
-  //   if (partialMatch) return partialMatch;
-
-  //   // Try semantic matching on extracted text (e.g., "compact" → "Compact")
-  //   const textLower = extractedText.toLowerCase();
-  //   const semanticMatch = availableOptions.find(opt => {
-  //     const optLower = opt.toLowerCase();
-  //     return textLower.includes(optLower) || optLower.includes(textLower);
-  //   });
-  //   if (semanticMatch) return semanticMatch;
-
-  //   // Fallback to first option (with warning)
-  //   console.warn(`[SemanticIntegration] ⚠️  Could not match "${extractedValue}" to options:`, availableOptions);
-  //   return availableOptions[0];
-  // }
 
   private async routeMatchesByType(matches: MatchResult[]): Promise<void> {
     for (const match of matches) {

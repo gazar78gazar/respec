@@ -12,10 +12,8 @@
 
 import { ucDataLayer } from "../DataLayer";
 import { AnthropicService } from "../AnthropicService";
-import {
-  LocalPromptProvider,
-  type PromptProvider,
-} from "../prompts/PromptProvider";
+import { LocalPromptProvider } from "../prompts/PromptProvider";
+import type { PromptProvider } from "../interfaces/PromptProvider";
 import type {
   ExtractedNode,
   MatchResult,
@@ -71,7 +69,7 @@ export class SemanticExtractor {
       const startTime = Date.now();
 
       const system = await this.buildSystemPrompt();
-      console.log("[SemanticMathingService] system prompt !!!", { system });
+      console.log("[SemanticMathingService] system prompt", { system });
 
       const completion = await this.anthropicService.createMessage({
         model: import.meta.env.VITE_LLM_MODEL || "claude-opus-4-1-20250805",
@@ -106,7 +104,7 @@ export class SemanticExtractor {
       );
       matchResults.forEach((match) => {
         console.log(
-          `  → ${match.extractedNode.text} → ${match.ucMatch.id} (${match.ucMatch.confidence})`,
+          `  -> ${match.extractedNode.text} -> ${match.ucMatch.id} (${match.ucMatch.confidence})`,
         );
       });
 
@@ -196,6 +194,7 @@ Match ALL provided nodes. If no good match exists, use confidence < 0.5.`;
       const matches = parsed.matches || [];
 
       const results: MatchResult[] = matches.map((match: MatchResult) => ({
+        extractedText: match.extractedText,
         extractedNode: {
           text: match.extractedText,
           value: match.value,

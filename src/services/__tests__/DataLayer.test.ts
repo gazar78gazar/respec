@@ -72,13 +72,7 @@ const dataset = {
 
 describe("UCDataLayer", () => {
   beforeEach(async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        json: async () => dataset,
-      }),
-    );
-    await ucDataLayer.load();
+    await ucDataLayer.load(dataset);
   });
 
   afterEach(() => {
@@ -117,7 +111,7 @@ describe("UCDataLayer", () => {
   });
 
   it("validates the UC8 dataset is spec-only", async () => {
-    const filePath = resolve(process.cwd(), "public", "uc_8.0_2.2.json");
+    const filePath = resolve(process.cwd(), "src", "config", "uc_8.0_2.2.json");
     const raw = await readFile(filePath, "utf8");
     const datasetFile = JSON.parse(raw) as {
       specifications?: Record<string, { id: string; type?: string }>;

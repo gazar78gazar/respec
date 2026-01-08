@@ -876,8 +876,7 @@ export default function App() {
         setProcessingMessage("Initializing...");
         setIsProcessing(true);
         await respecService.initialize(formFieldsData.field_definitions);
-        const sessionId = respecService.getSessionId();
-        console.log("[APP] Simplified Respec initialized:", sessionId);
+        console.log("[APP] Simplified Respec initialized");
       } catch (err) {
         console.error("[APP] Simplified Respec init failed:", err);
       } finally {

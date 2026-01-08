@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from "uuid";
 import { AnthropicService } from "./AnthropicService";
 import { PreSaleEngineer } from "./agents/PreSaleEngineer";
 import {
@@ -6,6 +5,8 @@ import {
   createSemanticExtractor,
 } from "./agents/SemanticExtractor";
 import { LocalPromptProvider } from "./prompts/PromptProvider";
+import { LocalSessionStore } from "./LocalSessionStore";
+import type { SessionStore } from "./interfaces/SessionStore";
 import {
   SemanticIntegrationService,
   createSemanticIntegrationService,
@@ -19,6 +20,7 @@ import type {
   EnhancedFormUpdate,
   FormProcessingResult,
   FormUpdate,
+  SessionMessage,
   StructuredConflicts,
   Maybe,
 } from "../types/service.types";
@@ -49,16 +51,11 @@ export interface FieldOptionsMap {
 }
 
 export class RespecService {
-  private sessionId: string;
-  private conversationHistory: Array<{
-    role: "user" | "assistant";
-    content: string;
-    timestamp: Date;
-  }> = [];
   private isInitialized = false;
   private anthropicService: AnthropicService;
   private preSaleEngineer: PreSaleEngineer;
   private promptProvider: LocalPromptProvider;
+  private sessionStore: SessionStore;
   private fieldMappings: Map<string, { section: string; field: string }> =
     new Map();
   private fieldOptionsMap: FieldOptionsMap = {};
@@ -102,12 +99,13 @@ export class RespecService {
   };
 
   constructor() {
-    this.sessionId = uuidv4();
     this.anthropicService = new AnthropicService();
     this.promptProvider = new LocalPromptProvider();
+    this.sessionStore = new LocalSessionStore();
     this.preSaleEngineer = new PreSaleEngineer(
       this.anthropicService,
       this.promptProvider,
+      this.sessionStore,
     );
   }
 
@@ -154,8 +152,6 @@ export class RespecService {
       return;
     }
 
-    console.log(`[Respec] Initializing session: ${this.sessionId}`);
-
     try {
       if (ucDataLayer.isLoaded()) {
         console.log("[Respec] Using UC8 Data Layer for field mappings");
@@ -172,21 +168,8 @@ export class RespecService {
       console.warn("[Respec] Failed to load field mappings:", error);
     }
 
-    // Initialize Anthropic service with field mappings
+    // Initialize pre sale engineer agent with field mappings
     await this.preSaleEngineer.initialize(this.getFieldMappingsForPrompt());
-
-    // Load any persisted conversation or settings
-    try {
-      const savedSession = localStorage.getItem(
-        `respec_session_${this.sessionId}`,
-      );
-      if (savedSession) {
-        const data = JSON.parse(savedSession);
-        this.conversationHistory = data.conversationHistory || [];
-      }
-    } catch (error) {
-      console.warn("[Respec] Could not load saved session:", error);
-    }
 
     // Build field options map if field definitions provided
     if (fieldDefinitions) {
@@ -289,10 +272,6 @@ export class RespecService {
     });
 
     return mappingsBySection;
-  }
-
-  getSessionId(): string {
-    return this.sessionId;
   }
 
   private identifyRelevantFields(message: string): string[] {
@@ -419,21 +398,6 @@ export class RespecService {
           ? this.artifactManager.generateFormUpdatesFromRespec()
           : [];
 
-      // Add to conversation history
-      this.conversationHistory.push({
-        role: "user",
-        content: message,
-        timestamp: new Date(),
-      });
-
-      this.conversationHistory.push({
-        role: "assistant",
-        content: resolutionResult.response,
-        timestamp: new Date(),
-      });
-
-      this.saveSession();
-
       return {
         success: true,
         systemMessage: resolutionResult.response,
@@ -445,13 +409,6 @@ export class RespecService {
             : 1.0,
       };
     }
-
-    // Add to conversation history
-    this.conversationHistory.push({
-      role: "user",
-      content: message,
-      timestamp: new Date(),
-    });
 
     try {
       //New flow with Agent extraction + UC matching
@@ -465,17 +422,14 @@ export class RespecService {
 
       // Build context with available options
       const contextPrompt = this.buildContextPrompt(message, identifiedFields); // TODO zeev prompt
-      console.log(`[Respec] Built context prompt with field options !!!`, {
+      console.log(`[Respec] Built context prompt with field options`, {
         contextPrompt,
       });
 
       // Step 1: Agent extracts requirements (with conversational flow)
       console.log(`[Respec] 📝 Step 1: Agent extracting requirements...`);
       const anthropicResult: AnthropicAnalysisResult =
-        await this.preSaleEngineer.analyzeRequirements(contextPrompt, {
-          conversationHistory: this.conversationHistory.slice(-5), // Last 5 messages for context
-          sessionId: this.sessionId,
-        });
+        await this.preSaleEngineer.analyzeRequirements(contextPrompt);
       console.log(
         `[Respec] ✅ Agent extracted:`,
         anthropicResult.requirements.length,
@@ -500,16 +454,6 @@ export class RespecService {
           "form updates",
         );
 
-        // Add assistant response to history
-        this.conversationHistory.push({
-          role: "assistant",
-          content: enhancedResult.systemMessage,
-          timestamp: new Date(),
-        });
-
-        // Persist conversation
-        this.saveSession();
-
         return enhancedResult;
       }
 
@@ -532,16 +476,6 @@ export class RespecService {
 
       // Use Anthropic's response
       const systemMessage = anthropicResult.response;
-
-      // Add assistant response to history
-      this.conversationHistory.push({
-        role: "assistant",
-        content: systemMessage,
-        timestamp: new Date(),
-      });
-
-      // Persist conversation
-      this.saveSession();
 
       const result: ChatResult = {
         success: true,
@@ -646,7 +580,10 @@ export class RespecService {
   async generateConflictQuestion(
     conflictStatus: StructuredConflicts,
   ): Promise<string> {
-    return this.preSaleEngineer.generateConflictQuestion(conflictStatus);
+    const question =
+      await this.preSaleEngineer.generateConflictQuestion(conflictStatus);
+    await this.recordAssistantMessage(question);
+    return question;
   }
 
   /**
@@ -686,12 +623,7 @@ export class RespecService {
     );
 
     if (acknowledgment) {
-      this.conversationHistory.push({
-        role: "assistant",
-        content: acknowledgment,
-        timestamp: new Date(),
-      });
-      this.saveSession();
+      await this.recordAssistantMessage(acknowledgment);
     }
 
     return {
@@ -721,7 +653,7 @@ export class RespecService {
     console.log(`[Respec] Autofill triggered: ${trigger}`);
 
     // Determine context from conversation history
-    const context = this.determineApplicationContext();
+    const context = await this.determineApplicationContext();
 
     // Get appropriate defaults
     const defaults =
@@ -835,12 +767,31 @@ export class RespecService {
     return friendlyNames[section]?.[field] || `${section}.${field}`;
   }
 
-  private determineApplicationContext(): string {
-    const recentMessages = this.conversationHistory
-      .slice(-5)
-      .map((entry) => entry.content)
-      .join(" ")
-      .toLowerCase();
+  private async recordAssistantMessage(message: string): Promise<void> {
+    if (!message) return;
+
+    const entry: SessionMessage = {
+      role: "assistant",
+      content: message,
+      timestamp: new Date().toISOString(),
+    };
+
+    try {
+      await this.sessionStore.append(
+        this.preSaleEngineer.getSessionId(),
+        entry,
+      );
+      await this.sessionStore.trim(
+        this.preSaleEngineer.getSessionId(),
+        this.preSaleEngineer.getAgentConfig().maxSessionTurns,
+      );
+    } catch (error) {
+      console.warn("[Respec] Failed to record assistant message:", error);
+    }
+  }
+
+  private async determineApplicationContext(): Promise<string> {
+    const recentMessages = await this.getRecentConversationText();
 
     if (recentMessages.includes("substation")) return "substation";
     if (
@@ -851,51 +802,19 @@ export class RespecService {
     return "generic";
   }
 
-  private saveSession(): void {
+  private async getRecentConversationText(): Promise<string> {
     try {
-      const sessionData = {
-        conversationHistory: this.conversationHistory,
-        lastUpdated: new Date().toISOString(),
-      };
-      localStorage.setItem(
-        `respec_session_${this.sessionId}`,
-        JSON.stringify(sessionData),
+      const history = await this.sessionStore.getHistory(
+        this.preSaleEngineer.getSessionId(),
       );
+      return history
+        .slice(-5)
+        .map((entry) => entry.content)
+        .join(" ")
+        .toLowerCase();
     } catch (error) {
-      console.warn("[Respec] Could not save session:", error);
+      console.warn("[Respec] Could not read conversation history:", error);
+      return "";
     }
   }
-
-  // Debug and utility methods
-  // getConversationHistory() {
-  //   // Unused in refactored flow; kept for future debugging hooks.
-  //   return [...this.conversationHistory];
-  // }
-
-  // clearSession(): void {
-  //   // Unused in refactored flow; keep for manual session reset tooling.
-  //   this.conversationHistory = [];
-  //   localStorage.removeItem(`respec_session_${this.sessionId}`);
-  //   console.log("[Respec] Session cleared");
-  // }
-
-  // getDebugInfo() {
-  //   // Unused in refactored flow; keep for future diagnostics panel.
-  //   return {
-  //     sessionId: this.sessionId,
-  //     isInitialized: this.isInitialized,
-  //     conversationLength: this.conversationHistory.length,
-  //     lastActivity:
-  //       this.conversationHistory[this.conversationHistory.length - 1]
-  //         ?.timestamp,
-  //   };
-  // }
-
-  /**
-   * Sprint 3: Expose ArtifactManager for event listener setup
-   */
-  // getArtifactManager(): ArtifactManager | undefined {
-  //   // Unused in refactored flow; keeping as a placeholder hook.
-  //   return this.artifactManager;
-  // }
 }

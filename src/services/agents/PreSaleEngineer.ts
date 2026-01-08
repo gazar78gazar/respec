@@ -4,14 +4,21 @@
  * Handles prompt construction, fallback behavior, and conflict resolution parsing
  * without mutating artifact state.
  */
+import { v4 as uuidv4 } from "uuid";
 import { ArtifactManager } from "../ArtifactManager";
 import { AnthropicService } from "../AnthropicService";
+import { ConversationService } from "../ConversationService";
+import type { SessionStore } from "../interfaces/SessionStore";
+import type { PromptProvider } from "../interfaces/PromptProvider";
+import type { StatefulAgent } from "../interfaces/StatefulAgent";
 import {
-  LocalPromptProvider,
-  type PromptProvider,
-} from "../prompts/PromptProvider";
+  DEFAULT_AGENT_CONFIG,
+  loadAgentConfig,
+} from "../../utils/agent-config";
+import type { AgentConfig } from "../../utils/agent-config.types";
 import type {
   EntryResolutionOption,
+  SessionMessage,
   StructuredConflicts,
   StrucureConflictEntry,
 } from "../../types/service.types";
@@ -22,80 +29,126 @@ import type {
   ConflictResolutionOutcome,
 } from "../../types/semantic.types";
 
-export class PreSaleEngineer {
+export class PreSaleEngineer implements StatefulAgent {
   private anthropicService: AnthropicService;
   private promptProvider: PromptProvider;
+  private conversationService: ConversationService;
+  private sessionStore: SessionStore;
+  private sessionId: string;
   private isInitialized = false;
+  private isSessionInitialized = false;
+  private agentConfig: AgentConfig;
   private fieldMappings: Record<string, string[]> = {};
 
   constructor(
-    anthropicService?: AnthropicService,
-    promptProvider?: PromptProvider,
+    anthropicService: AnthropicService,
+    promptProvider: PromptProvider,
+    sessionStore: SessionStore,
   ) {
-    this.anthropicService = anthropicService || new AnthropicService();
-    this.promptProvider = promptProvider || new LocalPromptProvider();
+    this.anthropicService = anthropicService;
+    this.promptProvider = promptProvider;
+    this.sessionStore = sessionStore;
+    this.conversationService = new ConversationService(
+      this.anthropicService,
+      this.sessionStore,
+    );
+    this.sessionId = uuidv4();
+    this.agentConfig = DEFAULT_AGENT_CONFIG;
   }
 
-  async initialize(
-    fieldMappings: Record<string, string[]> = {},
-  ): Promise<void> {
+  async initialize(initialData: Record<string, string[]> = {}): Promise<void> {
     if (this.isInitialized) return;
 
-    this.fieldMappings = fieldMappings;
-    console.log("[PreSaleEngineer] Received field mappings:", fieldMappings);
+    this.fieldMappings = initialData;
+    console.log("[PreSaleEngineer] Received field mappings:", initialData);
+
+    this.agentConfig = loadAgentConfig("preSaleEngineer");
 
     await this.anthropicService.initialize();
     this.isInitialized = true;
+    await this.initSession();
+  }
+
+  getSessionId(): string {
+    return this.sessionId;
+  }
+
+  getAgentConfig(): AgentConfig {
+    return this.agentConfig;
+  }
+
+  private async initSession(): Promise<void> {
+    if (this.isSessionInitialized) return;
+    if (!this.isInitialized) return;
+
+    if (!this.anthropicService.hasClient()) {
+      this.isSessionInitialized = true;
+      return;
+    }
+
+    try {
+      const systemPrompt = await this.buildSystemPrompt();
+      await this.conversationService.sendThreaded({
+        sessionId: this.sessionId,
+        message: this.getInitMessage(),
+        model: this.agentConfig.model,
+        max_tokens: this.agentConfig.max_tokens,
+        temperature: this.agentConfig.temperature,
+        system: systemPrompt,
+        maxTurns: this.agentConfig.maxSessionTurns,
+      });
+    } catch (error) {
+      console.warn("[PreSaleEngineer] Init stage failed:", error);
+    } finally {
+      this.isSessionInitialized = true;
+    }
   }
 
   async analyzeRequirements(
     message: string,
     context?: string | AnthropicAnalysisContext,
   ): Promise<AnthropicAnalysisResult> {
+    await this.ensureSessionReady();
+
     if (!this.isInitialized || !this.anthropicService.hasClient()) {
       console.error(
         "[PreSaleEngineer] analyzeRequirements. Client is not initialized return fallback",
       );
-      return this.getEmptyResponse(message);
+      const fallback = this.getEmptyResponse(message);
+      await this.recordTurn(message, fallback.response);
+      return fallback;
     }
 
     try {
       const systemPrompt = await this.buildSystemPrompt();
 
-      console.log(`[Anthropic service] !!! systemPrompt`, { systemPrompt });
+      console.log(`[PreSaleEngineer] systemPrompt`, { systemPrompt });
 
-      const messages: Array<{ role: "user" | "assistant"; content: string }> =
-        [];
-
-      messages.push({
-        role: "user",
-        content: `Analyze this requirement: "${message}"\n\nContext: ${JSON.stringify(context || {})}`,
-      });
+      const userMessage = this.buildAnalysisMessage(message, context);
+      const history = await this.sessionStore.getHistory(this.sessionId);
 
       console.log(
-        `[PreSaleEngineer] 📜 Sending ${messages.length} messages (${messages.length - 1} history + 1 current)`,
+        `[PreSaleEngineer] 📜 Sending ${history.length + 1} messages (${history.length} history + 1 current)`,
       );
 
-      const completion = await this.anthropicService.createMessage({
-        model: import.meta.env.VITE_LLM_MODEL || "claude-opus-4-1-20250805",
-        max_tokens: parseInt(import.meta.env.VITE_LLM_MAX_TOKENS || "1024"),
-        temperature: parseFloat(import.meta.env.VITE_LLM_TEMPERATURE || "0.3"),
+      const { assistantText } = await this.conversationService.sendThreaded({
+        sessionId: this.sessionId,
+        model: this.agentConfig.model,
+        max_tokens: this.agentConfig.max_tokens,
+        temperature: this.agentConfig.temperature,
         system: systemPrompt,
-        messages,
+        message: userMessage,
+        maxTurns: this.agentConfig.maxSessionTurns,
       });
 
-      const primaryContent = completion.content[0];
-      const responseText =
-        primaryContent?.type === "text" ? primaryContent.text || "" : "";
-
       try {
-        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+        const jsonMatch = assistantText.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0]);
           const extracted = parsed.specifications || parsed.requirements || [];
           return {
             requirements: extracted,
-            response: parsed.response || responseText,
+            response: parsed.response || assistantText,
             clarificationNeeded: parsed.clarificationNeeded,
           };
         }
@@ -109,13 +162,70 @@ export class PreSaleEngineer {
       return {
         requirements: [],
         response:
-          responseText ||
+          assistantText ||
           "I processed your message but need more specific details.",
         clarificationNeeded: undefined,
       };
     } catch (error) {
       console.error("[PreSaleEngineer] API call failed:", error);
-      return this.getEmptyResponse(message);
+      const fallback = this.getEmptyResponse(message);
+      await this.recordTurn(message, fallback.response);
+      return fallback;
+    }
+  }
+
+  private async ensureSessionReady(): Promise<void> {
+    if (!this.isInitialized) return;
+
+    if (!this.isSessionInitialized) {
+      await this.initSession();
+    }
+  }
+
+  private buildAnalysisMessage(
+    message: string,
+    context?: string | AnthropicAnalysisContext,
+  ): string {
+    const base = `Analyze this requirement: "${message}"`;
+    if (!context) return base;
+
+    const contextPayload =
+      typeof context === "string" ? context : JSON.stringify(context);
+    return `${base}\n\nContext: ${contextPayload}`;
+  }
+
+  private getInitMessage(): string {
+    return `Initialize session. Respond with "Ready" only.`;
+  }
+
+  private async recordTurn(
+    userMessage: string,
+    assistantMessage: string,
+  ): Promise<void> {
+    try {
+      const userEntry: SessionMessage = {
+        role: "user",
+        content: userMessage,
+        timestamp: new Date().toISOString(),
+      };
+
+      await this.sessionStore.append(this.sessionId, userEntry);
+
+      if (assistantMessage) {
+        const assistantEntry: SessionMessage = {
+          role: "assistant",
+          content: assistantMessage,
+          timestamp: new Date().toISOString(),
+        };
+        await this.sessionStore.append(this.sessionId, assistantEntry);
+      }
+
+      await this.sessionStore.trim(
+        this.sessionId,
+        this.agentConfig.maxSessionTurns,
+      );
+    } catch (error) {
+      console.warn("[PreSaleEngineer] Failed to record turn:", error);
     }
   }
 
@@ -153,19 +263,18 @@ export class PreSaleEngineer {
     const fieldsDescription = this.buildFieldsDescription();
     const template = await this.promptProvider.getPrompt("presale-engineer");
 
-    if (template.includes("{{fieldsDescription}}")) {
+    if (template.includes("{{fieldsDescription}}"))
       return template.replace("{{fieldsDescription}}", fieldsDescription);
-    }
-
-    return `${template}\n\nAvailable sections and fields:\n${fieldsDescription}`;
+    else
+      return `${template}\n\nAvailable sections and fields:\n${fieldsDescription}`;
   }
 
   async generateConflictQuestion(
     conflictData: StructuredConflicts,
   ): Promise<string> {
-    if (!conflictData.conflicts.length) {
-      return "No conflicts to resolve.";
-    }
+    if (!conflictData.conflicts.length) return "No conflicts to resolve.";
+
+    await this.ensureSessionReady();
 
     if (!this.anthropicService.hasClient()) {
       return this.buildFallbackConflictQuestion(conflictData);
@@ -178,9 +287,9 @@ export class PreSaleEngineer {
         conflicts: conflictData.conflicts,
       };
       const completion = await this.anthropicService.createMessage({
-        model: import.meta.env.VITE_LLM_MODEL || "claude-opus-4-1-20250805",
-        max_tokens: 512,
-        temperature: 0.3,
+        model: this.agentConfig.model,
+        max_tokens: this.agentConfig.max_tokens,
+        temperature: this.agentConfig.temperature,
         system: systemPrompt,
         messages: [
           {
@@ -295,17 +404,17 @@ Respond ONLY with valid JSON:
 }
 
 Examples:
-- "A"   {"isResolution": true, "choice": "a", "confidence": 1.0, "reasoning": "Direct A choice"}
-- "I'll go with the first one"   {"isResolution": true, "choice": "a", "confidence": 0.9, "reasoning": "First implies A"}
-- "Tell me more about option B"   {"isResolution": false, "choice": null, "confidence": 0.0, "reasoning": "Question, not choice"}
-- "What's the difference?"   {"isResolution": false, "choice": null, "confidence": 0.0, "reasoning": "Asking for info"}
-- "Option B please"   {"isResolution": true, "choice": "b", "confidence": 1.0, "reasoning": "Direct B choice"}
+- "A" -> {"isResolution": true, "choice": "a", "confidence": 1.0, "reasoning": "Direct A choice"}
+- "I'll go with the first one" -> {"isResolution": true, "choice": "a", "confidence": 0.9, "reasoning": "First implies A"}
+- "Tell me more about option B" -> {"isResolution": false, "choice": null, "confidence": 0.0, "reasoning": "Question, not choice"}
+- "What's the difference?" -> {"isResolution": false, "choice": null, "confidence": 0.0, "reasoning": "Asking for info"}
+- "Option B please" -> {"isResolution": true, "choice": "b", "confidence": 1.0, "reasoning": "Direct B choice"}
 `;
 
       const completion = await this.anthropicService.createMessage({
-        model: import.meta.env.VITE_LLM_MODEL || "claude-opus-4-1-20250805",
-        max_tokens: 256,
-        temperature: 0.0,
+        model: this.agentConfig.model,
+        max_tokens: this.agentConfig.max_tokens,
+        temperature: this.agentConfig.temperature,
         messages: [{ role: "user", content: prompt }],
       });
 
@@ -392,9 +501,9 @@ Keep it friendly and conversational.
 `;
 
       const completion = await this.anthropicService.createMessage({
-        model: import.meta.env.VITE_LLM_MODEL || "claude-opus-4-1-20250805",
-        max_tokens: 512,
-        temperature: 0.7,
+        model: this.agentConfig.model,
+        max_tokens: this.agentConfig.max_tokens,
+        temperature: this.agentConfig.temperature,
         messages: [{ role: "user", content: prompt }],
       });
 
@@ -413,6 +522,8 @@ Keep it friendly and conversational.
     conflictData: StructuredConflicts,
     artifactManager: ArtifactManager,
   ): Promise<ConflictResolutionOutcome> {
+    await this.ensureSessionReady();
+
     console.log("[PreSaleEngineer] Handling conflict resolution", {
       userMessage,
       conflictData,
@@ -420,10 +531,12 @@ Keep it friendly and conversational.
     });
 
     if (!conflictData.conflicts.length) {
-      return {
+      const result = {
         response: "No conflicts to resolve.",
         mode: "no_conflicts",
       };
+      await this.recordTurn(userMessage, result.response);
+      return result;
     }
 
     const conflicts = conflictData.conflicts;
@@ -443,11 +556,13 @@ Keep it friendly and conversational.
           ? await this.generateConflictQuestion(conflictData)
           : await this.generateClarification(userMessage, conflict);
 
-      return {
+      const result = {
         response: clarification,
         mode: "clarification_provided",
         conflictId: conflict.id,
       };
+      await this.recordTurn(userMessage, result.response);
+      return result;
     }
 
     if (parsed.confidence < 0.7) {
@@ -457,12 +572,14 @@ Keep it friendly and conversational.
         });
       }
 
-      return {
+      const result = {
         response: `I'm not sure which option you're choosing. Please respond with either "A" or "B".`,
         mode: "clarification_needed",
         conflictId: conflict.id,
         cycleCount: conflict.cycleCount + 1,
       };
+      await this.recordTurn(userMessage, result.response);
+      return result;
     }
 
     if (!parsed.choice || !["a", "b"].includes(parsed.choice)) {
@@ -472,12 +589,14 @@ Keep it friendly and conversational.
         });
       }
 
-      return {
+      const result = {
         response: `Please choose either Option A or Option B.`,
         mode: "invalid_choice",
         conflictId: conflict.id,
         cycleCount: conflict.cycleCount + 1,
       };
+      await this.recordTurn(userMessage, result.response);
+      return result;
     }
 
     const resolutionId = parsed.choice === "a" ? "option-a" : "option-b";
@@ -489,11 +608,13 @@ Keep it friendly and conversational.
     }));
 
     if (selectedOptions.some((entry) => !entry.option)) {
-      return {
+      const result = {
         response: `I encountered an issue applying that choice, because selected option was not found.`,
         mode: "resolution_failed",
         conflictId: conflict.id,
       };
+      await this.recordTurn(userMessage, result.response);
+      return result;
     }
 
     try {
@@ -523,32 +644,44 @@ Keep it friendly and conversational.
 
       let confirmation: string;
       if (chosenOption) {
-        confirmation = `Got it! I've updated your configuration with ${chosenOption.label}.\n\n${chosenOption.outcome}`;
+        confirmation = `Got it! I've updated your configuration with ${chosenOption.label}.
+
+${chosenOption.outcome}`;
       } else {
         const choiceLabel = parsed.choice === "a" ? "Option A" : "Option B";
         confirmation = `Got it! I've applied ${choiceLabel} across ${resolvedCount} conflict(s).`;
       }
 
       if (remainingConflicts > 0) {
-        confirmation += `\n\n${remainingConflicts} more conflict(s) to resolve.`;
+        confirmation += `
+
+${remainingConflicts} more conflict(s) to resolve.`;
       } else {
-        confirmation += `\n\nYour system is now conflict-free. What else would you like to configure?`;
+        confirmation += `
+
+Your system is now conflict-free. What else would you like to configure?`;
       }
 
-      return {
+      const result = {
         response: confirmation,
         mode: "resolution_success",
         conflictId: conflict.id,
         chosenOption,
       };
+      await this.recordTurn(userMessage, result.response);
+      return result;
     } catch (error) {
       console.error("[PreSaleEngineer] Resolution failed:", error);
 
-      return {
-        response: `I encountered an issue applying that choice: ${(error as Error).message}\n\nLet me try presenting the options again.`,
+      const result = {
+        response: `I encountered an issue applying that choice: ${(error as Error).message}
+
+Let me try presenting the options again.`,
         mode: "resolution_failed",
         conflictId: conflict.id,
       };
+      await this.recordTurn(userMessage, result.response);
+      return result;
     }
   }
 }

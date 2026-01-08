@@ -14,6 +14,12 @@ export interface FormUpdate {
 
 export type Maybe<T> = T | null;
 
+export type SessionMessage = {
+  role: "user" | "assistant";
+  content: string;
+  timestamp: string;
+};
+
 export interface EnhancedFormUpdate extends FormUpdate {
   originalRequest?: string;
   substitutionNote?: string;
