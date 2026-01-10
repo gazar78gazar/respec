@@ -1,11 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi, afterEach } from "vitest";
 import { ArtifactManager } from "../ArtifactManager";
 import {
   createEmptyArtifactState,
   type ArtifactState,
 } from "../../types/artifacts.types";
+import { ucDataLayer } from "../DataLayer";
 
 describe("ArtifactManager state maintenance", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("prunes inactive conflicts when specs are missing", () => {
     const manager = new ArtifactManager();
     const state = createEmptyArtifactState();
@@ -30,7 +35,9 @@ describe("ArtifactManager state maintenance", () => {
     state.priorityQueue.currentPriority = "CONFLICTS";
 
     (manager as unknown as { state: ArtifactState }).state = state;
+    vi.spyOn(ucDataLayer, "isLoaded").mockReturnValue(false);
 
+    (manager as any).refreshConflicts();
     const updatedState = manager.getState();
 
     expect(updatedState.conflicts.active).toHaveLength(0);
@@ -38,29 +45,13 @@ describe("ArtifactManager state maintenance", () => {
     expect(updatedState.priorityQueue.blocked).toBe(false);
   });
 
-  it("syncs form state and marks respec as synced", async () => {
+  it("clears field selections and unblocks the system", () => {
     const manager = new ArtifactManager();
     const state = createEmptyArtifactState();
     state.initialized = true;
     (manager as unknown as { state: ArtifactState }).state = state;
 
-    await manager.syncWithFormState({
-      section_a: {
-        field_a: { value: "value", isComplete: true },
-        field_b: {},
-      },
-    });
-
-    const updatedState = manager.getState();
-    expect(updatedState.respec.metadata.formSyncStatus).toBe("synced");
-  });
-
-  it("purges conflicts for removed nodes and unblocks system", () => {
-    const manager = new ArtifactManager();
-    const state = createEmptyArtifactState();
-    state.initialized = true;
-
-    state.mapped.specifications["spec-a"] = {
+    state.respec.specifications["spec-a"] = {
       id: "spec-a",
       name: "Spec A",
       value: "Spec A",
@@ -75,7 +66,6 @@ describe("ArtifactManager state maintenance", () => {
       source: "user",
       timestamp: new Date(),
     };
-
     state.conflicts.active = [
       {
         id: "conflict-2",
@@ -93,12 +83,12 @@ describe("ArtifactManager state maintenance", () => {
     state.conflicts.metadata.blockingConflicts = ["spec-a"];
     state.priorityQueue.blocked = true;
     state.priorityQueue.currentPriority = "CONFLICTS";
+    vi.spyOn(ucDataLayer, "isLoaded").mockReturnValue(false);
 
-    (manager as unknown as { state: ArtifactState }).state = state;
-
-    (manager as any).purgeConflictsForNodes(["spec-a"]);
+    manager.clearFieldSelections("field_a");
 
     const updatedState = manager.getState();
+    expect(updatedState.respec.specifications["spec-a"]).toBeUndefined();
     expect(updatedState.conflicts.active).toHaveLength(0);
     expect(updatedState.conflicts.metadata.systemBlocked).toBe(false);
     expect(updatedState.priorityQueue.blocked).toBe(false);
@@ -142,6 +132,8 @@ describe("ArtifactManager state maintenance", () => {
     state.conflicts.metadata.blockingConflicts = ["spec-b"];
 
     (manager as unknown as { state: ArtifactState }).state = state;
+
+    vi.spyOn(ucDataLayer, "getUiFieldByFieldName").mockReturnValue(null);
 
     await manager.moveNonConflictingToRespec();
 

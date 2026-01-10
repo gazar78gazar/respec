@@ -27,7 +27,7 @@ export interface UCSpecification {
 }
 
 type UCUIType = "dropdown" | "multi_select";
-type UCSelectionType = "single_choice" | "multi_choice";
+export type UCSelectionType = "single_choice" | "multi_choice";
 
 export interface UCUIField {
   section: string;

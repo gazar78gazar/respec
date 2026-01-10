@@ -5,7 +5,7 @@ import type {
   AutofillResult,
   ChatResult,
   EnhancedFormUpdate,
-  StructuredConflicts,
+  // StructuredConflicts,
 } from "./types/service.types";
 import { DataServices } from "./services/dataServices";
 import { ArtifactManager } from "./services/ArtifactManager";
@@ -45,7 +45,6 @@ import {
   resolveFieldLocation,
   focusAndScrollField,
 } from "./utils/fields-utils";
-import type { Maybe } from "./types/service.types";
 
 // Safe index helpers for dynamic section keys (string index access)
 type FieldDefExt = FieldDef & { group?: string; autofill_default?: FieldValue };
@@ -74,8 +73,6 @@ export default function App() {
     Record<string, Record<string, boolean>>
   >({});
 
-  const [artifactManager, setArtifactManager] =
-    useState<Maybe<ArtifactManager>>(null);
   const [projectName] = useState("Untitled Project");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
@@ -86,6 +83,7 @@ export default function App() {
     },
   ]);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
+  // const lastConflictSignatureRef = useRef<string | null>(null);
 
   const [respecService] = useState(() => new RespecService());
   const [isProcessing, setIsProcessing] = useState(false);
@@ -216,25 +214,155 @@ export default function App() {
     },
     [],
   );
-  const presentConflictQuestion = useCallback(
-    async (
-      conflictStatus: StructuredConflicts,
-    ): Promise<MASCommunicationResult> => {
-      console.log(`[APP] ?? Conflicts detected - presenting to user`);
 
-      const binaryQuestion =
-        await respecService.generateConflictQuestion(conflictStatus);
+  const applyArtifactUpdates = useCallback(
+    (
+      updates: EnhancedFormUpdate[],
+      traceAction: string,
+      verificationAction: string,
+    ) => {
+      if (!updates.length) return;
 
-      addChatMessage(
-        "assistant",
-        binaryQuestion,
-        `conflict-question-${Date.now()}`,
+      console.log(
+        `[DEBUG] ${traceAction} returned ${updates.length} form updates:`,
+        updates,
       );
+      addTrace(traceAction, { count: updates.length, updates }, "SUCCESS");
 
-      return { success: true };
+      updates.forEach((update) => {
+        const mappedValue = mapValueToFormField(
+          update.section,
+          update.field,
+          update.value,
+        );
+
+        setRequirements((prev) => {
+          const prevSection = prev[update.section] || {};
+          const prevField = prevSection[update.field] || {};
+
+          return {
+            ...prev,
+            [update.section]: {
+              ...prevSection,
+              [update.field]: {
+                ...prevField,
+                value: mappedValue as FieldValue,
+                isComplete:
+                  mappedValue !== "" &&
+                  mappedValue !== null &&
+                  mappedValue !== undefined,
+                isAssumption: update.isAssumption || false,
+                dataSource:
+                  update.isAssumption || false ? "assumption" : "requirement",
+                priority: prevField.priority || 1,
+                source: "system",
+                lastUpdated: new Date().toISOString(),
+                toggleHistory: prevField.toggleHistory || [],
+              },
+            },
+          };
+        });
+
+        setTimeout(() => {
+          setRequirements((currentReqs) => {
+            const actualValue =
+              currentReqs[update.section]?.[update.field]?.value;
+            const expectedValue = mappedValue;
+
+            if (actualValue !== expectedValue) {
+              console.error(
+                `[VALIDATION FAILED] Field ${update.section}.${update.field}: expected "${expectedValue}", got "${actualValue}"`,
+              );
+              addTrace(
+                verificationAction,
+                {
+                  section: update.section,
+                  field: update.field,
+                  expected: expectedValue,
+                  actual: actualValue,
+                  source: "system",
+                },
+                "FAILED",
+              );
+            } else {
+              console.log(
+                `[VALIDATION OK] Field ${update.section}.${update.field} = "${actualValue}"`,
+              );
+              addTrace(
+                verificationAction,
+                {
+                  section: update.section,
+                  field: update.field,
+                  value: actualValue,
+                  source: "system",
+                },
+                "SUCCESS",
+              );
+            }
+
+            return currentReqs;
+          });
+        }, 150);
+
+        const substitutionNote = update.substitutionNote?.trim();
+        if (
+          substitutionNote &&
+          substitutionNote !== "Cleared because no specification is selected"
+        ) {
+          const id = `sub-${Date.now()}-${Math.random()
+            .toString(36)
+            .substr(2, 9)}`;
+          const metadata = {
+            isAssumption: false,
+            confidence: update.confidence || 0.9,
+          };
+          addChatMessage("system", `?? ${substitutionNote}`, id, metadata);
+          console.log(
+            `[DEBUG] Added substitution note for ${update.section}.${update.field}:`,
+            substitutionNote,
+          );
+          addTrace(
+            "substitution_note",
+            {
+              section: update.section,
+              field: update.field,
+              originalRequest: update.originalRequest,
+              substitutionNote,
+            },
+            "SUCCESS",
+          );
+        }
+      });
     },
-    [addChatMessage, respecService],
+    [addChatMessage, addTrace],
   );
+  // const presentConflictQuestion = useCallback(
+  //   async (
+  //     conflictStatus: StructuredConflicts,
+  //   ): Promise<MASCommunicationResult> => {
+  //     console.log(`[APP] ?? Conflicts detected - presenting to user`);
+
+  //     const conflictSignature = conflictStatus.conflicts
+  //       .map((conflict) => conflict.id)
+  //       .sort()
+  //       .join("|");
+  //     if (conflictSignature) {
+  //       lastConflictSignatureRef.current = conflictSignature;
+  //     }
+
+  //     const binaryQuestion =
+  //       await respecService.generateConflictQuestion(conflictStatus);
+
+  //     addChatMessage(
+  //       "assistant",
+  //       binaryQuestion,
+  //       `conflict-question-${Date.now()}`,
+  //     );
+
+  //     return { success: true };
+  //   },
+  //   [addChatMessage, respecService],
+  // );
 
   const communicateWithMAS = useCallback(
     async <A extends MASAction>(
@@ -246,10 +374,10 @@ export default function App() {
       setIsProcessing(true);
 
       let chatResult: ChatResult;
-      let conflictStatus: StructuredConflicts;
+      // let conflictStatus: StructuredConflicts;
       let autofillResult: AutofillResult;
-      const handleConflicts = async () =>
-        await presentConflictQuestion(conflictStatus);
+      // const handleConflicts = async () =>
+      //   await presentConflictQuestion(conflictStatus);
 
       try {
         switch (action) {
@@ -260,11 +388,9 @@ export default function App() {
 
             chatResult = await respecService.processChatMessage(d.message);
 
-            conflictStatus = respecService.getActiveConflictsForAgent();
-
-            if (conflictStatus.hasConflicts) return handleConflicts();
-
-            addChatMessage("assistant", chatResult.systemMessage);
+            if (chatResult.systemMessage) {
+              addChatMessage("assistant", chatResult.systemMessage);
+            }
 
             if (chatResult.formUpdates && chatResult.formUpdates.length) {
               console.log(
@@ -411,27 +537,48 @@ export default function App() {
               });
             }
 
+            // conflictStatus = respecService.getActiveConflictsForAgent();
+
+            // if (conflictStatus.hasConflicts) {
+            //   await handleConflicts();
+            // }
+
             return { success: true };
           }
 
           case "form_update": {
             const d = data as PayloadMap["form_update"];
-            if (d.source === "user") {
+            const source = d.source ?? "user";
+            if (source === "user") {
               setProcessingMessage("Noting selection...");
-              addTrace(
-                "form_update",
-                { section: d.section, field: d.field, value: d.value },
-                "SUCCESS",
-              );
-              const formResult = await respecService.processFormUpdate(
-                d.section,
-                d.field,
-                d.value,
-              );
+            }
+            addTrace(
+              "form_update",
+              {
+                section: d.section,
+                field: d.field,
+                value: d.value,
+                source,
+              },
+              "SUCCESS",
+            );
+            const formResult = await respecService.processFormUpdate(
+              d.section,
+              d.field,
+              d.value,
+              { source, skipAcknowledgment: source === "system" },
+            );
 
-              if (formResult.acknowledgment) {
-                addChatMessage("assistant", formResult.acknowledgment);
-              }
+            if (formResult.formUpdates?.length) {
+              applyArtifactUpdates(
+                formResult.formUpdates,
+                "form_update_updates",
+                "form_update_field_verification",
+              );
+            }
+
+            if (formResult.acknowledgment) {
+              addChatMessage("assistant", formResult.acknowledgment);
             }
             return { success: true };
           }
@@ -443,7 +590,7 @@ export default function App() {
             autofillResult = await respecService.triggerAutofill(d.trigger);
             addChatMessage("assistant", autofillResult.message);
 
-            autofillResult.fields.forEach((field) => {
+            for (const field of autofillResult.fields) {
               const currentValue =
                 requirements[field.section]?.[field.field]?.value;
 
@@ -469,8 +616,28 @@ export default function App() {
                     },
                   };
                 });
+                const formResult = await respecService.processFormUpdate(
+                  field.section,
+                  field.field,
+                  field.value,
+                  {
+                    source: "system",
+                    skipAcknowledgment: true,
+                    isAssumption: true,
+                  },
+                );
+                if (formResult.formUpdates?.length) {
+                  applyArtifactUpdates(
+                    formResult.formUpdates,
+                    "autofill_updates",
+                    "autofill_field_verification",
+                  );
+                }
+                if (formResult.acknowledgment) {
+                  addChatMessage("assistant", formResult.acknowledgment);
+                }
               }
-            });
+            }
 
             return { success: true };
           }
@@ -603,6 +770,27 @@ export default function App() {
                 });
               }, 100);
 
+              const formResult = await respecService.processFormUpdate(
+                d.section,
+                d.field,
+                mappedValue,
+                {
+                  source: "system",
+                  skipAcknowledgment: true,
+                  isAssumption: d.isSystemGenerated || false,
+                },
+              );
+              if (formResult.formUpdates?.length) {
+                applyArtifactUpdates(
+                  formResult.formUpdates,
+                  "system_populate_updates",
+                  "system_populate_artifact_verification",
+                );
+              }
+              if (formResult.acknowledgment) {
+                addChatMessage("assistant", formResult.acknowledgment);
+              }
+
               return { success: true };
             } catch (error: unknown) {
               console.error(`[UI-RESPEC] System field update failed:`, error);
@@ -650,6 +838,32 @@ export default function App() {
                 });
                 return updated;
               });
+              const artifactUpdates: EnhancedFormUpdate[] = [];
+              for (const update of d.updates || []) {
+                const formResult = await respecService.processFormUpdate(
+                  update.section,
+                  update.field,
+                  update.value,
+                  {
+                    source: "system",
+                    skipAcknowledgment: true,
+                    isAssumption: update.isSystemGenerated || false,
+                  },
+                );
+                if (formResult.formUpdates?.length) {
+                  artifactUpdates.push(...formResult.formUpdates);
+                }
+                if (formResult.acknowledgment) {
+                  addChatMessage("assistant", formResult.acknowledgment);
+                }
+              }
+              if (artifactUpdates.length) {
+                applyArtifactUpdates(
+                  artifactUpdates,
+                  "system_populate_updates",
+                  "system_populate_artifact_verification",
+                );
+              }
               return { success: true };
             } catch (error: unknown) {
               console.error(
@@ -814,12 +1028,52 @@ export default function App() {
     [
       addChatMessage,
       addTrace,
+      applyArtifactUpdates,
       fieldPermissions,
       requirements,
       respecService,
-      presentConflictQuestion,
+      // presentConflictQuestion,
     ],
   );
+
+  // const applyArtifactUpdates = useCallback((updates: EnhancedFormUpdate[]) => {
+  //   if (!updates.length) return;
+
+  //   setRequirements((prev) => {
+  //     const next: Requirements = { ...prev };
+
+  //     updates.forEach((update) => {
+  //       const mappedValue = mapValueToFormField(
+  //         update.section,
+  //         update.field,
+  //         update.value,
+  //       );
+  //       const prevSection = next[update.section] || {};
+  //       const prevField = prevSection[update.field] || {};
+
+  //       next[update.section] = {
+  //         ...prevSection,
+  //         [update.field]: {
+  //           ...prevField,
+  //           value: mappedValue as FieldValue,
+  //           isComplete:
+  //             mappedValue !== "" &&
+  //             mappedValue !== null &&
+  //             mappedValue !== undefined,
+  //           isAssumption: update.isAssumption || false,
+  //           dataSource:
+  //             update.isAssumption || false ? "assumption" : "requirement",
+  //           priority: prevField.priority || 1,
+  //           source: "system",
+  //           lastUpdated: new Date().toISOString(),
+  //           toggleHistory: prevField.toggleHistory || [],
+  //         },
+  //       };
+  //     });
+
+  //     return next;
+  //   });
+  // }, []);
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -889,9 +1143,7 @@ export default function App() {
 
         const artifactManager = new ArtifactManager();
         await artifactManager.initialize();
-        setArtifactManager(artifactManager);
-
-        respecService.initializeSemanticMatching(artifactManager);
+        respecService.setArtifactManager(artifactManager);
       } catch (err) {
         console.error("[APP] Artifact state management init failed:", err);
       }
@@ -900,54 +1152,72 @@ export default function App() {
     initializeApp();
   }, [respecService]);
 
-  useEffect(() => {
-    if (!artifactManager) return;
+  // useEffect(() => {
+  //   if (!artifactManager) return;
 
-    const syncToArtifacts = async () => {
-      try {
-        console.log(
-          "TODO zeev uc implement correct uc8 usage and data layer",
-          JSON.parse(JSON.stringify(requirements)),
-        );
-        artifactManager.syncWithFormState(requirements);
+  // const syncToArtifacts = async () => {
+  //   try {
+  //     console.log("syncToArtifacts started", { requirements });
+  //     const updates = await artifactManager.syncWithFormState(requirements);
+  //     if (updates.length > 0) applyArtifactUpdates(updates);
 
-        // if (syncResult.updated.length > 0) {
-        //   console.log(
-        //     `[APP] Synced ${syncResult.updated.length} fields to artifact state:`,
-        //     syncResult.updated
-        //   );
+  // const conflictStatus = respecService.getActiveConflictsForAgent();
+  // if (conflictStatus.hasConflicts) {
+  //   const conflictSignature = conflictStatus.conflicts
+  //     .map((conflict) => conflict.id)
+  //     .sort()
+  //     .join("|");
+  //   if (
+  //     conflictSignature &&
+  //     conflictSignature !== lastConflictSignatureRef.current
+  //   )
+  //     await presentConflictQuestion(conflictStatus);
+  // } else if (lastConflictSignatureRef.current)
+  //   lastConflictSignatureRef.current = null;
 
-        //   artifactManager
-        //     .detectConflicts()
-        //     .then((conflictResult) => {
-        //       if (conflictResult.hasConflict) {
-        //         console.warn(
-        //           "[APP] CONFLICTS DETECTED:",
-        //           conflictResult.conflicts
-        //         );
-        //         conflictResult.conflicts.forEach((conflict) => {
-        //           console.warn(`🚨 Conflict: ${conflict.description}`);
-        //           console.warn(`   Resolution: ${conflict.resolution}`);
-        //         });
-        //       } else {
-        //         console.log("[APP] No conflicts detected");
-        //       }
-        //     })
-        //     .catch((error) => {
-        //       console.error("[APP] Conflict detection failed:", error);
-        //     });
-        // }
+  // if (syncResult.updated.length > 0) {
+  //   console.log(
+  //     `[APP] Synced ${syncResult.updated.length} fields to artifact state:`,
+  //     syncResult.updated
+  //   );
 
-        // if (syncResult.errors.length > 0) {
-        //   console.warn("[APP] Artifact sync errors:", syncResult.errors);
-        // }
-      } catch (error) {
-        console.error("[APP] Artifact sync failed:", error);
-      }
-    };
+  //   artifactManager
+  //     .detectConflicts()
+  //     .then((conflictResult) => {
+  //       if (conflictResult.hasConflict) {
+  //         console.warn(
+  //           "[APP] CONFLICTS DETECTED:",
+  //           conflictResult.conflicts
+  //         );
+  //         conflictResult.conflicts.forEach((conflict) => {
+  //           console.warn(`🚨 Conflict: ${conflict.description}`);
+  //           console.warn(`   Resolution: ${conflict.resolution}`);
+  //         });
+  //       } else {
+  //         console.log("[APP] No conflicts detected");
+  //       }
+  //     })
+  //     .catch((error) => {
+  //       console.error("[APP] Conflict detection failed:", error);
+  //     });
+  // }
 
-    syncToArtifacts();
-  }, [requirements, artifactManager]);
+  // if (syncResult.errors.length > 0) {
+  //   console.warn("[APP] Artifact sync errors:", syncResult.errors);
+  // }
+  //     } catch (error) {
+  //       console.error("[APP] Artifact sync failed:", error);
+  //     }
+  //   };
+
+  //   // syncToArtifacts();
+  // }, [
+  //   requirements,
+  //   artifactManager,
+  //   applyArtifactUpdates,
+  //   respecService,
+  //   // presentConflictQuestion,
+  // ]);
 
   const toggleGroup = (section: string, group: string) => {
     setExpandedGroups((prev) => ({
@@ -958,70 +1228,6 @@ export default function App() {
       },
     }));
   };
-
-  const handleManualFieldUpdateConflictCheck = useCallback(
-    async (section: string, field: string, value: unknown) => {
-      if (!artifactManager || !ucDataLayer.isLoaded()) return;
-
-      const specs = ucDataLayer.getSpecificationsForFormField(field);
-      if (specs.length === 0) return;
-
-      const selections = Array.isArray(value) ? value : [value];
-      const matches: Array<{
-        spec: (typeof specs)[number];
-        selection: unknown;
-      }> = [];
-      const seen = new Set<string>();
-
-      selections.forEach((selection) => {
-        if (
-          selection === null ||
-          selection === undefined ||
-          selection === "" ||
-          selection === "Not Required"
-        ) {
-          return;
-        }
-
-        const normalized = String(selection);
-        const matchedSpec = specs.find(
-          (spec) =>
-            spec.id === normalized ||
-            spec.selected_value === normalized ||
-            spec.name === normalized,
-        );
-
-        if (!matchedSpec || seen.has(matchedSpec.id)) return;
-        seen.add(matchedSpec.id);
-        matches.push({ spec: matchedSpec, selection });
-      });
-
-      if (matches.length === 0) return;
-
-      for (const match of matches) {
-        await artifactManager.addSpecificationToMapped(
-          match.spec,
-          match.selection,
-          `Manual update for ${section}.${field}`,
-          "",
-          "user",
-        );
-      }
-
-      const conflictResult = await artifactManager.detectExclusionConflicts();
-
-      if (conflictResult.hasConflict) {
-        const conflictStatus = respecService.getActiveConflictsForAgent();
-        if (conflictStatus.hasConflicts) {
-          await presentConflictQuestion(conflictStatus);
-        }
-        return;
-      }
-
-      await artifactManager.moveNonConflictingToRespec();
-    },
-    [artifactManager, respecService, presentConflictQuestion],
-  );
 
   const updateField = useCallback(
     (
@@ -1061,10 +1267,6 @@ export default function App() {
         }));
       }
 
-      if (source !== "system") {
-        void handleManualFieldUpdateConflictCheck(section, field, value);
-      }
-
       communicateWithMAS("form_update", {
         section,
         field,
@@ -1072,7 +1274,7 @@ export default function App() {
         source: source === "system" ? "system" : "user",
       });
     },
-    [communicateWithMAS, handleManualFieldUpdateConflictCheck],
+    [communicateWithMAS],
   );
 
   useEffect(() => {

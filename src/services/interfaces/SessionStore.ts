@@ -1,7 +1,7 @@
 /**
  * SessionStore - Interface for chat session history persistence.
  *
- * Used by ConversationService to retain threaded Anthropic messages.
+ * Used by ConversationService to retain threaded agents messages.
  */
 import type { SessionMessage } from "../../types/service.types";
 

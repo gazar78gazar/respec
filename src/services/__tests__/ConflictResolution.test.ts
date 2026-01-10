@@ -128,28 +128,6 @@ describe("ConflictResolver conflict detection", () => {
     vi.restoreAllMocks();
   });
 
-  it("detects field overwrite conflicts", () => {
-    const resolver = new ConflictResolver();
-
-    vi.spyOn(ucDataLayer, "getSpecification").mockImplementation((id) => {
-      if (id === "P-new") {
-        return createUCSpec("P-new", "New Spec", "field_a");
-      }
-      if (id === "P-existing") {
-        return createUCSpec("P-existing", "Existing Spec", "field_a");
-      }
-      return null;
-    });
-
-    const conflicts = resolver.detectOverwriteConflicts("P-new", [
-      "P-existing",
-    ]);
-
-    expect(conflicts).toHaveLength(1);
-    expect(conflicts[0].type).toBe("field_overwrite");
-    expect(conflicts[0].existingValue).toBe("P-existing");
-  });
-
   it("detects constraint conflicts when no valid options remain", () => {
     const resolver = new ConflictResolver();
 
@@ -326,6 +304,8 @@ describe("ArtifactManager.resolveConflict", () => {
 
     (manager as unknown as { state: ArtifactState }).state = state;
 
+    vi.spyOn(ucDataLayer, "getUiFieldByFieldName").mockReturnValue(null);
+
     await manager.resolveConflict("conflict-3", "option-a");
 
     const finalState = (manager as unknown as { state: ArtifactState }).state;
@@ -339,5 +319,50 @@ describe("ArtifactManager.resolveConflict", () => {
     expect(finalState.mapped.specifications["spec-b"]).toBeUndefined();
     expect(finalState.mapped.specifications["spec-c"]).toBeUndefined();
     expect(finalState.respec.specifications["spec-a"]).toBeDefined();
+  });
+
+  it("skips stale conflicts when winning nodes are missing", async () => {
+    const manager = new ArtifactManager();
+    const state = createEmptyArtifactState();
+    state.initialized = true;
+
+    const specA = createArtifactSpec(createUCSpec("spec-a"));
+    state.mapped.specifications[specA.id] = specA;
+
+    const resolutionOptions: ResolutionOption[] = [
+      {
+        id: "option-a",
+        description: "Keep missing spec",
+        action: "keep_existing",
+        targetNodes: ["spec-b"],
+        expectedOutcome: "spec-b remains",
+      },
+    ];
+
+    const conflict: ActiveConflict = {
+      id: "conflict-stale",
+      affectedNodes: ["spec-a", "spec-b"],
+      type: "field_overwrite",
+      description: "Stale conflict",
+      resolutionOptions,
+      cycleCount: 0,
+      firstDetected: new Date(),
+      lastUpdated: new Date(),
+    };
+
+    state.conflicts.active = [conflict];
+    state.conflicts.metadata.activeCount = 1;
+
+    (manager as unknown as { state: ArtifactState }).state = state;
+
+    vi.spyOn(ucDataLayer, "isLoaded").mockReturnValue(false);
+
+    await expect(
+      manager.resolveConflict("conflict-stale", "option-a"),
+    ).resolves.toBeUndefined();
+
+    const finalState = (manager as unknown as { state: ArtifactState }).state;
+    expect(finalState.conflicts.active).toHaveLength(0);
+    expect(finalState.conflicts.resolved).toHaveLength(1);
   });
 });

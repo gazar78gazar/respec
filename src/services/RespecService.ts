@@ -1,40 +1,34 @@
 import { AnthropicService } from "./AnthropicService";
 import { PreSaleEngineer } from "./agents/PreSaleEngineer";
-import {
-  SemanticExtractor,
-  createSemanticExtractor,
-} from "./agents/SemanticExtractor";
-import { LocalPromptProvider } from "./prompts/PromptProvider";
+import { LocalPromptProvider } from "./PromptProvider";
 import { LocalSessionStore } from "./LocalSessionStore";
 import type { SessionStore } from "./interfaces/SessionStore";
-import {
-  SemanticIntegrationService,
-  createSemanticIntegrationService,
-} from "./SemanticIntegrationService";
 import { ArtifactManager } from "./ArtifactManager";
 
 import { ucDataLayer } from "./DataLayer";
+import type { ActiveConflict } from "../types/artifacts.types";
 import type {
   AutofillResult,
   ChatResult,
   EnhancedFormUpdate,
   FormProcessingResult,
   FormUpdate,
-  SessionMessage,
-  StructuredConflicts,
   Maybe,
+  SessionMessage,
 } from "../types/service.types";
 import type {
   FieldDefinitionInput,
   FieldDefinitions,
-  AnthropicAnalysisResult,
+  AgentAnalysisResult,
+  AgentRequirement,
 } from "../types/semantic.types";
+import type { UCSpecification } from "../types/uc-data.types";
 
 /**
  * RespecService - Orchestrates chat processing and the refactored pipeline.
  *
- * Coordinates LLM extraction, semantic matching, and artifact state updates
- * while exposing UI-ready responses and form updates.
+ * Coordinates LLM extraction and artifact state updates while exposing
+ * UI-ready responses and form updates.
  */
 
 export interface FieldOptionsMap {
@@ -59,10 +53,6 @@ export class RespecService {
   private fieldMappings: Map<string, { section: string; field: string }> =
     new Map();
   private fieldOptionsMap: FieldOptionsMap = {};
-
-  // semantic matching system
-  private semanticExtractor: Maybe<SemanticExtractor> = null;
-  private semanticIntegration: Maybe<SemanticIntegrationService> = null;
 
   // Core services for conflict detection and resolution
   private artifactManager?: ArtifactManager;
@@ -109,43 +99,6 @@ export class RespecService {
     );
   }
 
-  // Initialize semantic matching system (called externally with dependencies)
-  async initializeSemanticMatching(
-    artifactManager?: ArtifactManager,
-  ): Promise<void> {
-    try {
-      // Store core services for conflict detection
-      this.artifactManager = artifactManager;
-
-      // Listen for respec artifact changes to update form (respec = source of truth)
-      // if (artifactManager) {
-      //   artifactManager.on("specifications_moved", (data: any) => {
-      //     this.handleRespecUpdate(data);
-      //   });
-      //   console.log(
-      //     "[Respec] ✅ Listening for respec artifact changes"
-      //   );
-      // }
-
-      this.semanticExtractor = createSemanticExtractor(
-        this.anthropicService,
-        this.promptProvider,
-      );
-      await this.semanticExtractor.initialize();
-
-      this.semanticIntegration = createSemanticIntegrationService(
-        this.semanticExtractor,
-        artifactManager,
-      );
-
-      console.log("[Respec] ✅ semantic matching initialized");
-      console.log("[Respec] - SemanticExtractor: ready");
-      console.log("[Respec] - SemanticIntegrationService: ready");
-    } catch (error) {
-      console.error("[Respec] Failed to initialize semantic matching:", error);
-    }
-  }
-
   async initialize(fieldDefinitions?: FieldDefinitions): Promise<void> {
     if (this.isInitialized) {
       console.log("[Respec] Already initialized");
@@ -183,6 +136,10 @@ export class RespecService {
 
     this.isInitialized = true;
     console.log("[Respec] Initialization complete");
+  }
+
+  setArtifactManager(artifactManager: ArtifactManager): void {
+    this.artifactManager = artifactManager;
   }
 
   private extractFieldMappingsFromDataLayer(): void {
@@ -372,6 +329,239 @@ export class RespecService {
     return prompt;
   }
 
+  private getRespecFieldSnapshot(): Map<
+    string,
+    {
+      specId: string;
+      value: Maybe<string | number | boolean | string[]>;
+      isAssumption: boolean;
+      confidence: number;
+      originalRequest?: string;
+      substitutionNote?: string;
+    }
+  > {
+    const snapshot = new Map<
+      string,
+      {
+        specId: string;
+        value: Maybe<string | number | boolean | string[]>;
+        isAssumption: boolean;
+        confidence: number;
+        originalRequest?: string;
+        substitutionNote?: string;
+      }
+    >();
+
+    if (!this.artifactManager) return snapshot;
+    if (!ucDataLayer.isLoaded()) return snapshot;
+
+    const respecSpecs = this.artifactManager.getState().respec.specifications;
+    const bestByField = new Map<string, (typeof respecSpecs)[string]>();
+
+    Object.values(respecSpecs).forEach((spec) => {
+      const fullSpec = ucDataLayer.getSpecification(spec.id);
+      const fieldName = fullSpec?.field_name || spec.ucSource?.field_name;
+      if (!fieldName) return;
+
+      const existing = bestByField.get(fieldName);
+      if (!existing || (spec.confidence || 0) > (existing.confidence || 0)) {
+        bestByField.set(fieldName, spec);
+      }
+    });
+
+    bestByField.forEach((spec, fieldName) => {
+      const fullSpec = ucDataLayer.getSpecification(spec.id);
+      const selectedValue =
+        fullSpec?.selected_value ??
+        (spec.value as string | number | boolean | string[] | null) ??
+        fullSpec?.name ??
+        null;
+
+      snapshot.set(fieldName, {
+        specId: spec.id,
+        value: selectedValue,
+        isAssumption: spec.attribution === "assumption",
+        confidence: spec.confidence || 1,
+        originalRequest: spec.originalRequest,
+        substitutionNote: spec.substitutionNote,
+      });
+    });
+
+    return snapshot;
+  }
+
+  private valuesEqual(left: unknown, right: unknown): boolean {
+    if (Array.isArray(left) || Array.isArray(right)) {
+      if (!Array.isArray(left) || !Array.isArray(right)) return false;
+      if (left.length !== right.length) return false;
+      return left.every((value, index) => value === right[index]);
+    }
+    return left === right;
+  }
+
+  private buildRespecDeltaUpdates(
+    before: Map<
+      string,
+      {
+        specId: string;
+        value: Maybe<string | number | boolean | string[]>;
+        isAssumption: boolean;
+        confidence: number;
+        originalRequest?: string;
+        substitutionNote?: string;
+      }
+    >,
+    after: Map<
+      string,
+      {
+        specId: string;
+        value: Maybe<string | number | boolean | string[]>;
+        isAssumption: boolean;
+        confidence: number;
+        originalRequest?: string;
+        substitutionNote?: string;
+      }
+    >,
+  ): EnhancedFormUpdate[] {
+    const updates: EnhancedFormUpdate[] = [];
+
+    const allFields = new Set([...before.keys(), ...after.keys()]);
+    allFields.forEach((fieldName) => {
+      const beforeEntry = before.get(fieldName);
+      const afterEntry = after.get(fieldName);
+
+      const beforeValue = beforeEntry?.value ?? null;
+      const afterValue = afterEntry?.value ?? null;
+      const beforeAssumption = beforeEntry?.isAssumption ?? false;
+      const afterAssumption = afterEntry?.isAssumption ?? false;
+
+      if (
+        this.valuesEqual(beforeValue, afterValue) &&
+        beforeAssumption === afterAssumption
+      ) {
+        return;
+      }
+
+      const uiField = ucDataLayer.getUiFieldByFieldName(fieldName);
+      if (!uiField) return;
+
+      if (afterEntry) {
+        updates.push({
+          section: uiField.section,
+          field: uiField.field_name,
+          value: afterValue,
+          confidence: afterEntry.confidence,
+          isAssumption: afterAssumption,
+          originalRequest: afterEntry.originalRequest,
+          substitutionNote: afterEntry.substitutionNote,
+        });
+        return;
+      }
+
+      updates.push({
+        section: uiField.section,
+        field: uiField.field_name,
+        value: null,
+        confidence: 1,
+        isAssumption: false,
+        originalRequest: "",
+        substitutionNote: "Cleared because no specification is selected",
+      });
+    });
+
+    return updates;
+  }
+
+  private parseConflictChoice(message: string): "a" | "b" | null {
+    const normalized = message.toLowerCase().trim();
+    if (
+      normalized === "a" ||
+      normalized === "option a" ||
+      normalized === "first" ||
+      normalized === "first one"
+    ) {
+      return "a";
+    }
+    if (
+      normalized === "b" ||
+      normalized === "option b" ||
+      normalized === "second" ||
+      normalized === "second one"
+    ) {
+      return "b";
+    }
+    return null;
+  }
+
+  private buildConflictResult(conflict: ActiveConflict): ChatResult {
+    const question =
+      this.artifactManager?.buildConflictQuestion(conflict) ||
+      `I detected a conflict: ${conflict.description}`;
+    return {
+      success: true,
+      systemMessage: question,
+      formUpdates: [],
+      confidence: 1,
+    };
+  }
+
+  private async handleConflictResponse(
+    message: string,
+    conflict: ActiveConflict,
+  ): Promise<ChatResult> {
+    if (!this.artifactManager) {
+      return {
+        success: false,
+        systemMessage: "Conflict handling is unavailable.",
+        formUpdates: [],
+        confidence: 0,
+      };
+    }
+
+    const directChoice = this.parseConflictChoice(message);
+    const choice =
+      directChoice ||
+      (await this.preSaleEngineer.interpretConflictChoice(message, conflict));
+
+    if (!choice) {
+      return this.buildConflictResult(conflict);
+    }
+
+    const respecSnapshotBefore = this.getRespecFieldSnapshot();
+    await this.artifactManager.applyConflictChoice(conflict.id, choice);
+
+    const nextConflict = this.artifactManager.getPendingConflict();
+    if (nextConflict) {
+      return this.buildConflictResult(nextConflict);
+    }
+
+    const respecSnapshotAfter = this.getRespecFieldSnapshot();
+    const respecDeltaUpdates = this.buildRespecDeltaUpdates(
+      respecSnapshotBefore,
+      respecSnapshotAfter,
+    );
+    if (respecDeltaUpdates.length > 0) {
+      console.log(
+        "[Respec] ?? Using respec updates for",
+        respecDeltaUpdates.length,
+        "fields",
+      );
+    }
+    const updates =
+      respecDeltaUpdates.length > 0
+        ? respecDeltaUpdates
+        : this.artifactManager.generateFormUpdatesFromRespec();
+    return {
+      success: true,
+      systemMessage: "Conflict resolved. Updating your selections.",
+      formUpdates: updates,
+      confidence:
+        updates.length > 0
+          ? updates.reduce((sum, u) => sum + u.confidence, 0) / updates.length
+          : 1,
+    };
+  }
+
   async processChatMessage(message: string): Promise<ChatResult> {
     if (!this.isInitialized) {
       await this.initialize();
@@ -379,92 +569,77 @@ export class RespecService {
 
     console.log(`[Respec] Processing: "${message}"`);
 
-    // Check for active conflicts FIRST - if yes, route to conflict resolution
-    const conflictStatus = this.getActiveConflictsForAgent();
-
-    if (conflictStatus.hasConflicts && this.artifactManager) {
-      console.log(`[Respec] 🎯 Conflict resolution mode - routing to agent`);
-
-      // Use PreSaleEngineer to handle conflict resolution (parse A/B, resolve, confirm)
-      const resolutionResult =
-        await this.preSaleEngineer.handleConflictResolution(
-          message,
-          conflictStatus,
-          this.artifactManager,
-        );
-
-      const formUpdates =
-        resolutionResult.mode === "resolution_success"
-          ? this.artifactManager.generateFormUpdatesFromRespec()
-          : [];
-
-      return {
-        success: true,
-        systemMessage: resolutionResult.response,
-        formUpdates,
-        confidence:
-          formUpdates.length > 0
-            ? formUpdates.reduce((sum, u) => sum + u.confidence, 0) /
-              formUpdates.length
-            : 1.0,
-      };
+    const pendingConflict = this.artifactManager?.getPendingConflict();
+    if (pendingConflict) {
+      console.log("[Respec] Conflict pending - resolving");
+      return this.handleConflictResponse(message, pendingConflict);
     }
 
+    // Check for active conflicts FIRST - if yes, route to conflict resolution
+    // const conflictStatus = this.getActiveConflictsForAgent();
+
+    // if (conflictStatus.hasConflicts && this.artifactManager) {
+    //   console.log(`[Respec] 🎯 Conflict resolution mode - routing to agent`);
+
+    //   // Use PreSaleEngineer to handle conflict resolution (parse A/B, resolve, confirm)
+    //   const resolutionResult =
+    //     await this.preSaleEngineer.handleConflictResolution(
+    //       message,
+    //       conflictStatus,
+    //       this.artifactManager,
+    //     );
+
+    //   const formUpdates =
+    //     resolutionResult.mode === "resolution_success"
+    //       ? this.artifactManager.generateFormUpdatesFromRespec()
+    //       : [];
+
+    //   return {
+    //     success: true,
+    //     systemMessage: resolutionResult.response,
+    //     formUpdates,
+    //     confidence:
+    //       formUpdates.length > 0
+    //         ? formUpdates.reduce((sum, u) => sum + u.confidence, 0) /
+    //           formUpdates.length
+    //         : 1.0,
+    //   };
+    // }
+
     try {
-      //New flow with Agent extraction + UC matching
-      console.log(
-        `[Respec] 🚀 Starting flow: Agent → Integration → UC Matcher`,
-      );
+      // New flow with agent extraction
+      console.log(`[Respec] ?? Starting flow: Agent extraction`);
 
       // Identify relevant fields from the message
       const identifiedFields = this.identifyRelevantFields(message);
       console.log(`[Respec] Identified relevant fields:`, identifiedFields);
 
       // Build context with available options
-      const contextPrompt = this.buildContextPrompt(message, identifiedFields); // TODO zeev prompt
+      const contextPrompt = this.buildContextPrompt(message, identifiedFields);
       console.log(`[Respec] Built context prompt with field options`, {
         contextPrompt,
       });
 
       // Step 1: Agent extracts requirements (with conversational flow)
       console.log(`[Respec] 📝 Step 1: Agent extracting requirements...`);
-      const anthropicResult: AnthropicAnalysisResult =
+      const agentResult: AgentAnalysisResult =
         await this.preSaleEngineer.analyzeRequirements(contextPrompt);
+      const respecSnapshotBefore = this.getRespecFieldSnapshot();
+      await this.syncSelectionsToArtifacts(agentResult.requirements);
+      const conflictAfterSync = this.artifactManager?.getPendingConflict();
+      if (conflictAfterSync) {
+        return this.buildConflictResult(conflictAfterSync);
+      }
       console.log(
         `[Respec] ✅ Agent extracted:`,
-        anthropicResult.requirements.length,
+        agentResult.requirements.length,
         "requirements",
       );
-
-      // Step 2: Route through new semantic integration (if available and requirements exist)
-      if (this.semanticIntegration && anthropicResult.requirements.length > 0) {
-        console.log(
-          `[Respec] 🔍 Step 2: Routing to SemanticIntegrationService...`,
-        );
-
-        const enhancedResult =
-          await this.semanticIntegration.processExtractedRequirements(
-            anthropicResult.requirements,
-            anthropicResult.response,
-          );
-
-        console.log(
-          `[Respec] ✅ processing complete:`,
-          enhancedResult.formUpdates?.length || 0,
-          "form updates",
-        );
-
-        return enhancedResult;
-      }
-
-      // Fallback: Use legacy flow if semantic integration not available or no requirements
-      console.log(
-        `[Respec] ⚠️  No semantic integration or no requirements, using legacy flow`,
-      );
+      console.log(`[Respec] ??  Using extracted requirements for form updates`);
 
       // Convert Anthropic requirements to EnhancedFormUpdate format
-      const formUpdates: EnhancedFormUpdate[] =
-        anthropicResult.requirements.map((req) => ({
+      const formUpdates: EnhancedFormUpdate[] = agentResult.requirements.map(
+        (req) => ({
           section: req.section,
           field: req.field,
           value: req.value,
@@ -472,21 +647,36 @@ export class RespecService {
           confidence: req.confidence,
           originalRequest: req.originalRequest,
           substitutionNote: req.substitutionNote,
-        }));
+        }),
+      );
+      const respecSnapshotAfter = this.getRespecFieldSnapshot();
+      const respecDeltaUpdates = this.buildRespecDeltaUpdates(
+        respecSnapshotBefore,
+        respecSnapshotAfter,
+      );
+      if (respecDeltaUpdates.length > 0) {
+        console.log(
+          "[Respec] ?? Using respec updates for",
+          respecDeltaUpdates.length,
+          "fields",
+        );
+      }
+      const finalUpdates =
+        respecDeltaUpdates.length > 0 ? respecDeltaUpdates : formUpdates;
 
       // Use Anthropic's response
-      const systemMessage = anthropicResult.response;
+      const systemMessage = agentResult.response;
 
       const result: ChatResult = {
         success: true,
         systemMessage,
-        formUpdates,
+        formUpdates: finalUpdates,
         confidence:
-          formUpdates.length > 0
-            ? formUpdates.reduce((sum, u) => sum + u.confidence, 0) /
-              formUpdates.length
+          finalUpdates.length > 0
+            ? finalUpdates.reduce((sum, u) => sum + u.confidence, 0) /
+              finalUpdates.length
             : 0.5,
-        clarificationNeeded: anthropicResult.clarificationNeeded,
+        clarificationNeeded: agentResult.clarificationNeeded,
       };
 
       return result;
@@ -501,126 +691,223 @@ export class RespecService {
    * Returns structured conflict data to agent for binary question generation
    * Enhanced with priority queue (one conflict at a time)
    */
-  getActiveConflictsForAgent(): StructuredConflicts {
-    if (!this.artifactManager) {
-      return {
-        hasConflicts: false,
-        count: 0,
-        currentConflict: 0,
-        totalConflicts: 0,
-        systemBlocked: false,
-        conflicts: [],
-      };
-    }
+  // getActiveConflictsForAgent(): StructuredConflicts {
+  //   if (!this.artifactManager) {
+  //     return {
+  //       hasConflicts: false,
+  //       count: 0,
+  //       currentConflict: 0,
+  //       totalConflicts: 0,
+  //       systemBlocked: false,
+  //       conflicts: [],
+  //     };
+  //   }
 
-    const state = this.artifactManager.getState();
-    let activeConflicts = state.conflicts.active;
+  //   const state = this.artifactManager.getState();
+  //   let activeConflicts = state.conflicts.active;
 
-    if (activeConflicts.length === 0) {
-      return {
-        hasConflicts: false,
-        count: 0,
-        currentConflict: 0,
-        totalConflicts: 0,
-        systemBlocked: false,
-        conflicts: [],
-      };
-    }
+  //   if (activeConflicts.length === 0) {
+  //     return {
+  //       hasConflicts: false,
+  //       count: 0,
+  //       currentConflict: 0,
+  //       totalConflicts: 0,
+  //       systemBlocked: false,
+  //       conflicts: [],
+  //     };
+  //   }
 
-    // Sort by priority
-    const priorityOrder: Record<string, number> = {
-      exclusion: 1,
-      field_overwrite: 2,
-      cascade: 3,
-      field_constraint: 3,
-    };
+  //   // Sort by priority
+  //   const priorityOrder: Record<string, number> = {
+  //     exclusion: 1,
+  //     field_overwrite: 2,
+  //     cascade: 3,
+  //     field_constraint: 3,
+  //   };
 
-    activeConflicts = [...activeConflicts].sort((a, b) => {
-      const priorityA = priorityOrder[a.type as string] || 99;
-      const priorityB = priorityOrder[b.type as string] || 99;
-      return priorityA - priorityB;
-    });
+  //   activeConflicts = [...activeConflicts].sort((a, b) => {
+  //     const priorityA = priorityOrder[a.type as string] || 99;
+  //     const priorityB = priorityOrder[b.type as string] || 99;
+  //     return priorityA - priorityB;
+  //   });
 
-    // Return ALL conflicts (agent will aggregate into one question)
-    const structuredConflicts = activeConflicts.map((conflict) => ({
-      id: conflict.id,
-      type: conflict.type,
-      description: conflict.description,
-      affectedNodes: conflict.affectedNodes.map((nodeId) => ({
-        id: nodeId,
-        ...this.getNodeDetails(nodeId),
-      })),
-      resolutionOptions: conflict.resolutionOptions.map((option) => ({
-        id: option.id,
-        label: option.description,
-        outcome: option.expectedOutcome,
-      })),
-      cycleCount: conflict.cycleCount,
-      priority: (conflict.type === "field_overwrite" ? "critical" : "high") as
-        | "critical"
-        | "high",
-    }));
+  //   // Return ALL conflicts (agent will aggregate into one question)
+  //   const structuredConflicts = activeConflicts.map((conflict) => ({
+  //     id: conflict.id,
+  //     type: conflict.type,
+  //     description: conflict.description,
+  //     affectedNodes: conflict.affectedNodes.map((nodeId) => ({
+  //       id: nodeId,
+  //       ...this.getNodeDetails(nodeId),
+  //     })),
+  //     resolutionOptions: conflict.resolutionOptions.map((option) => ({
+  //       id: option.id,
+  //       label: option.description,
+  //       outcome: option.expectedOutcome,
+  //     })),
+  //     cycleCount: conflict.cycleCount,
+  //     priority: (conflict.type === "exclusion" ? "critical" : "high") as
+  //       | "critical"
+  //       | "high",
+  //   }));
 
-    console.log(
-      "[Conflicts] total",
-      structuredConflicts.length,
-      structuredConflicts,
-    );
+  //   console.log(
+  //     "[Conflicts] total",
+  //     structuredConflicts.length,
+  //     structuredConflicts,
+  //   );
 
-    return {
-      hasConflicts: true,
-      count: activeConflicts.length, // Total count for transparency
-      currentConflict: 1, // Currently handling first batch
-      totalConflicts: activeConflicts.length, // For progress indicators
-      systemBlocked: state.conflicts.metadata.systemBlocked,
-      conflicts: structuredConflicts, // ALL conflicts for agent aggregation
-    };
-  }
+  //   return {
+  //     hasConflicts: true,
+  //     count: activeConflicts.length, // Total count for transparency
+  //     currentConflict: 1, // Currently handling first batch
+  //     totalConflicts: activeConflicts.length, // For progress indicators
+  //     systemBlocked: state.conflicts.metadata.systemBlocked,
+  //     conflicts: structuredConflicts, // ALL conflicts for agent aggregation
+  //   };
+  // }
 
-  async generateConflictQuestion(
-    conflictStatus: StructuredConflicts,
-  ): Promise<string> {
-    const question =
-      await this.preSaleEngineer.generateConflictQuestion(conflictStatus);
-    await this.recordAssistantMessage(question);
-    return question;
-  }
+  // async generateConflictQuestion(
+  //   conflictStatus: StructuredConflicts,
+  // ): Promise<string> {
+  //   const question =
+  //     await this.preSaleEngineer.generateConflictQuestion(conflictStatus);
+  //   await this.recordAssistantMessage(question);
+  //   return question;
+  // }
 
   /**
    * Get node details for conflict display
    * Helper for structuring conflict data
    */
-  private getNodeDetails(nodeId: string): {
-    name: string;
-    value?: unknown;
-    hierarchy?: { domain: string; requirement: string };
-  } {
-    if (!this.artifactManager) return { name: nodeId };
+  // private getNodeDetails(nodeId: string): {
+  //   name: string;
+  //   value?: unknown;
+  //   hierarchy?: { domain: string; requirement: string };
+  // } {
+  //   if (!this.artifactManager) return { name: nodeId };
 
-    const spec = this.artifactManager.findSpecificationInArtifact(
-      "mapped",
-      nodeId,
-    );
+  //   const spec = this.artifactManager.findSpecificationInArtifact(
+  //     "mapped",
+  //     nodeId,
+  //   );
 
-    return {
-      name: spec?.name || nodeId,
-      value: spec?.value,
-    };
-  }
+  //   return {
+  //     name: spec?.name || nodeId,
+  //     value: spec?.value,
+  //   };
+  // }
 
   async processFormUpdate(
     section: string,
     field: string,
     value: unknown,
+    options?: {
+      source?: "user" | "system";
+      skipAcknowledgment?: boolean;
+      isAssumption?: boolean;
+    },
   ): Promise<FormProcessingResult> {
     console.log(`[Respec] Form update: ${section}.${field} = ${value}`);
 
-    // Generate contextual acknowledgment
-    const acknowledgment = this.generateFormAcknowledgment(
-      section,
-      field,
-      value,
-    );
+    const source = options?.source ?? "user";
+    const skipAcknowledgment = options?.skipAcknowledgment ?? false;
+    const attributionOverride =
+      options?.isAssumption !== undefined
+        ? options.isAssumption
+          ? "assumption"
+          : "requirement"
+        : source === "system"
+          ? "assumption"
+          : undefined;
+    const respecSnapshotBefore = this.getRespecFieldSnapshot();
+    let formUpdates: EnhancedFormUpdate[] | undefined;
+
+    if (this.artifactManager && ucDataLayer.isLoaded()) {
+      const specs = ucDataLayer.getSpecificationsForFormField(field);
+      const selections = Array.isArray(value) ? value : [value];
+      const isEmptySelection = (selection: unknown) =>
+        selection === null ||
+        selection === undefined ||
+        selection === "" ||
+        selection === "Not Required";
+      const hasSelection = selections.some(
+        (selection) => !isEmptySelection(selection),
+      );
+
+      if (!hasSelection) {
+        this.artifactManager.clearFieldSelections(field);
+        const conflict = this.artifactManager.getPendingConflict();
+        if (conflict) {
+          return {
+            acknowledged: true,
+            acknowledgment:
+              this.artifactManager.buildConflictQuestion(conflict),
+          };
+        }
+        await this.artifactManager.moveNonConflictingToRespec();
+      } else {
+        const matches: Array<{
+          spec: UCSpecification;
+          selection: unknown;
+        }> = [];
+        const seen = new Set<string>();
+
+        selections.forEach((selection) => {
+          if (isEmptySelection(selection)) {
+            return;
+          }
+
+          const normalized = String(selection);
+          const matchedSpec = specs.find(
+            (spec) =>
+              spec.id === normalized ||
+              spec.selected_value === normalized ||
+              spec.name === normalized,
+          );
+
+          if (!matchedSpec || seen.has(matchedSpec.id)) return;
+          seen.add(matchedSpec.id);
+          matches.push({ spec: matchedSpec, selection });
+        });
+
+        for (const match of matches) {
+          await this.artifactManager.addSpecificationToMapped(
+            match.spec,
+            match.selection,
+            `Manual update for ${section}.${field}`,
+            "",
+            source,
+            undefined,
+            attributionOverride,
+          );
+        }
+
+        const conflict = this.artifactManager.getPendingConflict();
+        if (conflict) {
+          return {
+            acknowledged: true,
+            acknowledgment:
+              this.artifactManager.buildConflictQuestion(conflict),
+          };
+        }
+
+        await this.artifactManager.moveNonConflictingToRespec();
+      }
+
+      const respecSnapshotAfter = this.getRespecFieldSnapshot();
+      const respecDeltaUpdates = this.buildRespecDeltaUpdates(
+        respecSnapshotBefore,
+        respecSnapshotAfter,
+      );
+      if (respecDeltaUpdates.length > 0) {
+        formUpdates = respecDeltaUpdates;
+      }
+    }
+
+    const acknowledgment = skipAcknowledgment
+      ? undefined
+      : this.generateFormAcknowledgment(section, field, value);
 
     if (acknowledgment) {
       await this.recordAssistantMessage(acknowledgment);
@@ -629,25 +916,9 @@ export class RespecService {
     return {
       acknowledged: true,
       acknowledgment,
+      formUpdates,
     };
   }
-
-  /**
-   * Handle respec artifact updates (SPRINT 3 FIX)
-   * When specs move to respec, generate form updates and push to UI
-   * This ensures respec is the single source of truth
-   */
-  // private handleRespecUpdate(data: any): void {
-  //   console.log("[Respec] 🔔 Respec artifact updated:", data);
-
-  // TODO: For now, this logs the update. In async conflict resolution scenarios,
-  // we'll need to generate form updates and push them to the UI through a callback
-  // or event mechanism. For the current flow (same-request updates), the form
-  // updates are already generated from respec in SemanticIntegrationService.
-
-  // Future enhancement: Store pending form updates and return them on next poll
-  // or emit events that app.tsx listens to for real-time updates
-  // }
 
   async triggerAutofill(trigger: string): Promise<AutofillResult> {
     console.log(`[Respec] Autofill triggered: ${trigger}`);
@@ -815,6 +1086,76 @@ export class RespecService {
     } catch (error) {
       console.warn("[Respec] Could not read conversation history:", error);
       return "";
+    }
+  }
+
+  private async syncSelectionsToArtifacts(
+    requirements: AgentRequirement[],
+  ): Promise<void> {
+    if (!this.artifactManager || requirements.length === 0) return;
+    if (!ucDataLayer.isLoaded()) {
+      console.warn("[Respec] UC8 not loaded; skipping artifact sync");
+      return;
+    }
+
+    const selections: Array<{
+      spec: AgentRequirement;
+      match: UCSpecification;
+      selection: unknown;
+    }> = [];
+    const seen = new Set<string>();
+
+    requirements.forEach((req) => {
+      const specs = ucDataLayer.getSpecificationsForFormField(req.field);
+      if (specs.length === 0) return;
+      const selectionsForReq = Array.isArray(req.value)
+        ? req.value
+        : [req.value];
+      selectionsForReq.forEach((selection) => {
+        if (
+          selection === null ||
+          selection === undefined ||
+          selection === "" ||
+          selection === "Not Required"
+        ) {
+          return;
+        }
+        const normalized = String(selection);
+        const match = specs.find(
+          (spec) =>
+            spec.id === normalized ||
+            spec.selected_value === normalized ||
+            spec.name === normalized,
+        );
+        if (!match || seen.has(match.id)) return;
+        seen.add(match.id);
+        selections.push({ spec: req, match, selection });
+      });
+    });
+
+    if (selections.length === 0) return;
+
+    for (const selection of selections) {
+      const originalRequest =
+        selection.spec.originalRequest ||
+        `Agent selection for ${selection.spec.section}.${selection.spec.field}`;
+      const attributionOverride = selection.spec.isAssumption
+        ? "assumption"
+        : undefined;
+
+      await this.artifactManager.addSpecificationToMapped(
+        selection.match,
+        selection.selection,
+        originalRequest,
+        selection.spec.substitutionNote || "",
+        "llm",
+        undefined,
+        attributionOverride,
+      );
+    }
+
+    if (!this.artifactManager.getPendingConflict()) {
+      await this.artifactManager.moveNonConflictingToRespec();
     }
   }
 }

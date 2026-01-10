@@ -1,7 +1,7 @@
 # ReSpec - Requirements to UC8 Specifications
 
 ## Project Overview
-ReSpec is a React + TypeScript single-page app that turns natural-language requirements into UC8-aligned specifications for industrial systems. LLM extraction provides the intent and field signals, while deterministic services handle matching, validation, conflict detection, and artifact state. LLM calls split between threaded, session-backed extraction for stateful agents (ConversationService + SessionStore) and stateless matching calls (SemanticExtractor).
+ReSpec is a React + TypeScript single-page app that turns natural-language requirements into UC8-aligned specifications for industrial systems. LLM extraction provides the intent and field signals, while deterministic services handle matching, validation, conflict detection, and artifact state. LLM calls split between threaded, session-backed extraction for stateful agents (ConversationService + SessionStore) and stateless conflict parsing calls via AnthropicService.
 
 The UC8 dataset in this repo is spec-only:
 - P## specification nodes
@@ -23,7 +23,7 @@ npm test
 - `src/components/`: chat UI, form UI, conflict UI, progress UI
 - `src/config/`: form field definitions, grouping metadata, UC8 dataset, and agent config JSON
 - `src/services/`: orchestration, agents, matching, artifacts, conflicts, data layer, exports
-- `src/services/agents/`: LLM role agents (PreSaleEngineer, SemanticExtractor)
+- `src/services/agents/`: LLM role agents (PreSaleEngineer)
 - `src/services/interfaces/StatefulAgent.ts`: agent interface for session init + IDs
 - `src/services/ConversationService.ts`: threaded Anthropic calls with session history
 - `src/services/interfaces/SessionStore.ts` / `src/services/LocalSessionStore.ts`: session history persistence
@@ -39,13 +39,14 @@ npm test
 ## Runtime Flow
 1. `App` loads UC8 data via `ucDataLayer.load()` and initializes `RespecService` and `ArtifactManager`.
 2. Chat message -> `RespecService.processChatMessage` -> `PreSaleEngineer.analyzeRequirements` (threaded via `ConversationService` + `SessionStore` using the agent-owned session ID).
-3. `SemanticIntegrationService` converts extractions to nodes and calls `SemanticExtractor` (stateless) for P## matches.
-4. `ArtifactManager` adds specifications to mapped, runs `ConflictResolver`, and promotes non-conflicting specs to respec.
-5. Form updates are generated from respec and applied back to the UI; conflicts surface A/B resolution prompts.
+3. `RespecService` returns form updates from extracted requirements; the UI applies them.
+4. Agent selections are synced into the mapped artifact and exclusion conflicts are checked before returning updates, so conflicts can surface immediately.
+5. Form updates (manual/system/autofill) call `RespecService.processFormUpdate`, which syncs selections into `ArtifactManager`, removes cleared entries, promotes non-conflicting specs to respec, auto-adds dependencies as assumptions, and returns respec delta updates so the form stays aligned.
+6. When conflicts are active, `ArtifactManager` supplies the A/B prompt and `RespecService` parses responses locally, falling back to `PreSaleEngineer` only when replies are ambiguous.
 
 ## LLM Session Model
 - **Threaded extraction**: `PreSaleEngineer` uses `ConversationService` with `SessionStore` and an agent-owned session ID to retain chat context.
-- **Stateless matching**: `SemanticExtractor` and conflict parsing call `AnthropicService` directly to keep matching isolated (SemanticExtractor reads `VITE_LLM_*`).
+- **Optional conflict parsing**: `PreSaleEngineer` uses `AnthropicService` only to interpret ambiguous A/B conflict replies.
 - **Session limits**: History is stored in localStorage and trimmed to `maxSessionTurns` from `src/config/agents-config.json`; no backend persistence.
 - **Testing**: `npm test` covers session behavior in `src/services/__tests__/ConversationService.test.ts` and `src/services/__tests__/LocalSessionStore.test.ts`.
 
@@ -63,10 +64,9 @@ npm test
 - Anthropic API access uses `VITE_ANTHROPIC_API_KEY` for SDK initialization.
 - Stateful agent settings live in `src/config/agents-config.json` (model, max_tokens, temperature, maxSessionTurns) and are loaded at agent init via `src/utils/agent-config.ts`.
 - Stateful agents own their session IDs; `ConversationService` persists and trims session history to `maxSessionTurns`.
-- `SemanticExtractor` still reads `VITE_LLM_MODEL`, `VITE_LLM_MAX_TOKENS`, and `VITE_LLM_TEMPERATURE` for its stateless matching calls (defaults apply if unset).
-- Stateless LLM calls (semantic matching and conflict parsing) go directly through `AnthropicService` without session history.
+- Conflict-choice parsing (when needed) goes directly through `AnthropicService` without session history.
 - System prompts live in `src/config/prompts/*.md` and are loaded via `LocalPromptProvider` (Vite `?raw` imports) for easy future backend swapping.
-- Without `VITE_ANTHROPIC_API_KEY`, LLM extraction falls back to empty responses and semantic matching is skipped.
+- Without `VITE_ANTHROPIC_API_KEY`, LLM extraction falls back to empty responses and ambiguous conflict replies reuse the original A/B question.
 - Session history is persisted per agent via `SessionStore`/`LocalSessionStore` in browser localStorage; there is no backend service.
 
 ## Testing

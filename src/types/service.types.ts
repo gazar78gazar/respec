@@ -4,10 +4,13 @@
 
 import type { UCArtifactSpecification } from "./artifacts.types";
 
-export interface FormUpdate {
+export interface RequirementField {
   section: string;
   field: string;
-  value: unknown;
+  value: Maybe<string | number | boolean | string[]> | undefined;
+}
+
+export interface FormUpdate extends RequirementField {
   isAssumption: boolean;
   confidence: number;
 }
@@ -37,6 +40,7 @@ export interface ChatResult {
 export interface FormProcessingResult {
   acknowledged: boolean;
   acknowledgment?: string;
+  formUpdates?: EnhancedFormUpdate[];
   suggestions?: FormUpdate[];
 }
 

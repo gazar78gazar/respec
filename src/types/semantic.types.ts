@@ -1,32 +1,28 @@
 /**
- * SemanticTypes - Shared semantic extraction, matching, and integration types.
+ * SemanticTypes - Shared types for LLM extraction and conflict handling.
  */
 
-import type { UCSpecification, UCUIField } from "./uc-data.types";
 import type {
-  ChatResult,
   EntryResolutionOption,
   Maybe,
+  RequirementField,
   SessionMessage,
 } from "./service.types";
 
-export interface AnthropicRequirement {
-  section: string;
-  field: string;
-  value: string;
+export interface AgentRequirement extends RequirementField {
   confidence: number;
   isAssumption: boolean;
   originalRequest?: string;
   substitutionNote?: string;
 }
 
-export interface AnthropicAnalysisResult {
-  requirements: AnthropicRequirement[];
+export interface AgentAnalysisResult {
+  requirements: AgentRequirement[];
   response: string;
   clarificationNeeded?: string;
 }
 
-export interface AnthropicAnalysisContext {
+export interface AgentAnalysisContext {
   conversationHistory?: SessionMessage[];
   [key: string]: unknown;
 }
@@ -61,89 +57,3 @@ export type FieldDefinitions = Record<
   string,
   Record<string, FieldDefinitionInput>
 >;
-
-export interface ExtractedNode {
-  text: string;
-  category?: string;
-  value?: unknown;
-  context?: string;
-}
-
-export interface UCMatch {
-  id: string;
-  name: string;
-  type: "specification";
-  confidence: number;
-  matchType: "exact" | "fuzzy" | "semantic";
-  rationale?: string;
-}
-
-export interface MatchResult {
-  extractedNode: ExtractedNode;
-  ucMatch: UCMatch;
-  value?: unknown;
-  extractedText: string;
-}
-
-export interface UCSchemaContext {
-  specifications: Array<{
-    id: string;
-    name: string;
-    description: string;
-    options?: string[];
-    form_mapping?: UCUIField;
-  }>;
-}
-
-export interface EnhancedChatResult extends ChatResult {
-  matchResults?: MatchResult[];
-  extractionSummary?: string;
-  conflictsDetected?: unknown[];
-  nextSuggestions?: string[];
-}
-
-export interface SemanticProcessingOptions {
-  confidenceThreshold: number;
-  includeDebugInfo: boolean;
-}
-
-export interface SemanticExtractionResult {
-  hasRequirements: boolean;
-  extractions: TechnicalExtraction[];
-  intent: MessageIntent;
-  confidence: number;
-  processingTime: number;
-}
-
-export interface TechnicalExtraction {
-  category: string;
-  value: string;
-  constraint?: string;
-  context: string;
-  confidence: number;
-  ucCandidates: UCCandidate[];
-}
-
-export interface UCCandidate {
-  specId: string;
-  specName: string;
-  matchReason: string;
-  confidence: number;
-  ucSpec: UCSpecification;
-}
-
-export interface MessageIntent {
-  type: "requirement" | "question" | "clarification" | "other";
-  subtype?: "specification" | "constraint" | "preference" | "comparison";
-  requiresResponse: boolean;
-  suggestedActions: string[];
-}
-
-export type IntentKey = "requirement" | "question" | "clarification" | "other";
-
-export interface SemanticMatchingContext {
-  currentRequirements?: Record<string, unknown>;
-  artifactState?: unknown;
-  chatHistory: Array<{ role?: string; content?: string }>;
-  userPreferences?: Record<string, unknown>;
-}

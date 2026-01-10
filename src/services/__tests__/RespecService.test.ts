@@ -8,8 +8,7 @@ let preSaleEngineerInstance: {
   getSessionId: ReturnType<typeof vi.fn>;
   getAgentConfig: ReturnType<typeof vi.fn>;
   analyzeRequirements: ReturnType<typeof vi.fn>;
-  handleConflictResolution: ReturnType<typeof vi.fn>;
-  generateConflictQuestion: ReturnType<typeof vi.fn>;
+  interpretConflictChoice: ReturnType<typeof vi.fn>;
 };
 
 vi.mock("../agents/PreSaleEngineer", () => ({
@@ -32,8 +31,7 @@ describe("RespecService (refactored)", () => {
       getSessionId: vi.fn().mockReturnValue("session-1"),
       getAgentConfig: vi.fn().mockReturnValue({ maxSessionTurns: 12 }),
       analyzeRequirements: vi.fn(),
-      handleConflictResolution: vi.fn(),
-      generateConflictQuestion: vi.fn(),
+      interpretConflictChoice: vi.fn(),
     };
     vi.clearAllMocks();
     localStorageMock.getItem.mockReturnValue(null);
@@ -66,7 +64,7 @@ describe("RespecService (refactored)", () => {
     });
   });
 
-  it("processes chat message via fallback flow when no semantic integration", async () => {
+  it("processes chat message via agent extraction flow", async () => {
     preSaleEngineerInstance.analyzeRequirements.mockResolvedValue({
       requirements: [
         {
@@ -98,153 +96,421 @@ describe("RespecService (refactored)", () => {
     });
   });
 
-  it("uses semantic integration when initialized", async () => {
-    const anthropicResult = {
+  it("syncs agent selections into artifacts before returning updates", async () => {
+    preSaleEngineerInstance.analyzeRequirements.mockResolvedValue({
       requirements: [
         {
-          section: "IOConnectivity",
-          field: "digitalIO",
-          value: "8",
-          confidence: 0.8,
+          section: "formFactor",
+          field: "maxPowerConsumption",
+          value: "< 10W",
+          confidence: 0.9,
           isAssumption: false,
         },
       ],
-      response: "Agent response",
+      response: "Noted.",
       clarificationNeeded: undefined,
-    };
-
-    const enhancedResult = {
-      success: true,
-      systemMessage: "Enhanced response",
-      formUpdates: [],
-      confidence: 0.9,
-    };
-
-    preSaleEngineerInstance.analyzeRequirements.mockResolvedValue(
-      anthropicResult,
-    );
-
-    const service = new RespecService();
-    const semanticIntegration = {
-      processExtractedRequirements: vi.fn().mockResolvedValue(enhancedResult),
-    };
-    (service as { semanticIntegration?: unknown }).semanticIntegration =
-      semanticIntegration;
-
-    const result = await service.processChatMessage("I need 8 digital inputs");
-
-    expect(
-      semanticIntegration.processExtractedRequirements,
-    ).toHaveBeenCalledWith(
-      anthropicResult.requirements,
-      anthropicResult.response,
-    );
-    expect(result).toEqual(enhancedResult);
-  });
-
-  it("routes conflict resolution through PreSaleEngineer when conflicts exist", async () => {
-    const artifactManager = {
-      getState: vi.fn(() => ({
-        conflicts: {
-          active: [
-            {
-              id: "conflict-1",
-              affectedNodes: ["P01"],
-              type: "exclusion",
-              description: "Conflict detected",
-              resolutionOptions: [
-                {
-                  id: "option-a",
-                  description: "Keep existing",
-                  expectedOutcome: "Keeps existing",
-                  targetNodes: ["P01"],
-                  action: "keep_existing",
-                },
-                {
-                  id: "option-b",
-                  description: "Apply new",
-                  expectedOutcome: "Applies new",
-                  targetNodes: ["P02"],
-                  action: "apply_new",
-                },
-              ],
-              cycleCount: 0,
-              firstDetected: new Date(),
-              lastUpdated: new Date(),
-            },
-          ],
-          metadata: {
-            systemBlocked: true,
-          },
-        },
-      })),
-      generateFormUpdatesFromRespec: vi.fn(
-        () =>
-          [
-            {
-              section: "IOConnectivity",
-              field: "digitalIO",
-              value: "8",
-              confidence: 1,
-              isAssumption: false,
-              originalRequest: "",
-              substitutionNote: "",
-            },
-          ] satisfies EnhancedFormUpdate[],
-      ),
-      findSpecificationInArtifact: vi.fn(),
-    };
-
-    preSaleEngineerInstance.handleConflictResolution.mockResolvedValue({
-      response: "Resolved",
-      mode: "resolution_success",
     });
+
+    vi.spyOn(ucDataLayer, "isLoaded").mockReturnValue(true);
+    vi.spyOn(ucDataLayer, "getAllSpecifications").mockReturnValue([]);
+    vi.spyOn(ucDataLayer, "getUiFieldByFieldName").mockReturnValue(null);
+    const spec = {
+      id: "P83",
+      type: "specification",
+      name: "Ultra Low Power (<10W)",
+      selected_value: "< 10W",
+      field_name: "maxPowerConsumption",
+    };
+    vi.spyOn(ucDataLayer, "getSpecificationsForFormField").mockReturnValue([
+      spec,
+    ]);
+
+    const artifactManager = {
+      addSpecificationToMapped: vi.fn().mockResolvedValue(undefined),
+      moveNonConflictingToRespec: vi.fn().mockResolvedValue(undefined),
+      getPendingConflict: vi.fn().mockReturnValue(null),
+      getState: vi.fn().mockReturnValue({ respec: { specifications: {} } }),
+    };
 
     const service = new RespecService();
     (service as { artifactManager?: unknown }).artifactManager =
       artifactManager as unknown;
 
-    const result = await service.processChatMessage("Pick A");
+    const result = await service.processChatMessage("I need less than 10W");
 
-    expect(preSaleEngineerInstance.handleConflictResolution).toHaveBeenCalled();
-    expect(result.systemMessage).toBe("Resolved");
+    expect(artifactManager.addSpecificationToMapped).toHaveBeenCalledWith(
+      spec,
+      "< 10W",
+      expect.any(String),
+      "",
+      "llm",
+      undefined,
+      undefined,
+    );
+    expect(artifactManager.moveNonConflictingToRespec).toHaveBeenCalled();
     expect(result.formUpdates).toHaveLength(1);
   });
 
-  it("delegates conflict question generation to PreSaleEngineer", async () => {
-    const conflictStatus = {
-      hasConflicts: true,
-      count: 1,
-      currentConflict: 1,
-      totalConflicts: 1,
-      systemBlocked: true,
-      conflicts: [
+  it("syncs multi-select agent values into artifacts", async () => {
+    preSaleEngineerInstance.analyzeRequirements.mockResolvedValue({
+      requirements: [
         {
-          id: "conflict-1",
-          description: "Conflict",
-          affectedNodes: [],
-          resolutionOptions: [
-            { id: "option-a", label: "Keep A", outcome: "Keep A" },
-            { id: "option-b", label: "Keep B", outcome: "Keep B" },
-          ],
-          cycleCount: 0,
-          priority: "high",
-          type: "exclusion",
+          section: "IOConnectivity",
+          field: "protocols",
+          value: ["Modbus", "Ethernet"],
+          confidence: 0.8,
+          isAssumption: false,
         },
       ],
-    };
+      response: "Noted.",
+      clarificationNeeded: undefined,
+    });
 
-    preSaleEngineerInstance.generateConflictQuestion.mockResolvedValue(
-      "Question",
+    vi.spyOn(ucDataLayer, "isLoaded").mockReturnValue(true);
+    vi.spyOn(ucDataLayer, "getAllSpecifications").mockReturnValue([]);
+    vi.spyOn(ucDataLayer, "getUiFieldByFieldName").mockReturnValue(null);
+    const specs = [
+      {
+        id: "P201",
+        type: "specification",
+        name: "Modbus",
+        selected_value: "Modbus",
+        field_name: "protocols",
+      },
+      {
+        id: "P202",
+        type: "specification",
+        name: "Ethernet",
+        selected_value: "Ethernet",
+        field_name: "protocols",
+      },
+    ];
+    vi.spyOn(ucDataLayer, "getSpecificationsForFormField").mockReturnValue(
+      specs,
     );
 
-    const service = new RespecService();
-    const result = await service.generateConflictQuestion(conflictStatus);
+    const artifactManager = {
+      addSpecificationToMapped: vi.fn().mockResolvedValue(undefined),
+      moveNonConflictingToRespec: vi.fn().mockResolvedValue(undefined),
+      getPendingConflict: vi.fn().mockReturnValue(null),
+      getState: vi.fn().mockReturnValue({ respec: { specifications: {} } }),
+    };
 
-    expect(
-      preSaleEngineerInstance.generateConflictQuestion,
-    ).toHaveBeenCalledWith(conflictStatus);
-    expect(result).toBe("Question");
+    const service = new RespecService();
+    (service as { artifactManager?: unknown }).artifactManager =
+      artifactManager as unknown;
+
+    await service.processChatMessage("Use Modbus and Ethernet");
+
+    expect(artifactManager.addSpecificationToMapped).toHaveBeenCalledTimes(2);
+    expect(artifactManager.addSpecificationToMapped).toHaveBeenCalledWith(
+      specs[0],
+      "Modbus",
+      expect.any(String),
+      "",
+      "llm",
+      undefined,
+      undefined,
+    );
+    expect(artifactManager.addSpecificationToMapped).toHaveBeenCalledWith(
+      specs[1],
+      "Ethernet",
+      expect.any(String),
+      "",
+      "llm",
+      undefined,
+      undefined,
+    );
+  });
+
+  it("returns respec updates that include dependency assumptions", async () => {
+    preSaleEngineerInstance.analyzeRequirements.mockResolvedValue({
+      requirements: [
+        {
+          section: "computePerformance",
+          field: "processorType",
+          value: "Extreme (Intel Core i9)",
+          confidence: 0.9,
+          isAssumption: false,
+        },
+      ],
+      response: "Noted.",
+      clarificationNeeded: undefined,
+    });
+
+    vi.spyOn(ucDataLayer, "isLoaded").mockReturnValue(true);
+    vi.spyOn(ucDataLayer, "getAllSpecifications").mockReturnValue([]);
+    const processorSpec = {
+      id: "P82",
+      type: "specification",
+      name: "Intel Core i9 processor",
+      selected_value: "Extreme (Intel Core i9)",
+      field_name: "processorType",
+    };
+    const memorySpec = {
+      id: "P07",
+      type: "specification",
+      name: "32GB RAM",
+      selected_value: "32GB",
+      field_name: "memoryCapacity",
+    };
+    vi.spyOn(ucDataLayer, "getSpecificationsForFormField").mockReturnValue([
+      processorSpec,
+    ]);
+    vi.spyOn(ucDataLayer, "getSpecification").mockImplementation((id) => {
+      if (id === "P82") return processorSpec;
+      if (id === "P07") return memorySpec;
+      return null;
+    });
+    vi.spyOn(ucDataLayer, "getUiFieldByFieldName").mockImplementation(
+      (fieldName) => {
+        if (fieldName === "processorType") {
+          return {
+            section: "computePerformance",
+            category: "compute",
+            field_name: "processorType",
+            ui_type: "dropdown",
+            selection_type: "single_choice",
+            options: [],
+          };
+        }
+        if (fieldName === "memoryCapacity") {
+          return {
+            section: "computePerformance",
+            category: "memory",
+            field_name: "memoryCapacity",
+            ui_type: "dropdown",
+            selection_type: "single_choice",
+            options: [],
+          };
+        }
+        return null;
+      },
+    );
+
+    const emptyState = { respec: { specifications: {} } };
+    const stateWithSpecs = {
+      respec: {
+        specifications: {
+          P82: {
+            id: "P82",
+            name: "Intel Core i9 processor",
+            value: "Extreme (Intel Core i9)",
+            ucSource: processorSpec,
+            attribution: "requirement",
+            confidence: 1,
+            source: "llm",
+            timestamp: new Date(),
+          },
+          P07: {
+            id: "P07",
+            name: "32GB RAM",
+            value: "32GB",
+            ucSource: memorySpec,
+            attribution: "assumption",
+            confidence: 1,
+            source: "dependency",
+            dependencyOf: "P82",
+            timestamp: new Date(),
+          },
+        },
+      },
+    };
+
+    const artifactManager = {
+      addSpecificationToMapped: vi.fn().mockResolvedValue(undefined),
+      moveNonConflictingToRespec: vi.fn().mockResolvedValue(undefined),
+      getPendingConflict: vi.fn().mockReturnValue(null),
+      getState: vi
+        .fn()
+        .mockReturnValueOnce(emptyState)
+        .mockReturnValueOnce(stateWithSpecs),
+    };
+
+    const service = new RespecService();
+    (service as { artifactManager?: unknown }).artifactManager =
+      artifactManager as unknown;
+
+    const result = await service.processChatMessage(
+      "I need a core i9 processor",
+    );
+
+    expect(result.formUpdates).toHaveLength(2);
+    expect(result.formUpdates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          section: "computePerformance",
+          field: "processorType",
+          value: "Extreme (Intel Core i9)",
+          isAssumption: false,
+        }),
+        expect.objectContaining({
+          section: "computePerformance",
+          field: "memoryCapacity",
+          value: "32GB",
+          isAssumption: true,
+        }),
+      ]),
+    );
+  });
+
+  it("returns a conflict question when selections create a conflict", async () => {
+    preSaleEngineerInstance.analyzeRequirements.mockResolvedValue({
+      requirements: [
+        {
+          section: "formFactor",
+          field: "maxPowerConsumption",
+          value: "< 10W",
+          confidence: 0.9,
+          isAssumption: false,
+        },
+      ],
+      response: "Noted.",
+      clarificationNeeded: undefined,
+    });
+
+    vi.spyOn(ucDataLayer, "isLoaded").mockReturnValue(true);
+    vi.spyOn(ucDataLayer, "getAllSpecifications").mockReturnValue([]);
+    vi.spyOn(ucDataLayer, "getUiFieldByFieldName").mockReturnValue(null);
+    const spec = {
+      id: "P83",
+      type: "specification",
+      name: "Ultra Low Power (<10W)",
+      selected_value: "< 10W",
+      field_name: "maxPowerConsumption",
+    };
+    vi.spyOn(ucDataLayer, "getSpecificationsForFormField").mockReturnValue([
+      spec,
+    ]);
+
+    const conflict = {
+      id: "conflict-1",
+      affectedNodes: ["P82", "P83"],
+      type: "exclusion",
+      description: "Conflict detected",
+      resolutionOptions: [
+        {
+          id: "option-a",
+          description: "Keep A",
+          expectedOutcome: "Keep A",
+          targetNodes: ["P82"],
+          action: "select_option_a",
+        },
+        {
+          id: "option-b",
+          description: "Keep B",
+          expectedOutcome: "Keep B",
+          targetNodes: ["P83"],
+          action: "select_option_b",
+        },
+      ],
+      cycleCount: 0,
+      firstDetected: new Date(),
+      lastUpdated: new Date(),
+    };
+
+    const artifactManager = {
+      addSpecificationToMapped: vi.fn().mockResolvedValue(undefined),
+      getPendingConflict: vi.fn().mockReturnValue(conflict),
+      buildConflictQuestion: vi.fn().mockReturnValue("Question"),
+      moveNonConflictingToRespec: vi.fn(),
+      getState: vi.fn().mockReturnValue({ respec: { specifications: {} } }),
+    };
+
+    const service = new RespecService();
+    (service as { artifactManager?: unknown }).artifactManager =
+      artifactManager as unknown;
+
+    const result = await service.processChatMessage("I need less than 10W");
+
+    expect(result.systemMessage).toBe("Question");
+    expect(result.formUpdates?.length ?? 0).toBe(0);
+  });
+
+  it("applies conflict choice and returns updated form values", async () => {
+    const conflict = {
+      id: "conflict-1",
+      affectedNodes: ["P82", "P83"],
+      type: "exclusion",
+      description: "Conflict detected",
+      resolutionOptions: [
+        {
+          id: "option-a",
+          description: "Keep A",
+          expectedOutcome: "Keep A",
+          targetNodes: ["P82"],
+          action: "select_option_a",
+        },
+        {
+          id: "option-b",
+          description: "Keep B",
+          expectedOutcome: "Keep B",
+          targetNodes: ["P83"],
+          action: "select_option_b",
+        },
+      ],
+      cycleCount: 0,
+      firstDetected: new Date(),
+      lastUpdated: new Date(),
+    };
+
+    const artifactManager = {
+      getPendingConflict: vi
+        .fn()
+        .mockReturnValueOnce(conflict)
+        .mockReturnValueOnce(null),
+      applyConflictChoice: vi.fn().mockResolvedValue(undefined),
+      getState: vi
+        .fn()
+        .mockReturnValueOnce({ respec: { specifications: {} } })
+        .mockReturnValueOnce({
+          respec: {
+            specifications: {
+              P83: {
+                id: "P83",
+                name: "Ultra Low Power (<10W)",
+                value: "< 10W",
+                ucSource: {
+                  id: "P83",
+                  type: "specification",
+                  name: "Ultra Low Power (<10W)",
+                  selected_value: "< 10W",
+                  field_name: "maxPowerConsumption",
+                },
+                attribution: "requirement",
+                confidence: 1,
+                source: "system",
+                timestamp: new Date(),
+              },
+            },
+          },
+        }),
+      generateFormUpdatesFromRespec: vi.fn(
+        () =>
+          [
+            {
+              section: "formFactor",
+              field: "maxPowerConsumption",
+              value: "< 10W",
+              confidence: 1,
+              isAssumption: false,
+            },
+          ] satisfies EnhancedFormUpdate[],
+      ),
+      buildConflictQuestion: vi.fn(),
+    };
+
+    const service = new RespecService();
+    (service as { artifactManager?: unknown }).artifactManager =
+      artifactManager as unknown;
+
+    const result = await service.processChatMessage("A");
+
+    expect(artifactManager.applyConflictChoice).toHaveBeenCalledWith(
+      "conflict-1",
+      "a",
+    );
+    expect(result.formUpdates).toHaveLength(1);
   });
 
   it("acknowledges form updates and records history", async () => {
@@ -263,6 +529,200 @@ describe("RespecService (refactored)", () => {
       expect.stringContaining("respec_session_session-1"),
       expect.any(String),
     );
+  });
+
+  it("returns conflict question for manual form updates when conflict is active", async () => {
+    vi.spyOn(ucDataLayer, "isLoaded").mockReturnValue(true);
+    vi.spyOn(ucDataLayer, "getSpecificationsForFormField").mockReturnValue([
+      {
+        id: "P83",
+        type: "specification",
+        name: "Ultra Low Power (<10W)",
+        selected_value: "< 10W",
+        field_name: "maxPowerConsumption",
+      },
+    ]);
+
+    const conflict = {
+      id: "conflict-1",
+      affectedNodes: ["P82", "P83"],
+      type: "exclusion",
+      description: "Conflict detected",
+      resolutionOptions: [
+        {
+          id: "option-a",
+          description: "Keep A",
+          expectedOutcome: "Keep A",
+          targetNodes: ["P82"],
+          action: "select_option_a",
+        },
+        {
+          id: "option-b",
+          description: "Keep B",
+          expectedOutcome: "Keep B",
+          targetNodes: ["P83"],
+          action: "select_option_b",
+        },
+      ],
+      cycleCount: 0,
+      firstDetected: new Date(),
+      lastUpdated: new Date(),
+    };
+
+    const service = new RespecService();
+    (service as { artifactManager?: unknown }).artifactManager = {
+      addSpecificationToMapped: vi.fn().mockResolvedValue(undefined),
+      getPendingConflict: vi.fn().mockReturnValue(conflict),
+      buildConflictQuestion: vi.fn().mockReturnValue("Question"),
+      moveNonConflictingToRespec: vi.fn(),
+      getState: vi.fn().mockReturnValue({ respec: { specifications: {} } }),
+    } as unknown;
+
+    const result = await service.processFormUpdate(
+      "formFactor",
+      "maxPowerConsumption",
+      "< 10W",
+    );
+
+    expect(result.acknowledgment).toBe("Question");
+  });
+
+  it("returns respec delta updates for manual form updates", async () => {
+    vi.spyOn(ucDataLayer, "isLoaded").mockReturnValue(true);
+    const spec = {
+      id: "P83",
+      type: "specification",
+      name: "Ultra Low Power (<10W)",
+      selected_value: "< 10W",
+      field_name: "maxPowerConsumption",
+    };
+    vi.spyOn(ucDataLayer, "getSpecificationsForFormField").mockReturnValue([
+      spec,
+    ]);
+    vi.spyOn(ucDataLayer, "getSpecification").mockReturnValue(spec);
+    vi.spyOn(ucDataLayer, "getUiFieldByFieldName").mockReturnValue({
+      section: "formFactor",
+      category: "power",
+      field_name: "maxPowerConsumption",
+      ui_type: "dropdown",
+      selection_type: "single_choice",
+      options: [],
+    });
+
+    const emptyState = { respec: { specifications: {} } };
+    const stateWithSpec = {
+      respec: {
+        specifications: {
+          P83: {
+            id: "P83",
+            name: "Ultra Low Power (<10W)",
+            value: "< 10W",
+            ucSource: spec,
+            attribution: "requirement",
+            confidence: 1,
+            source: "system",
+            timestamp: new Date(),
+          },
+        },
+      },
+    };
+
+    const service = new RespecService();
+    (service as { artifactManager?: unknown }).artifactManager = {
+      addSpecificationToMapped: vi.fn().mockResolvedValue(undefined),
+      moveNonConflictingToRespec: vi.fn().mockResolvedValue(undefined),
+      getPendingConflict: vi.fn().mockReturnValue(null),
+      getState: vi
+        .fn()
+        .mockReturnValueOnce(emptyState)
+        .mockReturnValueOnce(stateWithSpec),
+    } as unknown;
+
+    const result = await service.processFormUpdate(
+      "formFactor",
+      "maxPowerConsumption",
+      "< 10W",
+    );
+
+    expect(result.formUpdates).toHaveLength(1);
+    expect(result.formUpdates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          section: "formFactor",
+          field: "maxPowerConsumption",
+          value: "< 10W",
+        }),
+      ]),
+    );
+  });
+
+  it("returns respec delta updates when clearing a field", async () => {
+    vi.spyOn(ucDataLayer, "isLoaded").mockReturnValue(true);
+    const spec = {
+      id: "P83",
+      type: "specification",
+      name: "Ultra Low Power (<10W)",
+      selected_value: "< 10W",
+      field_name: "maxPowerConsumption",
+    };
+    vi.spyOn(ucDataLayer, "getSpecificationsForFormField").mockReturnValue([
+      spec,
+    ]);
+    vi.spyOn(ucDataLayer, "getSpecification").mockReturnValue(spec);
+    vi.spyOn(ucDataLayer, "getUiFieldByFieldName").mockReturnValue({
+      section: "formFactor",
+      category: "power",
+      field_name: "maxPowerConsumption",
+      ui_type: "dropdown",
+      selection_type: "single_choice",
+      options: [],
+    });
+
+    const stateWithSpec = {
+      respec: {
+        specifications: {
+          P83: {
+            id: "P83",
+            name: "Ultra Low Power (<10W)",
+            value: "< 10W",
+            ucSource: spec,
+            attribution: "requirement",
+            confidence: 1,
+            source: "user",
+            timestamp: new Date(),
+          },
+        },
+      },
+    };
+    const emptyState = { respec: { specifications: {} } };
+
+    const service = new RespecService();
+    const clearFieldSelections = vi.fn();
+    (service as { artifactManager?: unknown }).artifactManager = {
+      clearFieldSelections,
+      getPendingConflict: vi.fn().mockReturnValue(null),
+      moveNonConflictingToRespec: vi.fn().mockResolvedValue(undefined),
+      getState: vi
+        .fn()
+        .mockReturnValueOnce(stateWithSpec)
+        .mockReturnValueOnce(emptyState),
+    } as unknown;
+
+    const result = await service.processFormUpdate(
+      "formFactor",
+      "maxPowerConsumption",
+      null,
+    );
+
+    expect(clearFieldSelections).toHaveBeenCalledWith("maxPowerConsumption");
+    expect(result.formUpdates).toEqual([
+      expect.objectContaining({
+        section: "formFactor",
+        field: "maxPowerConsumption",
+        value: null,
+        isAssumption: false,
+      }),
+    ]);
   });
 
   it("returns autofill suggestions based on conversation context", async () => {
@@ -285,61 +745,5 @@ describe("RespecService (refactored)", () => {
 
     expect(result.fields.length).toBeGreaterThan(0);
     expect(result.message).toContain("substation");
-  });
-
-  it("returns structured conflicts sorted by priority", () => {
-    const service = new RespecService();
-    (service as any).artifactManager = {
-      getState: vi.fn(() => ({
-        conflicts: {
-          active: [
-            {
-              id: "c1",
-              affectedNodes: ["P1"],
-              type: "cascade",
-              description: "Cascade",
-              resolutionOptions: [
-                {
-                  id: "option-a",
-                  description: "Keep",
-                  expectedOutcome: "Keep",
-                },
-              ],
-              cycleCount: 0,
-              firstDetected: new Date(),
-              lastUpdated: new Date(),
-            },
-            {
-              id: "c2",
-              affectedNodes: ["P2"],
-              type: "exclusion",
-              description: "Exclusion",
-              resolutionOptions: [
-                {
-                  id: "option-a",
-                  description: "Keep",
-                  expectedOutcome: "Keep",
-                },
-              ],
-              cycleCount: 0,
-              firstDetected: new Date(),
-              lastUpdated: new Date(),
-            },
-          ],
-          metadata: {
-            systemBlocked: true,
-          },
-        },
-      })),
-      findSpecificationInArtifact: vi.fn(() => ({
-        name: "Spec",
-        value: "value",
-      })),
-    };
-
-    const result = service.getActiveConflictsForAgent();
-
-    expect(result.hasConflicts).toBe(true);
-    expect(result.conflicts[0].type).toBe("exclusion");
   });
 });

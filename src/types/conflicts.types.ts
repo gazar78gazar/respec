@@ -5,7 +5,7 @@
 // ============= CONFLICT TYPES (EXTENDED) =============
 
 export type ConflictType =
-  | "field_overwrite" // Need to change existing value
+  // | "field_overwrite" // Need to change existing value
   | "exclusion" // Direct exclusion between specs
   | "cascade" // Dependencies cause overwrites
   | "field_constraint"; // Field has zero valid options
@@ -21,13 +21,13 @@ interface GenericConflict {
   lastUpdated?: Date;
 }
 
-export interface OverwriteConflict extends GenericConflict {
-  type: "field_overwrite";
-  field: string;
-  existingValue: string;
-  proposedValue: string;
-  resolutionOptions?: OverwriteResolutionOption[];
-}
+// export interface OverwriteConflict extends GenericConflict {
+//   type: "field_overwrite";
+//   field: string;
+//   existingValue: string;
+//   proposedValue: string;
+//   resolutionOptions?: OverwriteResolutionOption[];
+// }
 
 export interface ExclusionConflict extends GenericConflict {
   type: "exclusion";
@@ -51,10 +51,8 @@ export interface ConstraintConflict extends GenericConflict {
 }
 
 export type Conflict =
-  | OverwriteConflict
-  | ExclusionConflict
-  | CascadeConflict
-  | ConstraintConflict;
+  // | OverwriteConflict
+  ExclusionConflict | CascadeConflict | ConstraintConflict;
 
 interface GenericResolutionOption {
   id: string;
@@ -64,11 +62,10 @@ interface GenericResolutionOption {
 }
 
 export interface ExclusionResolutionOption extends GenericResolutionOption {
-  action: "select_option_a" | "select_option_b" | "custom_value" | "defer"; // TODO zonflict do we need custom value and "defer"?
+  action: "select_option_a" | "select_option_b";
 }
 
 export interface OverwriteResolutionOption extends GenericResolutionOption {
-  // action: "accept" | "modify";
   action: "keep_existing" | "apply_new";
 }
 

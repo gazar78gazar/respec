@@ -8,15 +8,14 @@ import type { Maybe } from "../types/service.types";
 import {
   Conflict,
   ResolutionOption,
-  OverwriteConflict,
+  // OverwriteConflict,
   ExclusionConflict,
   CascadeConflict,
   ConstraintConflict,
   ExclusionResolutionOption,
-  OverwriteResolutionOption,
-  CascadeResolutionOption,
+  // OverwriteResolutionOption,
+  // CascadeResolutionOption,
   ConstraintResolutionOption,
-  ConflictResolution,
 } from "../types/conflicts.types";
 import type { ActiveConflict } from "../types/artifacts.types";
 import type {
@@ -26,13 +25,11 @@ import type {
 
 export class ConflictResolver {
   private conflictHistory: Map<string, Conflict> = new Map();
-  private resolutionHistory: ConflictResolution[] = [];
-  // Unused in refactored flow; kept for potential audit logging.
 
   /**
    * Main entry point - detect all conflicts for a proposed change
    */
-  detectAllConflictsForSpecification(
+  public detectAllConflictsForSpecification(
     newSpecId: string,
     currentSelections: string[],
   ): Conflict[] {
@@ -51,29 +48,29 @@ export class ConflictResolver {
       this.conflictHistory.set(c.id, c);
     });
 
-    const overwriteConflicts = this.detectOverwriteConflicts(
-      newSpecId,
-      currentSelections,
-    );
-    overwriteConflicts.forEach((c) => {
-      c.resolutionOptions = this.generateResolutionOptions(
-        c,
-        currentSelections,
-      ) as OverwriteResolutionOption[];
-      this.conflictHistory.set(c.id, c);
-    });
+    // const overwriteConflicts = this.detectOverwriteConflicts(
+    //   newSpecId,
+    //   currentSelections,
+    // );
+    // overwriteConflicts.forEach((c) => {
+    //   c.resolutionOptions = this.generateResolutionOptions(
+    //     c,
+    //     currentSelections,
+    //   ) as OverwriteResolutionOption[];
+    //   this.conflictHistory.set(c.id, c);
+    // });
 
-    const cascadeConflicts = this.detectCascadeConflicts(
-      newSpecId,
-      currentSelections,
-    );
-    cascadeConflicts.forEach((c) => {
-      c.resolutionOptions = this.generateResolutionOptions(
-        c,
-        currentSelections,
-      ) as CascadeResolutionOption[];
-      this.conflictHistory.set(c.id, c);
-    });
+    // const cascadeConflicts = this.detectCascadeConflicts(
+    //   newSpecId,
+    //   currentSelections,
+    // );
+    // cascadeConflicts.forEach((c) => {
+    //   c.resolutionOptions = this.generateResolutionOptions(
+    //     c,
+    //     currentSelections,
+    //   ) as CascadeResolutionOption[];
+    //   this.conflictHistory.set(c.id, c);
+    // });
 
     const constraintConflicts = this.detectConstraintConflicts(
       newSpecId,
@@ -90,8 +87,8 @@ export class ConflictResolver {
     // Convert data layer conflicts to standard Conflict format
     const conflicts: Conflict[] = [
       ...exclusuionConflicts,
-      ...overwriteConflicts,
-      ...cascadeConflicts,
+      // ...overwriteConflicts,
+      // ...cascadeConflicts,
       ...constraintConflicts,
     ];
 
@@ -116,27 +113,27 @@ export class ConflictResolver {
       currentSelections,
     );
     switch (conflict.type) {
-      case "field_overwrite": {
-        const _c = conflict as OverwriteConflict;
-        const existing = ucDataLayer.getNodeName(_c.existingValue);
-        const proposed = ucDataLayer.getNodeName(_c.proposedValue);
-        return [
-          {
-            id: "option-a",
-            description: `Keep ${existing}`,
-            action: "keep_existing",
-            targetNodes: [_c.existingValue],
-            expectedOutcome: `${existing} remains selected`,
-          },
-          {
-            id: "option-b",
-            description: `Change to ${proposed}`,
-            action: "apply_new",
-            targetNodes: [_c.proposedValue],
-            expectedOutcome: `${proposed} will replace ${existing}`,
-          },
-        ];
-      }
+      // case "field_overwrite": {
+      //   const _c = conflict as OverwriteConflict;
+      //   const existing = ucDataLayer.getNodeName(_c.existingValue);
+      //   const proposed = ucDataLayer.getNodeName(_c.proposedValue);
+      //   return [
+      //     {
+      //       id: "option-a",
+      //       description: `Keep ${existing}`,
+      //       action: "keep_existing",
+      //       targetNodes: [_c.existingValue],
+      //       expectedOutcome: `${existing} remains selected`,
+      //     },
+      //     {
+      //       id: "option-b",
+      //       description: `Change to ${proposed}`,
+      //       action: "apply_new",
+      //       targetNodes: [_c.proposedValue],
+      //       expectedOutcome: `${proposed} will replace ${existing}`,
+      //     },
+      //   ];
+      // }
       case "exclusion": {
         const _c = conflict as ExclusionConflict;
         // Use question template from exclusion if available
@@ -351,47 +348,47 @@ export class ConflictResolver {
     return { winningSpecs, losingSpecs, removals };
   }
 
-  detectOverwriteConflicts(
-    newSpecId: string,
-    currentSelections: string[],
-  ): OverwriteConflict[] {
-    console.log(
-      `[UCDataLayer] 🔍 detectOverwriteConflicts(${newSpecId}`,
-      currentSelections,
-    );
+  // detectOverwriteConflicts(
+  //   newSpecId: string,
+  //   currentSelections: string[],
+  // ): OverwriteConflict[] {
+  //   console.log(
+  //     `[UCDataLayer] 🔍 detectOverwriteConflicts(${newSpecId}`,
+  //     currentSelections,
+  //   );
 
-    const conflicts: OverwriteConflict[] = [];
-    const newSpec = ucDataLayer.getSpecification(newSpecId);
-    if (!newSpec) return conflicts;
+  //   const conflicts: OverwriteConflict[] = [];
+  //   const newSpec = ucDataLayer.getSpecification(newSpecId);
+  //   if (!newSpec) return conflicts;
 
-    const fieldName = newSpec.field_name;
-    if (fieldName) {
-      const existingSpecForField = currentSelections.find((id) => {
-        const spec = ucDataLayer.getSpecification(id);
-        return spec?.field_name === fieldName;
-      });
+  //   const fieldName = newSpec.field_name;
+  //   if (fieldName) {
+  //     const existingSpecForField = currentSelections.find((id) => {
+  //       const spec = ucDataLayer.getSpecification(id);
+  //       return spec?.field_name === fieldName;
+  //     });
 
-      if (existingSpecForField && existingSpecForField !== newSpecId) {
-        const newConflict: OverwriteConflict = {
-          id: uuidv4(),
-          key: this.generateConflictKey([existingSpecForField, newSpecId]),
-          type: "field_overwrite",
-          field: fieldName,
-          existingValue: existingSpecForField,
-          proposedValue: newSpecId,
-          description: `Field "${fieldName}" already has a value`,
-          affectedNodes: [existingSpecForField, newSpecId],
-        };
-        conflicts.push(newConflict);
-        console.log(
-          `[UCDataLayer]   🔄 Field overwrite detected for "${fieldName}"`,
-        );
-      }
-    }
-    return conflicts;
-  }
+  //     if (existingSpecForField && existingSpecForField !== newSpecId) {
+  //       const newConflict: OverwriteConflict = {
+  //         id: uuidv4(),
+  //         key: this.generateConflictKey([existingSpecForField, newSpecId]),
+  //         type: "field_overwrite",
+  //         field: fieldName,
+  //         existingValue: existingSpecForField,
+  //         proposedValue: newSpecId,
+  //         description: `Field "${fieldName}" already has a value`,
+  //         affectedNodes: [existingSpecForField, newSpecId],
+  //       };
+  //       conflicts.push(newConflict);
+  //       console.log(
+  //         `[UCDataLayer]   🔄 Field overwrite detected for "${fieldName}"`,
+  //       );
+  //     }
+  //   }
+  //   return conflicts;
+  // }
 
-  detectExclusionConflicts(
+  private detectExclusionConflicts(
     newSpecId: string,
     currentSelections: string[],
   ): ExclusionConflict[] {
@@ -423,37 +420,37 @@ export class ConflictResolver {
     return conflicts;
   }
 
-  detectCascadeConflicts(
-    newSpecId: string,
-    currentSelections: string[],
-  ): CascadeConflict[] {
-    const conflicts: CascadeConflict[] = [];
-    const requiredNodes = ucDataLayer.getRequiredNodes(newSpecId);
-    for (const reqNode of requiredNodes) {
-      // Simple recursive check without cycle detection (dataset guarantees no cycles)
-      const cascadeConflicts = this.detectOverwriteConflicts(
-        reqNode,
-        currentSelections,
-      );
+  // detectCascadeConflicts(
+  //   newSpecId: string,
+  //   currentSelections: string[],
+  // ): CascadeConflict[] {
+  //   const conflicts: CascadeConflict[] = [];
+  //   const requiredNodes = ucDataLayer.getRequiredNodes(newSpecId);
+  //   for (const reqNode of requiredNodes) {
+  //     // Simple recursive check without cycle detection (dataset guarantees no cycles)
+  //     const cascadeConflicts = this.detectOverwriteConflicts(
+  //       reqNode,
+  //       currentSelections,
+  //     );
 
-      cascadeConflicts.forEach((c) => {
-        conflicts.push({
-          id: uuidv4(),
-          key: this.generateConflictKey([
-            c.existingValue,
-            c.proposedValue,
-            newSpecId,
-          ]),
-          type: "cascade",
-          proposedValue: newSpecId,
-          description: `Required by ${newSpecId}: ${c.description}`,
-          affectedNodes: [c.existingValue, c.proposedValue, newSpecId],
-        });
-      });
-    }
+  //     cascadeConflicts.forEach((c) => {
+  //       conflicts.push({
+  //         id: uuidv4(),
+  //         key: this.generateConflictKey([
+  //           c.existingValue,
+  //           c.proposedValue,
+  //           newSpecId,
+  //         ]),
+  //         type: "cascade",
+  //         proposedValue: newSpecId,
+  //         description: `Required by ${newSpecId}: ${c.description}`,
+  //         affectedNodes: [c.existingValue, c.proposedValue, newSpecId],
+  //       });
+  //     });
+  //   }
 
-    return conflicts;
-  }
+  //   return conflicts;
+  // }
 
   detectConstraintConflicts(
     newSpecId: string,
@@ -625,16 +622,6 @@ export class ConflictResolver {
     conflict.cycleCount = (conflict.cycleCount || 0) + 1;
     conflict.lastUpdated = new Date();
 
-    // Store resolution
-    this.resolutionHistory.push({
-      conflictId,
-      action,
-      nodeToRemove: changes.removed[0],
-      nodeToAdd: changes.added[0],
-      userChoice: action,
-      timestamp: new Date(),
-    });
-
     console.log(
       `[ConflictResolver]   → Removed: ${changes.removed.length}, Added: ${changes.added.length}`,
     );
@@ -645,46 +632,46 @@ export class ConflictResolver {
   /**
    * Get resolution history for reversal
    */
-  getResolutionHistory(): ConflictResolution[] {
-    return this.resolutionHistory;
-  }
+  // getResolutionHistory(): ConflictResolution[] {
+  //   return this.resolutionHistory;
+  // }
 
   /**
    * Reverse a previous resolution
    */
-  reverseResolution(
-    resolutionIndex: number,
-    currentSelections: string[],
-  ): string[] {
-    const resolution = this.resolutionHistory[resolutionIndex];
-    if (!resolution) return currentSelections;
+  // reverseResolution(
+  //   resolutionIndex: number,
+  //   currentSelections: string[],
+  // ): string[] {
+  //   const resolution = this.resolutionHistory[resolutionIndex];
+  //   if (!resolution) return currentSelections;
 
-    console.log(
-      `[ConflictResolver] ↩️ Reversing resolution from ${resolution.timestamp}`,
-    );
+  //   console.log(
+  //     `[ConflictResolver] ↩️ Reversing resolution from ${resolution.timestamp}`,
+  //   );
 
-    let newSelections = [...currentSelections];
+  //   let newSelections = [...currentSelections];
 
-    // Reverse the action
-    if (resolution.action === "apply_new") {
-      // Remove what was added
-      if (resolution.nodeToAdd) {
-        newSelections = newSelections.filter(
-          (id) => id !== resolution.nodeToAdd,
-        );
-      }
+  //   // Reverse the action
+  //   if (resolution.action === "apply_new") {
+  //     // Remove what was added
+  //     if (resolution.nodeToAdd) {
+  //       newSelections = newSelections.filter(
+  //         (id) => id !== resolution.nodeToAdd,
+  //       );
+  //     }
 
-      // Re-add what was removed
-      if (
-        resolution.nodeToRemove &&
-        !newSelections.includes(resolution.nodeToRemove)
-      ) {
-        newSelections.push(resolution.nodeToRemove);
-      }
-    }
+  //     // Re-add what was removed
+  //     if (
+  //       resolution.nodeToRemove &&
+  //       !newSelections.includes(resolution.nodeToRemove)
+  //     ) {
+  //       newSelections.push(resolution.nodeToRemove);
+  //     }
+  //   }
 
-    return newSelections;
-  }
+  //   return newSelections;
+  // }
 
   /**
    * Detect fields that have zero valid options (CONFLICTS!)
