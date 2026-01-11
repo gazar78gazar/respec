@@ -142,6 +142,9 @@ export interface ActiveConflict {
   affectedNodes: string[]; // Individual nodes, not full branches
   type: ConflictType;
   description: string;
+  existingValue?: string;
+  proposedValue?: string;
+  questionTemplate?: string;
   resolutionOptions: ResolutionOption[];
   cycleCount: number;
   firstDetected: Date;

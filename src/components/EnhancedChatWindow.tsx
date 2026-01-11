@@ -269,7 +269,7 @@ export const EnhancedChatWindow: React.FC<EnhancedChatWindowProps> = ({
               }`}
             >
               <div
-                className={`p-3 rounded-lg text-sm ${
+                className={`p-3 rounded-lg text-sm whitespace-pre-line ${
                   msg.role === "user"
                     ? "bg-blue-500 text-white"
                     : msg.role === "system"

@@ -798,7 +798,7 @@
       "type": "hard_incompatible",
       "reason": "Atom processor cannot support 32GB RAM",
       "resolution_priority": 1,
-      "question_template": "Choose between low-power CPU or high memory?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_002": {
       "id": "E_PP_002",
@@ -806,7 +806,7 @@
       "type": "hard_incompatible",
       "reason": "Atom processor doesn't support DDR5",
       "resolution_priority": 1,
-      "question_template": "Choose between low-power CPU or DDR5 memory?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_003": {
       "id": "E_PP_003",
@@ -814,7 +814,7 @@
       "type": "hard_incompatible",
       "reason": "Atom processor lacks PCIe 4.0 for NVMe Gen4",
       "resolution_priority": 1,
-      "question_template": "Choose between low-power CPU or NVMe Gen4 storage?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_004": {
       "id": "E_PP_004",
@@ -822,7 +822,7 @@
       "type": "hard_incompatible",
       "reason": "Atom processor insufficient for 10Gbps ethernet",
       "resolution_priority": 1,
-      "question_template": "Choose between low-power CPU or 10Gbps networking?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_005": {
       "id": "E_PP_005",
@@ -830,7 +830,7 @@
       "type": "performance_mismatch",
       "reason": "Atom processor insufficient for TSN real-time",
       "resolution_priority": 2,
-      "question_template": "Choose between low-power CPU or TSN support?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_006": {
       "id": "E_PP_006",
@@ -838,7 +838,7 @@
       "type": "performance_mismatch",
       "reason": "Atom processor insufficient for EtherCAT",
       "resolution_priority": 2,
-      "question_template": "Choose between low-power CPU or EtherCAT protocol?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_007": {
       "id": "E_PP_007",
@@ -846,7 +846,7 @@
       "type": "performance_mismatch",
       "reason": "Atom processor insufficient for 100kHz sampling",
       "resolution_priority": 2,
-      "question_template": "Choose between low-power CPU or high-speed sampling?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_008": {
       "id": "E_PP_008",
@@ -854,7 +854,7 @@
       "type": "efficiency_warning",
       "reason": "Large storage typically not paired with low-power CPU",
       "resolution_priority": 3,
-      "question_template": "Choose between low-power CPU or 1TB storage?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_009": {
       "id": "E_PP_009",
@@ -862,7 +862,7 @@
       "type": "hard_incompatible",
       "reason": "i7 processor requires more than 20W power",
       "resolution_priority": 1,
-      "question_template": "Choose between low power budget or high-performance CPU?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_010": {
       "id": "E_PP_010",
@@ -870,7 +870,7 @@
       "type": "hard_incompatible",
       "reason": "32GB RAM requires more than 20W power",
       "resolution_priority": 1,
-      "question_template": "Choose between low power budget or high memory?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_011": {
       "id": "E_PP_011",
@@ -878,7 +878,7 @@
       "type": "hard_incompatible",
       "reason": "Fan cooling adds to power consumption",
       "resolution_priority": 2,
-      "question_template": "Choose between low power budget or active cooling?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_012": {
       "id": "E_PP_012",
@@ -886,7 +886,7 @@
       "type": "hard_incompatible",
       "reason": "10Gbps ethernet exceeds low power budget",
       "resolution_priority": 1,
-      "question_template": "Choose between low power budget or 10Gbps networking?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_013": {
       "id": "E_PP_013",
@@ -894,7 +894,7 @@
       "type": "performance_mismatch",
       "reason": "Real-time latency needs performance not low power",
       "resolution_priority": 2,
-      "question_template": "Choose between low power budget or real-time response?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_014": {
       "id": "E_PP_014",
@@ -902,7 +902,7 @@
       "type": "hard_incompatible",
       "reason": "5G modem exceeds 20W power budget",
       "resolution_priority": 1,
-      "question_template": "Choose between low power budget or 5G connectivity?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_015": {
       "id": "E_PP_015",
@@ -910,7 +910,7 @@
       "type": "hard_incompatible",
       "reason": "IP69K sealed enclosure incompatible with DIN rail",
       "resolution_priority": 1,
-      "question_template": "Choose between washdown protection or DIN rail mounting?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_016": {
       "id": "E_PP_016",
@@ -918,7 +918,7 @@
       "type": "hard_incompatible",
       "reason": "IP69K sealed enclosure cannot have fan openings",
       "resolution_priority": 1,
-      "question_template": "Choose between washdown protection or active cooling?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_017": {
       "id": "E_PP_017",
@@ -926,7 +926,7 @@
       "type": "hard_incompatible",
       "reason": "IP65 water jets incompatible with fan openings",
       "resolution_priority": 1,
-      "question_template": "Choose between water protection or active cooling?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_018": {
       "id": "E_PP_018",
@@ -934,7 +934,7 @@
       "type": "performance_warning",
       "reason": "Fanless cooling may throttle i7 processor",
       "resolution_priority": 3,
-      "question_template": "Choose between passive cooling or peak i7 performance?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_019": {
       "id": "E_PP_019",
@@ -942,7 +942,7 @@
       "type": "performance_warning",
       "reason": "Fanless cooling insufficient for 32GB RAM heat",
       "resolution_priority": 3,
-      "question_template": "Choose between passive cooling or high memory?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_020": {
       "id": "E_PP_020",
@@ -950,7 +950,7 @@
       "type": "hard_incompatible",
       "reason": "Entry i3 processor may not support DDR5",
       "resolution_priority": 2,
-      "question_template": "Choose between entry CPU or DDR5 memory?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_021": {
       "id": "E_PP_021",
@@ -958,7 +958,7 @@
       "type": "hard_incompatible",
       "reason": "Entry i3 processor lacks PCIe 4.0",
       "resolution_priority": 2,
-      "question_template": "Choose between entry CPU or NVMe Gen4 storage?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_022": {
       "id": "E_PP_022",
@@ -966,7 +966,7 @@
       "type": "hard_incompatible",
       "reason": "Entry i3 processor insufficient PCIe lanes for 10Gbps",
       "resolution_priority": 2,
-      "question_template": "Choose between entry CPU or 10Gbps networking?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_023": {
       "id": "E_PP_023",
@@ -974,7 +974,7 @@
       "type": "efficiency_warning",
       "reason": "Entry i3 processor insufficient for 32 analog channels",
       "resolution_priority": 3,
-      "question_template": "Choose between entry CPU or 32-channel analog I/O?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_024": {
       "id": "E_PP_024",
@@ -982,7 +982,7 @@
       "type": "efficiency_warning",
       "reason": "Entry i3 processor insufficient for 8-port networking",
       "resolution_priority": 3,
-      "question_template": "Choose between entry CPU or 8 network ports?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_025": {
       "id": "E_PP_025",
@@ -990,7 +990,7 @@
       "type": "performance_mismatch",
       "reason": "Entry i3 processor insufficient for EtherCAT real-time",
       "resolution_priority": 2,
-      "question_template": "Choose between entry CPU or EtherCAT protocol?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_026": {
       "id": "E_PP_026",
@@ -998,7 +998,7 @@
       "type": "hard_incompatible",
       "reason": "10Gbps needs more than 256GB storage for buffering",
       "resolution_priority": 2,
-      "question_template": "Choose between 10Gbps networking or small storage?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_027": {
       "id": "E_PP_027",
@@ -1006,7 +1006,7 @@
       "type": "performance_mismatch",
       "reason": "10Gbps needs more than 512GB storage",
       "resolution_priority": 3,
-      "question_template": "Choose between 10Gbps networking or medium storage?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_028": {
       "id": "E_PP_028",
@@ -1014,7 +1014,7 @@
       "type": "hard_incompatible",
       "reason": "10Gbps needs more than 8GB memory for buffering",
       "resolution_priority": 2,
-      "question_template": "Choose between 10Gbps networking or small memory?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_029": {
       "id": "E_PP_029",
@@ -1022,7 +1022,7 @@
       "type": "performance_mismatch",
       "reason": "10Gbps performs better with more than 16GB memory",
       "resolution_priority": 3,
-      "question_template": "Choose between 10Gbps networking or standard memory?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_030": {
       "id": "E_PP_030",
@@ -1030,7 +1030,7 @@
       "type": "hard_incompatible",
       "reason": "100kHz sampling needs more processing than Atom",
       "resolution_priority": 2,
-      "question_template": "Choose between high-speed sampling or low-power CPU?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_031": {
       "id": "E_PP_031",
@@ -1038,7 +1038,7 @@
       "type": "performance_mismatch",
       "reason": "100kHz sampling needs more than entry i3",
       "resolution_priority": 3,
-      "question_template": "Choose between high-speed sampling or entry CPU?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_032": {
       "id": "E_PP_032",
@@ -1046,7 +1046,7 @@
       "type": "hard_incompatible",
       "reason": "100kHz sampling needs more than 256GB storage",
       "resolution_priority": 2,
-      "question_template": "Choose between high-speed sampling or small storage?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_033": {
       "id": "E_PP_033",
@@ -1054,7 +1054,7 @@
       "type": "hard_incompatible",
       "reason": "TSN real-time needs more than Atom processor",
       "resolution_priority": 1,
-      "question_template": "Choose between TSN networking or low-power CPU?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_034": {
       "id": "E_PP_034",
@@ -1062,7 +1062,7 @@
       "type": "hard_incompatible",
       "reason": "TSN real-time needs more than 20W power",
       "resolution_priority": 2,
-      "question_template": "Choose between TSN networking or low power budget?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_035": {
       "id": "E_PP_035",
@@ -1070,7 +1070,7 @@
       "type": "hard_incompatible",
       "reason": "EtherCAT needs more than Atom processor",
       "resolution_priority": 1,
-      "question_template": "Choose between EtherCAT protocol or low-power CPU?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_036": {
       "id": "E_PP_036",
@@ -1078,7 +1078,7 @@
       "type": "hard_incompatible",
       "reason": "EtherCAT needs more than entry i3 processor",
       "resolution_priority": 2,
-      "question_template": "Choose between EtherCAT protocol or entry CPU?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_037": {
       "id": "E_PP_037",
@@ -1086,7 +1086,7 @@
       "type": "hard_incompatible",
       "reason": "8-port networking needs more than Atom processor",
       "resolution_priority": 2,
-      "question_template": "Choose between 8 network ports or low-power CPU?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_038": {
       "id": "E_PP_038",
@@ -1094,7 +1094,7 @@
       "type": "hard_incompatible",
       "reason": "8-port routing needs more than 8GB memory",
       "resolution_priority": 2,
-      "question_template": "Choose between 8 network ports or small memory?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_039": {
       "id": "E_PP_039",
@@ -1102,7 +1102,7 @@
       "type": "hard_incompatible",
       "reason": "32 analog channels need more than Atom processor",
       "resolution_priority": 2,
-      "question_template": "Choose between 32 analog channels or low-power CPU?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_040": {
       "id": "E_PP_040",
@@ -1110,7 +1110,7 @@
       "type": "performance_mismatch",
       "reason": "32 analog channels need more than entry i3",
       "resolution_priority": 3,
-      "question_template": "Choose between 32 analog channels or entry CPU?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_041": {
       "id": "E_PP_041",
@@ -1118,7 +1118,7 @@
       "type": "hard_incompatible",
       "reason": "32 analog channels need more than 8GB memory",
       "resolution_priority": 2,
-      "question_template": "Choose between 32 analog channels or small memory?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_042": {
       "id": "E_PP_042",
@@ -1126,7 +1126,7 @@
       "type": "hard_incompatible",
       "reason": "32 digital channels need more than Atom processor",
       "resolution_priority": 2,
-      "question_template": "Choose between 32 digital channels or low-power CPU?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_043": {
       "id": "E_PP_043",
@@ -1134,7 +1134,7 @@
       "type": "performance_mismatch",
       "reason": "32 digital channels need more than 8GB memory",
       "resolution_priority": 3,
-      "question_template": "Choose between 32 digital channels or small memory?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_044": {
       "id": "E_PP_044",
@@ -1142,7 +1142,7 @@
       "type": "hard_incompatible",
       "reason": "Mobile vibration damages fan bearings",
       "resolution_priority": 1,
-      "question_template": "Choose between mobile vibration rating or fan cooling?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_045": {
       "id": "E_PP_045",
@@ -1150,7 +1150,7 @@
       "type": "hard_incompatible",
       "reason": "5G modem exceeds 20W power budget",
       "resolution_priority": 1,
-      "question_template": "Choose between 5G connectivity or low power budget?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_046": {
       "id": "E_PP_046",
@@ -1158,7 +1158,7 @@
       "type": "hard_incompatible",
       "reason": "24-bit ADC processing needs more than Atom",
       "resolution_priority": 2,
-      "question_template": "Choose between 24-bit ADC or low-power CPU?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_047": {
       "id": "E_PP_047",
@@ -1166,7 +1166,7 @@
       "type": "performance_mismatch",
       "reason": "Hard real-time needs RTOS not Windows IoT",
       "resolution_priority": 2,
-      "question_template": "Choose between real-time latency or Windows IoT?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_048": {
       "id": "E_PP_048",
@@ -1174,7 +1174,7 @@
       "type": "performance_mismatch",
       "reason": "Hard real-time needs RTOS not Ubuntu",
       "resolution_priority": 2,
-      "question_template": "Choose between real-time latency or Ubuntu OS?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_049": {
       "id": "E_PP_049",
@@ -1182,7 +1182,7 @@
       "type": "hard_incompatible",
       "reason": "Touchscreens fail at extreme temperatures",
       "resolution_priority": 1,
-      "question_template": "Choose between extreme temperature or touchscreen?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_050": {
       "id": "E_PP_050",
@@ -1190,7 +1190,7 @@
       "type": "efficiency_warning",
       "reason": "PROFINET and Ethernet/IP are competing standards",
       "resolution_priority": 4,
-      "question_template": "Choose between PROFINET or Ethernet/IP?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_051": {
       "id": "E_PP_051",
@@ -1198,7 +1198,7 @@
       "type": "hard_incompatible",
       "reason": "Intel Xe Graphics requires more than 10W power",
       "resolution_priority": 1,
-      "question_template": "Choose between Intel Xe Graphics or ultra-low power (<10W)?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_052": {
       "id": "E_PP_052",
@@ -1206,7 +1206,7 @@
       "type": "hard_incompatible",
       "reason": "Intel Xe Graphics requires more than 20W power",
       "resolution_priority": 1,
-      "question_template": "Choose between Intel Xe Graphics or low power (10-20W)?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_053": {
       "id": "E_PP_053",
@@ -1214,7 +1214,7 @@
       "type": "hard_incompatible",
       "reason": "Dedicated GPU requires significantly more than 10W power",
       "resolution_priority": 1,
-      "question_template": "Choose between dedicated GPU or ultra-low power (<10W)?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_054": {
       "id": "E_PP_054",
@@ -1222,7 +1222,7 @@
       "type": "hard_incompatible",
       "reason": "Dedicated GPU requires significantly more than 20W power",
       "resolution_priority": 1,
-      "question_template": "Choose between dedicated GPU or low power (10-20W)?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_055": {
       "id": "E_PP_055",
@@ -1230,7 +1230,7 @@
       "type": "hard_incompatible",
       "reason": "AI accelerator requires more than 10W power",
       "resolution_priority": 1,
-      "question_template": "Choose between AI accelerator or ultra-low power (<10W)?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_056": {
       "id": "E_PP_056",
@@ -1238,7 +1238,7 @@
       "type": "hard_incompatible",
       "reason": "AI accelerator requires more than 20W power",
       "resolution_priority": 1,
-      "question_template": "Choose between AI accelerator or low power (10-20W)?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_057": {
       "id": "E_PP_057",
@@ -1246,7 +1246,7 @@
       "type": "hard_incompatible",
       "reason": "Core i9 processor requires significantly more than 10W power",
       "resolution_priority": 1,
-      "question_template": "Choose between Core i9 processor or ultra-low power (<10W)?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_058": {
       "id": "E_PP_058",
@@ -1254,7 +1254,7 @@
       "type": "hard_incompatible",
       "reason": "Core i9 processor requires significantly more than 20W power",
       "resolution_priority": 1,
-      "question_template": "Choose between Core i9 processor or low power (10-20W)?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_059": {
       "id": "E_PP_059",
@@ -1262,7 +1262,7 @@
       "type": "performance_warning",
       "reason": "Fanless cooling severely throttles Core i9 performance",
       "resolution_priority": 2,
-      "question_template": "Choose between Core i9 full performance or passive cooling?"
+      "question_template": "Choose between {option_a} and {option_b}."
     },
     "E_PP_060": {
       "id": "E_PP_060",
@@ -1270,7 +1270,7 @@
       "type": "hard_incompatible",
       "reason": "Dedicated GPU cannot operate with passive cooling",
       "resolution_priority": 1,
-      "question_template": "Choose between dedicated GPU or fanless cooling?"
+      "question_template": "Choose between {option_a} and {option_b}."
     }
   },
   "ui_fields": {

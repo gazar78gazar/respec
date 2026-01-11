@@ -158,7 +158,7 @@ export default function App() {
       };
 
       console.log(
-        `[TRACE] ${entry.timestamp} | ${action} | ${status}`,
+        `!!! [TRACE] ${entry.timestamp} | ${action} | ${status}`,
         details,
       );
     },
@@ -224,7 +224,7 @@ export default function App() {
       if (!updates.length) return;
 
       console.log(
-        `[DEBUG] ${traceAction} returned ${updates.length} form updates:`,
+        `!!! [DEBUG] ${traceAction} returned ${updates.length} form updates:`,
         updates,
       );
       addTrace(traceAction, { count: updates.length, updates }, "SUCCESS");
@@ -286,7 +286,7 @@ export default function App() {
               );
             } else {
               console.log(
-                `[VALIDATION OK] Field ${update.section}.${update.field} = "${actualValue}"`,
+                `!!! [VALIDATION OK] Field ${update.section}.${update.field} = "${actualValue}"`,
               );
               addTrace(
                 verificationAction,
@@ -316,9 +316,9 @@ export default function App() {
             isAssumption: false,
             confidence: update.confidence || 0.9,
           };
-          addChatMessage("system", `?? ${substitutionNote}`, id, metadata);
+          addChatMessage("system", `📝 ${substitutionNote}`, id, metadata);
           console.log(
-            `[DEBUG] Added substitution note for ${update.section}.${update.field}:`,
+            `!!! [DEBUG] Added substitution note for ${update.section}.${update.field}:`,
             substitutionNote,
           );
           addTrace(
@@ -340,7 +340,7 @@ export default function App() {
   //   async (
   //     conflictStatus: StructuredConflicts,
   //   ): Promise<MASCommunicationResult> => {
-  //     console.log(`[APP] ?? Conflicts detected - presenting to user`);
+  //     console.log(`!!! [APP] ?? Conflicts detected - presenting to user`);
 
   //     const conflictSignature = conflictStatus.conflicts
   //       .map((conflict) => conflict.id)
@@ -369,7 +369,7 @@ export default function App() {
       action: A,
       data: PayloadMap[A],
     ): Promise<MASCommunicationResult> => {
-      console.log(`[UI-RESPEC] ${action}:`, data);
+      console.log(`!!! [UI-RESPEC] ${action}:`, data);
 
       setIsProcessing(true);
 
@@ -393,148 +393,11 @@ export default function App() {
             }
 
             if (chatResult.formUpdates && chatResult.formUpdates.length) {
-              console.log(
-                `[DEBUG] Chat message returned ${chatResult.formUpdates.length} form updates:`,
+              applyArtifactUpdates(
                 chatResult.formUpdates,
-              );
-              addTrace(
                 "chat_form_updates",
-                {
-                  count: chatResult.formUpdates.length,
-                  updates: chatResult.formUpdates,
-                },
-                "SUCCESS",
+                "chat_field_verification",
               );
-
-              chatResult.formUpdates.forEach((update: EnhancedFormUpdate) => {
-                console.log(`[DEBUG] Processing chat update:`, {
-                  section: update.section,
-                  field: update.field,
-                  value: update.value,
-                  isAssumption: update.isAssumption,
-                });
-
-                const mappedValue = mapValueToFormField(
-                  update.section,
-                  update.field,
-                  update.value,
-                );
-                console.log(
-                  `[DEBUG] Value mapped from ${update.value} to ${mappedValue}`,
-                );
-
-                setRequirements((prev) => {
-                  const prevSection = prev[update.section] || {};
-                  const prevField = prevSection[update.field] || {};
-                  const newReqs: Requirements = {
-                    ...prev,
-                    [update.section]: {
-                      ...prevSection,
-                      [update.field]: {
-                        ...prevField,
-                        value: mappedValue as FieldValue,
-                        isComplete:
-                          mappedValue !== "" &&
-                          mappedValue !== null &&
-                          mappedValue !== undefined,
-                        isAssumption: update.isAssumption || false,
-                        dataSource:
-                          update.isAssumption || false
-                            ? "assumption"
-                            : "requirement",
-                        priority: prevField.priority || 1,
-                        source: "system",
-                        lastUpdated: new Date().toISOString(),
-                        toggleHistory: prevField.toggleHistory || [],
-                      },
-                    },
-                  };
-
-                  console.log(`[DEBUG] Chat update applied to requirements:`, {
-                    field: `${update.section}.${update.field}`,
-                    oldValue: prev[update.section]?.[update.field],
-                    newValue: newReqs[update.section][update.field],
-                  });
-
-                  return newReqs;
-                });
-
-                setTimeout(() => {
-                  setRequirements((currentReqs) => {
-                    const actualValue =
-                      currentReqs[update.section]?.[update.field]?.value;
-                    const expectedValue = mappedValue;
-
-                    if (actualValue !== expectedValue) {
-                      console.error(
-                        `[CHAT VALIDATION FAILED] Field ${update.section}.${update.field}: expected "${expectedValue}", got "${actualValue}"`,
-                      );
-                      addTrace(
-                        "chat_field_verification",
-                        {
-                          section: update.section,
-                          field: update.field,
-                          expected: expectedValue,
-                          actual: actualValue,
-                          source: "chat_message",
-                        },
-                        "FAILED",
-                      );
-                    } else {
-                      console.log(
-                        `[CHAT VALIDATION OK] Field ${update.section}.${update.field} = "${actualValue}"`,
-                      );
-                      addTrace(
-                        "chat_field_verification",
-                        {
-                          section: update.section,
-                          field: update.field,
-                          value: actualValue,
-                          source: "chat_message",
-                        },
-                        "SUCCESS",
-                      );
-                    }
-
-                    return currentReqs; // Return unchanged state
-                  });
-                }, 150); // Slightly longer delay for chat updates
-
-                const substitutionNote = update.substitutionNote?.trim();
-                if (
-                  substitutionNote &&
-                  substitutionNote !==
-                    "Cleared because no specification is selected"
-                ) {
-                  const id = `sub-${Date.now()}-${Math.random()
-                    .toString(36)
-                    .substr(2, 9)}`;
-                  const metadata = {
-                    isAssumption: false,
-                    confidence: update.confidence || 0.9,
-                  };
-                  addChatMessage(
-                    "system",
-                    `📝 ${substitutionNote}`,
-                    id,
-                    metadata,
-                  );
-                  console.log(
-                    `[DEBUG] Added substitution note for ${update.section}.${update.field}:`,
-                    substitutionNote,
-                  );
-                  addTrace(
-                    "substitution_note",
-                    {
-                      section: update.section,
-                      field: update.field,
-                      originalRequest: update.originalRequest,
-                      substitutionNote,
-                    },
-                    "SUCCESS",
-                  );
-                }
-              });
             }
 
             // conflictStatus = respecService.getActiveConflictsForAgent();
@@ -678,7 +541,7 @@ export default function App() {
                 { section: d.section, field: d.field, value: d.value },
                 "SUCCESS",
               );
-              console.log(`[DEBUG] system_populate_field called with:`, {
+              console.log(`!!! [DEBUG] system_populate_field called with:`, {
                 section: d.section,
                 field: d.field,
                 value: d.value,
@@ -692,7 +555,7 @@ export default function App() {
                 d.value,
               );
               console.log(
-                `[DEBUG] System populate value mapped from ${d.value} to ${mappedValue}`,
+                `!!! [DEBUG] System populate value mapped from ${d.value} to ${mappedValue}`,
               );
 
               setProcessingMessage("Updating field...");
@@ -721,7 +584,7 @@ export default function App() {
                 };
 
                 console.log(
-                  `[DEBUG] Updated requirements for ${d.section}.${d.field}:`,
+                  `!!! [DEBUG] Updated requirements for ${d.section}.${d.field}:`,
                   {
                     oldValue: prev[d.section]?.[d.field],
                     newValue: newValue[d.section][d.field],
@@ -753,7 +616,7 @@ export default function App() {
                     );
                   } else {
                     console.log(
-                      `[VALIDATION OK] Field ${d.section}.${d.field} = "${actualValue}"`,
+                      `!!! [VALIDATION OK] Field ${d.section}.${d.field} = "${actualValue}"`,
                     );
                     addTrace(
                       "system_populate_field_verification",
@@ -929,7 +792,7 @@ export default function App() {
               }));
 
               console.log(
-                `[TOGGLE] ${section}.${field}: ${previousState} -> ${newState}`,
+                `!!! [TOGGLE] ${section}.${field}: ${previousState} -> ${newState}`,
               );
               addTrace(
                 "toggle_assumption",
@@ -963,7 +826,7 @@ export default function App() {
                 },
               }));
 
-              console.log(`[PERMISSION GRANTED] ${permissionKey}`);
+              console.log(`!!! [PERMISSION GRANTED] ${permissionKey}`);
               addTrace(
                 "permission_granted",
                 { section: d.section, field: d.field },
@@ -993,7 +856,7 @@ export default function App() {
                 return updated;
               });
 
-              console.log(`[PERMISSION REVOKED] ${revokeKey}`);
+              console.log(`!!! [PERMISSION REVOKED] ${revokeKey}`);
               addTrace(
                 "permission_revoked",
                 { section: d.section, field: d.field },
@@ -1115,10 +978,10 @@ export default function App() {
       setExpandedGroups(initialExpanded);
 
       try {
-        console.log("[APP] Loading UC8 Data Layer...");
+        console.log("!!! [APP] Loading UC8 Data Layer...");
         await ucDataLayer.load();
-        console.log("[APP] ✅ UC8 Data Layer loaded successfully");
-        console.log("[APP] UC8 Metadata:", ucDataLayer.getMetadata());
+        console.log("!!! [APP] ✅ UC8 Data Layer loaded successfully");
+        console.log("!!! [APP] UC8 Metadata:", ucDataLayer.getMetadata());
       } catch (uc8Error) {
         console.warn(
           "[APP] ⚠️ UC8 Data Layer failed to load (non-blocking):",
@@ -1130,7 +993,7 @@ export default function App() {
         setProcessingMessage("Initializing...");
         setIsProcessing(true);
         await respecService.initialize(formFieldsData.field_definitions);
-        console.log("[APP] Simplified Respec initialized");
+        console.log("!!! [APP] Simplified Respec initialized");
       } catch (err) {
         console.error("[APP] Simplified Respec init failed:", err);
       } finally {
@@ -1139,7 +1002,7 @@ export default function App() {
       }
 
       try {
-        console.log("[APP] Initializing artifact state management...");
+        console.log("!!! [APP] Initializing artifact state management...");
 
         const artifactManager = new ArtifactManager();
         await artifactManager.initialize();
@@ -1157,7 +1020,7 @@ export default function App() {
 
   // const syncToArtifacts = async () => {
   //   try {
-  //     console.log("syncToArtifacts started", { requirements });
+  //     console.log("!!! syncToArtifacts started", { requirements });
   //     const updates = await artifactManager.syncWithFormState(requirements);
   //     if (updates.length > 0) applyArtifactUpdates(updates);
 
@@ -1194,7 +1057,7 @@ export default function App() {
   //           console.warn(`   Resolution: ${conflict.resolution}`);
   //         });
   //       } else {
-  //         console.log("[APP] No conflicts detected");
+  //         console.log("!!! [APP] No conflicts detected");
   //       }
   //     })
   //     .catch((error) => {

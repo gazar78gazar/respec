@@ -33,7 +33,7 @@ export class ConflictResolver {
     newSpecId: string,
     currentSelections: string[],
   ): Conflict[] {
-    console.log(`[ConflictResolver] 🔍 detectConflicts(${newSpecId})`);
+    console.log(`!!! [ConflictResolver] 🔍 detectConflicts(${newSpecId})`);
 
     const exclusuionConflicts = this.detectExclusionConflicts(
       newSpecId,
@@ -92,7 +92,9 @@ export class ConflictResolver {
       ...constraintConflicts,
     ];
 
-    console.log(`[ConflictResolver]   → Found ${conflicts.length} conflicts`);
+    console.log(
+      `!!! [ConflictResolver]   → Found ${conflicts.length} conflicts`,
+    );
     return conflicts;
   }
 
@@ -108,7 +110,7 @@ export class ConflictResolver {
     currentSelections: string[],
   ): ResolutionOption[] {
     console.log(
-      "[ConflictResolver] generateResolutionOptions",
+      "!!! [ConflictResolver] generateResolutionOptions",
       conflict,
       currentSelections,
     );
@@ -143,20 +145,22 @@ export class ConflictResolver {
           const { optionA, optionB } = this.parseQuestionTemplate(
             _c.resolution,
           );
+          const optionADescription = optionA || existing;
+          const optionBDescription = optionB || proposed;
           return [
             {
               id: "option-a",
-              description: optionA || existing,
+              description: optionADescription,
               action: "select_option_a",
               targetNodes: [_c.existingValue],
-              expectedOutcome: `Keep ${existing}`,
+              expectedOutcome: `Keep ${optionADescription}`,
             },
             {
               id: "option-b",
-              description: optionB || proposed,
+              description: optionBDescription,
               action: "select_option_b",
               targetNodes: [_c.proposedValue],
-              expectedOutcome: `Select ${proposed}`,
+              expectedOutcome: `Select ${optionBDescription}`,
             },
           ] as ExclusionResolutionOption[];
         }
@@ -246,7 +250,7 @@ export class ConflictResolver {
     toAdd: string[];
     cascadeEffects: string[];
   } {
-    console.log(`[UCDataLayer] 📊 getConflictImpact()`);
+    console.log(`!!! [UCDataLayer] 📊 getConflictImpact()`);
 
     const toRemove: Set<string> = new Set();
     const toAdd: Set<string> = new Set();
@@ -276,7 +280,7 @@ export class ConflictResolver {
     });
 
     console.log(
-      `[UCDataLayer]   → Remove: ${toRemove.size}, Add: ${toAdd.size}, Cascade: ${cascadeEffects.size}`,
+      `!!! [UCDataLayer]   → Remove: ${toRemove.size}, Add: ${toAdd.size}, Cascade: ${cascadeEffects.size}`,
     );
 
     return {
@@ -413,7 +417,9 @@ export class ConflictResolver {
           affectedNodes: [newSpecId, conflictingNode],
           resolution: exclusion.question_template,
         });
-        console.log(`[UCDataLayer]   🚫 Exclusion conflict: ${exclusion.id}`);
+        console.log(
+          `!!! [UCDataLayer]   🚫 Exclusion conflict: ${exclusion.id}`,
+        );
       }
     }
 
@@ -478,7 +484,7 @@ export class ConflictResolver {
         affectedNodes: [...currentSelections, newSpecId],
       });
       console.log(
-        `[UCDataLayer]   🚨 Field constraint violation for "${fieldName}"`,
+        `!!! [UCDataLayer]   🚨 Field constraint violation for "${fieldName}"`,
       );
     }
     return conflicts;
@@ -537,11 +543,16 @@ export class ConflictResolver {
     optionA?: string;
     optionB?: string;
   } {
-    const match = template.match(/choose between (.+) or (.+)\??/i);
+    if (template.includes("{option_a}") || template.includes("{option_b}")) {
+      return {};
+    }
+    const match = template.match(
+      /choose between (.+?) (?:or|and) (.+?)[?.]?$/i,
+    );
     if (!match) return {};
     return {
-      optionA: match[1].trim().replace(/\?$/, ""),
-      optionB: match[2].trim().replace(/\?$/, ""),
+      optionA: match[1].trim(),
+      optionB: match[2].trim(),
     };
   }
 
@@ -561,7 +572,7 @@ export class ConflictResolver {
     };
   }> {
     console.log(
-      `[ConflictResolver] ✅ resolveConflict(${conflictId}, ${action})`,
+      `!!! [ConflictResolver] ✅ resolveConflict(${conflictId}, ${action})`,
     );
 
     const conflict = this.conflictHistory.get(conflictId);
@@ -623,7 +634,7 @@ export class ConflictResolver {
     conflict.lastUpdated = new Date();
 
     console.log(
-      `[ConflictResolver]   → Removed: ${changes.removed.length}, Added: ${changes.added.length}`,
+      `!!! [ConflictResolver]   → Removed: ${changes.removed.length}, Added: ${changes.added.length}`,
     );
 
     return { newSelections, changes };
@@ -697,11 +708,11 @@ export class ConflictResolver {
   //         field,
   //         reason: `All options for "${field}" are excluded by current selections`,
   //       });
-  //       console.log(`[UCDataLayer]   🚨 CONFLICT on field: ${field}`);
+  //       console.log(`!!! [UCDataLayer]   🚨 CONFLICT on field: ${field}`);
   //     }
   //   });
 
-  //   console.log(`[UCDataLayer]   → Found ${conflicts.length} field conflicts`);
+  //   console.log(`!!! [UCDataLayer]   → Found ${conflicts.length} field conflicts`);
   //   return conflicts;
   // }
 }
