@@ -39,10 +39,10 @@ npm test
 ## Runtime Flow
 1. `App` loads UC8 data via `ucDataLayer.load()` and initializes `RespecService` and `ArtifactManager`.
 2. Chat message -> `RespecService.processChatMessage` -> `PreSaleEngineer.analyzeRequirements` (threaded via `ConversationService` + `SessionStore` using the agent-owned session ID).
-3. `RespecService` returns form updates from extracted requirements; the UI applies them.
-4. Agent selections are synced into the mapped artifact and exclusion conflicts are checked before returning updates, so conflicts can surface immediately.
-5. Form updates (manual/system/autofill) call `RespecService.processFormUpdate`, which syncs selections into `ArtifactManager`, removes cleared entries, promotes non-conflicting specs to respec, auto-adds dependencies as assumptions, and returns respec delta updates so the form stays aligned.
-6. When conflicts are active, `ArtifactManager` supplies the A/B prompt and `RespecService` parses responses locally, falling back to `PreSaleEngineer` only when replies are ambiguous.
+3. Agent selections are synced into the mapped artifact and exclusion conflicts are checked before returning updates, so conflicts can surface immediately.
+4. `RespecService` returns respec delta updates after chat or form updates so dependency-added specs surface as assumptions and the UI stays aligned with artifact state.
+5. Form updates (manual/system/autofill) call `RespecService.processFormUpdate`, which syncs selections into `ArtifactManager`, clears mapped/respec entries for empty values, promotes non-conflicting specs to respec, and returns respec delta updates.
+6. When conflicts resolve, `RespecService` rebuilds form updates from respec (all UI fields) to clear removed selections; when conflicts are active, `ArtifactManager` supplies the A/B prompt and `RespecService` parses responses locally, falling back to `PreSaleEngineer` only when replies are ambiguous.
 
 ## LLM Session Model
 - **Threaded extraction**: `PreSaleEngineer` uses `ConversationService` with `SessionStore` and an agent-owned session ID to retain chat context.
@@ -53,6 +53,7 @@ npm test
 ## Form State and Terminology
 - Form state lives in `src/types/form-state.types.ts` as `Requirements` and `RequirementFieldState`.
 - UI and services still use "requirements" naming for form fields, but those values map to UC8 specifications (P##) in the data layer.
+- Dependency-added specifications are marked as assumptions in form updates, and clearing a field removes the corresponding respec entries.
 
 ## Conflict Handling
 - Supported conflict types: `field_overwrite`, `exclusion`, `cascade`, `field_constraint`.
