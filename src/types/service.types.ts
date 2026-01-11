@@ -4,16 +4,16 @@
 
 import type { UCArtifactSpecification } from "./artifacts.types";
 
-export interface RequirementField {
+export type RequirementField = {
   section: string;
   field: string;
   value: Maybe<string | number | boolean | string[]> | undefined;
-}
+};
 
-export interface FormUpdate extends RequirementField {
+export type FormUpdate = RequirementField & {
   isAssumption: boolean;
   confidence: number;
-}
+};
 
 export type Maybe<T> = T | null;
 
@@ -23,32 +23,32 @@ export type SessionMessage = {
   timestamp: string;
 };
 
-export interface EnhancedFormUpdate extends FormUpdate {
+export type EnhancedFormUpdate = FormUpdate & {
   originalRequest?: string;
   substitutionNote?: string;
-}
+};
 
-export interface ChatResult {
+export type ChatResult = {
   success: boolean;
   systemMessage: string;
   formUpdates?: EnhancedFormUpdate[];
   clarificationNeeded?: string;
   confidence: number;
   conflictData?: unknown;
-}
+};
 
-export interface FormProcessingResult {
+export type FormProcessingResult = {
   acknowledged: boolean;
   acknowledgment?: string;
   formUpdates?: EnhancedFormUpdate[];
   suggestions?: FormUpdate[];
-}
+};
 
-export interface AutofillResult {
+export type AutofillResult = {
   message: string;
   fields: FormUpdate[];
   trigger: string;
-}
+};
 
 export type EntryResolutionOption = {
   id: string;
@@ -66,24 +66,24 @@ export type StrucureConflictEntry = {
   priority: "critical" | "high";
 };
 
-export interface StructuredConflicts {
+export type StructuredConflicts = {
   hasConflicts: boolean;
   count: number;
   currentConflict: number;
   totalConflicts: number;
   systemBlocked: boolean;
   conflicts: StrucureConflictEntry[];
-}
+};
 
 export type ArtifactLocation = "mapped" | "respec";
 
-export interface LocatedSpecification {
+export type LocatedSpecification = {
   artifact: ArtifactLocation;
   spec: UCArtifactSpecification;
-}
+};
 
-export interface ConflictResolutionPlan {
+export type ConflictResolutionPlan = {
   winningSpecs: string[];
   losingSpecs: string[];
   removals: LocatedSpecification[];
-}
+};

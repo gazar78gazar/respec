@@ -2,29 +2,29 @@
  * Types for refactored data services (export/import/share/project helpers).
  */
 
-export interface Requirements {
+export type Requirements = {
   [fieldName: string]: {
     value?: unknown;
     priority: 1 | 2 | 3 | 4;
     isAssumption?: boolean;
     required?: boolean;
   };
-}
+};
 
-export interface ProjectMetadata {
+export type ProjectMetadata = {
   name: string;
   created: Date;
   lastModified: Date;
   version?: string;
   description?: string;
-}
+};
 
-export interface SavedProject {
+export type SavedProject = {
   name: string;
   requirements: Requirements;
   metadata: ProjectMetadata;
   timestamp: number;
-}
+};
 
 // export interface ShareableData {
 //   // Unused in refactored flow; share helpers are commented out.

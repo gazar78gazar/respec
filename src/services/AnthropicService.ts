@@ -4,43 +4,27 @@
  * Handles client initialization and message requests without prompt logic.
  */
 import Anthropic from "@anthropic-ai/sdk";
+import type {
+  AnthropicMessageRequest,
+  AnthropicMessageResponse,
+} from "../types/anthropic.types";
 import type { Maybe } from "../types/service.types";
-
-export type AnthropicMessage = {
-  role: "user" | "assistant";
-  content: string;
-};
-
-export type AnthropicMessageRequest = {
-  model: string;
-  max_tokens: number;
-  temperature: number;
-  system?: string;
-  messages: AnthropicMessage[];
-};
-
-export type AnthropicMessageResponse = {
-  content: Array<
-    { type: "text"; text: string } | { type: string; text?: string }
-  >;
-};
 
 export class AnthropicService {
   private client: Maybe<Anthropic> = null;
   private apiKey: string;
   private isInitialized = false;
 
-  constructor(apiKey?: string) {
+  public constructor(apiKey?: string) {
     this.apiKey = apiKey || import.meta.env.VITE_ANTHROPIC_API_KEY || "";
 
-    if (!this.apiKey) {
+    if (!this.apiKey)
       console.warn(
         "[AnthropicService] No API key provided - will use fallback responses",
       );
-    }
   }
 
-  async initialize(): Promise<void> {
+  public async initialize(): Promise<void> {
     if (this.isInitialized) return;
 
     if (this.apiKey) {
@@ -61,18 +45,17 @@ export class AnthropicService {
     }
   }
 
-  hasClient(): boolean {
+  public hasClient(): boolean {
     return Boolean(this.client);
   }
 
-  async createMessage(
+  public async createMessage(
     request: AnthropicMessageRequest,
   ): Promise<AnthropicMessageResponse> {
-    if (!this.client) {
+    if (!this.client)
       throw new Error(
         "[AnthropicService] Client not initialized. Call initialize() first.",
       );
-    }
 
     return (await this.client.messages.create(
       request,

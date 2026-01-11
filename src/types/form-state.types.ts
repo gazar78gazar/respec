@@ -4,24 +4,24 @@
 import type { FormUpdate } from "./service.types";
 import type { FieldValue } from "./mas.types";
 
-export interface FieldData {
+export type FieldData = {
   value: string | number | boolean;
   priority?: "high" | "medium" | "low";
   isAssumption?: boolean;
   required?: boolean;
   timestamp?: string;
-}
+};
 
-export interface CommercialSection {
+export type CommercialSection = {
   budgetPerUnit?: FieldData;
   quantity?: FieldData;
   totalBudget?: FieldData;
   deliveryTimeframe?: FieldData;
   shippingIncoterms?: FieldData;
   warrantyRequirements?: FieldData;
-}
+};
 
-export interface IOConnectivitySection {
+export type IOConnectivitySection = {
   digitalIO?: FieldData;
   analogIO?: FieldData;
   ethernetPorts?: FieldData;
@@ -33,9 +33,9 @@ export interface IOConnectivitySection {
   serialProtocolSupport?: FieldData;
   fieldbusProtocolSupport?: FieldData;
   wirelessExtension?: FieldData;
-}
+};
 
-export interface ComputePerformanceSection {
+export type ComputePerformanceSection = {
   processorType?: FieldData;
   aiGpuAcceleration?: FieldData;
   memoryCapacity?: FieldData;
@@ -45,26 +45,26 @@ export interface ComputePerformanceSection {
   timeSensitiveFeatures?: FieldData;
   responseLatency?: FieldData;
   operatingSystem?: FieldData;
-}
+};
 
-export interface FormFactorSection {
+export type FormFactorSection = {
   powerInput?: FieldData;
   maxPowerConsumption?: FieldData;
   redundantPower?: FieldData;
   dimensions?: FieldData;
   mounting?: FieldData;
-}
+};
 
-export interface EnvironmentStandardsSection {
+export type EnvironmentStandardsSection = {
   operatingTemperature?: FieldData;
   humidity?: FieldData;
   vibrationResistance?: FieldData;
   ingressProtection?: FieldData;
   vibrationProtection?: FieldData;
   certifications?: FieldData;
-}
+};
 
-export interface RequirementFieldState {
+export type RequirementFieldState = {
   value?: FieldValue;
   priority?: 1 | 2 | 3 | 4;
   isAssumption?: boolean;
@@ -74,7 +74,7 @@ export interface RequirementFieldState {
   source?: string;
   lastUpdated?: string;
   toggleHistory?: unknown[];
-}
+};
 
 export type Requirements = Record<
   string,
@@ -90,7 +90,7 @@ export type Requirements = Record<
 // export type CrossFieldErrors = Record<string, ValidationError>;
 
 // Chat message types
-export interface ChatMessage {
+export type ChatMessage = {
   id: string;
   role: "user" | "assistant" | "system";
   content: string;
@@ -101,10 +101,10 @@ export interface ChatMessage {
     confidence?: number;
     clarificationNeeded?: boolean;
   };
-}
+};
 
 // Respec communication types
-export interface MASCommunicationResult {
+export type MASCommunicationResult = {
   success: boolean;
   message?: string;
   formUpdates?: FormUpdate[];
@@ -113,7 +113,7 @@ export interface MASCommunicationResult {
   fields?: FormUpdate[];
   newState?: string;
   error?: string;
-}
+};
 
 // Export type guards for runtime checking
 // const isFieldData = (value: unknown): value is FieldData => {

@@ -5,26 +5,16 @@
  * invokes AnthropicService, then persists the assistant response.
  */
 import type {
-  AnthropicMessageRequest,
+  AnthropicMessage,
   AnthropicMessageResponse,
-} from "./AnthropicService";
+} from "../types/anthropic.types";
+import type {
+  ThreadedMessageRequest,
+  ThreadedMessageResult,
+} from "../types/conversation.types";
 import type { SessionMessage } from "../types/service.types";
 import type { SessionStore } from "./interfaces/SessionStore";
 import { AnthropicService } from "./AnthropicService";
-
-export type ThreadedMessageRequest = Omit<
-  AnthropicMessageRequest,
-  "messages"
-> & {
-  sessionId: string;
-  message: string;
-  maxTurns?: number;
-};
-
-export type ThreadedMessageResult = {
-  response: AnthropicMessageResponse;
-  assistantText: string;
-};
 
 const DEFAULT_MAX_TURNS = 12;
 
@@ -32,12 +22,15 @@ export class ConversationService {
   private anthropicService: AnthropicService;
   private sessionStore: SessionStore;
 
-  constructor(anthropicService: AnthropicService, sessionStore: SessionStore) {
+  public constructor(
+    anthropicService: AnthropicService,
+    sessionStore: SessionStore,
+  ) {
     this.anthropicService = anthropicService;
     this.sessionStore = sessionStore;
   }
 
-  async sendThreaded(
+  public async sendThreaded(
     request: ThreadedMessageRequest,
   ): Promise<ThreadedMessageResult> {
     const history = await this.sessionStore.getHistory(request.sessionId);
@@ -61,13 +54,12 @@ export class ConversationService {
     });
 
     const assistantText = this.extractText(response);
-    if (assistantText) {
+    if (assistantText)
       await this.sessionStore.append(request.sessionId, {
         role: "assistant",
         content: assistantText,
         timestamp: new Date().toISOString(),
       });
-    }
 
     await this.sessionStore.trim(
       request.sessionId,
@@ -77,10 +69,7 @@ export class ConversationService {
     return { response, assistantText };
   }
 
-  private toAnthropicMessage(message: SessionMessage): {
-    role: "user" | "assistant";
-    content: string;
-  } {
+  private toAnthropicMessage(message: SessionMessage): AnthropicMessage {
     return {
       role: message.role,
       content: message.content,

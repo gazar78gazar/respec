@@ -9,29 +9,24 @@
 import {
   UCDataset,
   UCSpecification,
-  UCComment,
   UCExclusion,
-  // UCSpecificationDependency,
   UCUIField,
   UCMetadata,
+  UCNode,
 } from "../types/uc-data.types";
 import type { Maybe } from "../types/service.types";
 import ucDatasetJson from "../config/uc_8.0_2.2.json";
-
-type UCNode = UCSpecification | UCComment;
 
 export class UCDataLayer {
   private dataset: Maybe<UCDataset> = null;
 
   // ============= INITIALIZATION =============
 
-  async load(datasetOverride?: UCDataset): Promise<void> {
+  public async load(datasetOverride?: UCDataset): Promise<void> {
     console.log(`[UCDataLayer] 📂 Loading dataset version`);
     this.dataset = datasetOverride || (ucDatasetJson as unknown as UCDataset);
 
-    if (!this.dataset) {
-      throw new Error("Failed to load UC8 dataset");
-    }
+    if (!this.dataset) throw new Error("Failed to load UC8 dataset");
 
     console.log(`[UCDataLayer] ✅ Loaded:`, {
       specifications: Object.keys(this.dataset.specifications || {}).length,
@@ -40,7 +35,7 @@ export class UCDataLayer {
     });
   }
 
-  isLoaded(): boolean {
+  public isLoaded(): boolean {
     return !!this.dataset;
   }
 
@@ -50,26 +45,24 @@ export class UCDataLayer {
    * Get any node by ID (auto-detects type from ID prefix)
    * P## = specification, C## = comment
    */
-  getNode(id: string): Maybe<UCNode> {
+  public getNode(id: string): Maybe<UCNode> {
     console.log(`[UCDataLayer] 🔍 getNode(${id})`);
 
     const node =
       this.dataset!.specifications?.[id] || this.dataset!.comments?.[id];
 
-    if (node) {
+    if (node)
       console.log(
         `[UCDataLayer]   ✓ Found: ${node.name} (type: ${
           node.type || "unknown"
         })`,
       );
-    } else {
-      console.log(`[UCDataLayer]   ✗ Not found: ${id}`);
-    }
+    else console.log(`[UCDataLayer]   ✗ Not found: ${id}`);
 
     return node || null;
   }
 
-  getSpecification(id: string): Maybe<UCSpecification> {
+  public getSpecification(id: string): Maybe<UCSpecification> {
     console.log(
       `[UCDataLayer] 🔧 getSpecification(${id})`,
       this.dataset!.specifications?.[id],
@@ -78,7 +71,7 @@ export class UCDataLayer {
     return this.dataset!.specifications?.[id];
   }
 
-  getAllSpecifications(): UCSpecification[] {
+  public getAllSpecifications(): UCSpecification[] {
     console.log(
       `[UCDataLayer] 📦 getAllSpecifications()`,
       Object.values(this.dataset!.specifications || {}),
@@ -89,7 +82,7 @@ export class UCDataLayer {
   /**
    * Get all exclusions that involve a specific node
    */
-  getExclusionsForNode(nodeId: string): UCExclusion[] {
+  public getExclusionsForNode(nodeId: string): UCExclusion[] {
     console.log(`[UCDataLayer] ⚠️ getExclusionsForNode(${nodeId})`);
 
     const exclusions = Object.values(this.dataset!.exclusions || {}).filter(
@@ -109,7 +102,7 @@ export class UCDataLayer {
   /**
    * Check if two nodes have an exclusion between them
    */
-  hasExclusionBetween(nodeId1: string, nodeId2: string): boolean {
+  public hasExclusionBetween(nodeId1: string, nodeId2: string): boolean {
     const exclusions = Object.values(this.dataset!.exclusions || {});
 
     const found = exclusions.find(
@@ -117,11 +110,10 @@ export class UCDataLayer {
         e.nodes && e.nodes.includes(nodeId1) && e.nodes.includes(nodeId2),
     );
 
-    if (found) {
+    if (found)
       console.log(
         `[UCDataLayer]   🚫 EXCLUSION: ${nodeId1} ↔ ${nodeId2} (${found.type})`,
       );
-    }
 
     return !!found;
   }
@@ -132,7 +124,7 @@ export class UCDataLayer {
    * Get required nodes for a specification (UC8 format)
    * Returns flat array of all required node IDs
    */
-  getRequiredNodes(specId: string): string[] {
+  public getRequiredNodes(specId: string): string[] {
     console.log(`[UCDataLayer] 🔗 getRequiredNodes(${specId})`);
 
     const spec = this.getSpecification(specId);
@@ -160,7 +152,7 @@ export class UCDataLayer {
   /**
    * Get all specifications that map to a form field
    */
-  getSpecificationsForFormField(fieldName: string): UCSpecification[] {
+  public getSpecificationsForFormField(fieldName: string): UCSpecification[] {
     console.log(`[UCDataLayer] 📋 getSpecificationsForFormField(${fieldName})`);
 
     const specs = Object.values(this.dataset!.specifications || {}).filter(
@@ -173,14 +165,14 @@ export class UCDataLayer {
     return specs;
   }
 
-  getUiFieldByFieldName(fieldName: string): Maybe<UCUIField> {
+  public getUiFieldByFieldName(fieldName: string): Maybe<UCUIField> {
     return this.dataset!.ui_fields[fieldName];
   }
 
   /**
    * Get all UI field definitions (for building full form updates)
    */
-  getAllUiFields(): Record<string, UCUIField> {
+  public getAllUiFields(): Record<string, UCUIField> {
     return this.dataset?.ui_fields || {};
   }
 
@@ -192,7 +184,7 @@ export class UCDataLayer {
    * 1. Map to the given field
    * 2. Are NOT excluded by any currently selected nodes
    */
-  getValidOptionsForField(
+  public getValidOptionsForField(
     fieldName: string,
     currentSelections: string[],
   ): UCSpecification[] {
@@ -210,27 +202,22 @@ export class UCDataLayer {
       const isExcluded = currentSelections.some((selectedId) => {
         // CRITICAL FIX: Don't check if option excludes itself
         // This caused false conflicts like "P73 ↔ P73"
-        if (option.id === selectedId) {
-          return false;
-        }
+        if (option.id === selectedId) return false;
 
         return this.hasExclusionBetween(option.id, selectedId);
       });
 
-      if (isExcluded) {
-        console.log(`[UCDataLayer]     ✗ ${option.id} excluded`);
-      }
+      if (isExcluded) console.log(`[UCDataLayer]     ✗ ${option.id} excluded`);
 
       return !isExcluded;
     });
 
     console.log(`[UCDataLayer]   ✅ Valid options: ${validOptions.length}`);
 
-    if (validOptions.length === 0) {
+    if (validOptions.length === 0)
       console.log(
         `[UCDataLayer]   🚨 CONFLICT: No valid options left for "${fieldName}"!`,
       );
-    }
 
     return validOptions;
   }
@@ -240,7 +227,7 @@ export class UCDataLayer {
   /**
    * Get readable name for a node
    */
-  getNodeName(id: string): string {
+  public getNodeName(id: string): string {
     const node = this.getNode(id);
     return node?.name || id;
   }
@@ -248,7 +235,7 @@ export class UCDataLayer {
   /**
    * Get dataset metadata
    */
-  getMetadata(): Maybe<UCMetadata> {
+  public getMetadata(): Maybe<UCMetadata> {
     return this.dataset?.metadata || null;
   }
 }

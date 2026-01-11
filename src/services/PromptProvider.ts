@@ -7,7 +7,7 @@ import type { PromptKey, PromptProvider } from "./interfaces/PromptProvider";
 export class LocalPromptProvider implements PromptProvider {
   private promptMap: Record<PromptKey, string>;
 
-  constructor() {
+  public constructor() {
     const presalePrompt = [
       flowPrompt,
       domainPrompt,
@@ -23,7 +23,7 @@ export class LocalPromptProvider implements PromptProvider {
     };
   }
 
-  async getPrompt(key: PromptKey): Promise<string> {
+  public async getPrompt(key: PromptKey): Promise<string> {
     const prompt = this.promptMap[key];
     console.log(`[PromptProvider] prompt provided`, { key, prompt });
     return prompt;

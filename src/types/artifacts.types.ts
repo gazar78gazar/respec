@@ -13,19 +13,19 @@ import type { ConflictType, ResolutionOption } from "./conflicts.types";
 
 // ============= BASE INTERFACES =============
 
-export interface BaseArtifact {
+export type BaseArtifact = {
   id: string;
   timestamp: Date;
   version: string;
   metadata: ArtifactMetadata;
-}
+};
 
-export interface ArtifactMetadata {
+export type ArtifactMetadata = {
   totalNodes: number;
   lastModified: Date;
   source: Source;
   validationStatus: "valid" | "pending" | "invalid" | "conflicts";
-}
+};
 
 export type Source =
   | "user"
@@ -40,11 +40,11 @@ export type Source =
 
 export type SpecificationId = string;
 
-export interface SpecificationStore {
+export type SpecificationStore = {
   [specId: SpecificationId]: UCArtifactSpecification;
-}
+};
 
-export interface UCArtifactSpecification {
+export type UCArtifactSpecification = {
   id: SpecificationId;
   name: string;
   value: unknown;
@@ -56,62 +56,62 @@ export interface UCArtifactSpecification {
   substitutionNote?: string;
   timestamp: Date;
   dependencyOf?: SpecificationId;
-}
+};
 
-export interface DependencyContext {
+export type DependencyContext = {
   visited: Set<SpecificationId>;
   parentSpecId: SpecificationId;
   depth: number;
-}
+};
 
 // ============= RESPEC ARTIFACT =============
 
-export interface RespecArtifact extends BaseArtifact {
+export type RespecArtifact = BaseArtifact & {
   type: "respec";
   specifications: SpecificationStore;
   metadata: RespecMetadata;
-}
+};
 
-export interface RespecMetadata extends ArtifactMetadata {
+export type RespecMetadata = ArtifactMetadata & {
   completeness: number; // 0-100 percentage
   validationStatus: "valid"; // Respec is always valid (conflicts resolved)
   conflictsAllowed: false;
   userApproved: boolean;
   formSyncStatus: FormSyncStatus;
-}
+};
 
 export type FormSyncStatus = "synced" | "pending" | "diverged";
 
 // ============= MAPPED ARTIFACT =============
 
-export interface MappedArtifact extends BaseArtifact {
+export type MappedArtifact = BaseArtifact & {
   type: "mapped";
   specifications: SpecificationStore;
   metadata: MappedMetadata;
-}
+};
 
-export interface MappedMetadata extends ArtifactMetadata {
+export type MappedMetadata = ArtifactMetadata & {
   conflictsAllowed: true; // Mapped can have internal conflicts
   pendingValidation: string[]; // Node IDs awaiting validation
   processingQueue: ProcessingQueueItem[];
-}
+};
 
-export interface ProcessingQueueItem {
+export type ProcessingQueueItem = {
   nodeId: string;
   action: "validate" | "resolve_conflict" | "move_to_respec";
   priority: number;
   timestamp: Date;
-}
+};
 
 // ============= UNMAPPED LIST =============
 
-export interface UnmappedList extends BaseArtifact {
+export type UnmappedList = BaseArtifact & {
   type: "unmapped";
   items: UnmappedItem[];
   metadata: UnmappedMetadata;
-}
+};
 
-export interface UnmappedItem {
+export type UnmappedItem = {
   id: string;
   originalText: string;
   extractedValue?: unknown;
@@ -119,25 +119,25 @@ export interface UnmappedItem {
   timestamp: Date;
   attemptCount: number;
   lastAttempt: Date;
-}
+};
 
-export interface UnmappedMetadata extends ArtifactMetadata {
+export type UnmappedMetadata = ArtifactMetadata & {
   totalItems: number;
   retryableItems: number;
   customItems: number;
-}
+};
 
 // ============= CONFLICT LIST =============
 
-export interface ConflictList extends BaseArtifact {
+export type ConflictList = BaseArtifact & {
   type: "conflicts";
   active: ActiveConflict[];
   resolved: ResolvedConflict[];
   escalated: EscalatedConflict[];
   metadata: ConflictMetadata;
-}
+};
 
-export interface ActiveConflict {
+export type ActiveConflict = {
   id: string;
   affectedNodes: string[]; // Individual nodes, not full branches
   type: ConflictType;
@@ -149,56 +149,56 @@ export interface ActiveConflict {
   cycleCount: number;
   firstDetected: Date;
   lastUpdated: Date;
-}
+};
 
-export interface ResolvedConflict extends ActiveConflict {
+export type ResolvedConflict = ActiveConflict & {
   resolvedAt: Date;
   resolution: ResolutionOption;
   resolvedBy: "user" | "system" | "auto_cycle";
-}
+};
 
-export interface EscalatedConflict extends ActiveConflict {
+export type EscalatedConflict = ActiveConflict & {
   escalatedAt: Date;
   escalationReason: "max_cycles" | "complexity" | "user";
-}
+};
 
-export interface ConflictMetadata extends ArtifactMetadata {
+export type ConflictMetadata = ArtifactMetadata & {
   activeCount: number;
   resolvedCount: number;
   escalatedCount: number;
   systemBlocked: boolean;
   blockingConflicts: string[];
-}
+};
 
 // ============= PRIORITY QUEUE =============
 
-export interface PriorityQueueState {
+export type PriorityQueueState = {
   currentPriority: "CONFLICTS" | "CLEARING" | "PROCESSING";
   blocked: boolean;
   blockReason?: string;
   queue: PriorityItem[];
   conflictCycles: Map<string, number>; // nodeId -> cycle count
-}
+};
 
-export interface PriorityItem {
+export type PriorityItem = {
   type: "conflict" | "mapping" | "extraction" | "validation";
   priority: number;
   payload: unknown;
   timestamp: Date;
   blocked: boolean;
   dependencies?: string[];
-}
+};
 
 // ============= COMBINED APP STATE =============
 
-export interface ArtifactState {
+export type ArtifactState = {
   respec: RespecArtifact;
   mapped: MappedArtifact;
   unmapped: UnmappedList;
   conflicts: ConflictList;
   priorityQueue: PriorityQueueState;
   initialized: boolean;
-}
+};
 
 // ============= VALIDATION RESULTS =============
 

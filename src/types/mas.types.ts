@@ -18,11 +18,11 @@ export type MASAction =
   | "grant_override_permission"
   | "revoke_override_permission";
 
-interface FieldPayload extends RequirementField {
+type FieldPayload = RequirementField & {
   source?: "user" | "system";
-}
+};
 
-export interface PayloadMap {
+export type PayloadMap = {
   chat_message: { message: string };
   form_update: FieldPayload;
   trigger_autofill: { trigger: string };
@@ -39,8 +39,8 @@ export interface PayloadMap {
     grantedBy?: string;
   };
   revoke_override_permission: { section: string; field: string };
-}
+};
 
-export interface FieldPayloadData extends RequirementField {
+export type FieldPayloadData = RequirementField & {
   isSystemGenerated?: boolean;
-}
+};

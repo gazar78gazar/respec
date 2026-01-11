@@ -8,12 +8,20 @@ import { ArtifactManager } from "./ArtifactManager";
 import { ucDataLayer } from "./DataLayer";
 import type { ActiveConflict } from "../types/artifacts.types";
 import type {
+  FieldMapping,
+  FieldOptionsMap,
+  RespecFieldSnapshot,
+  RespecFieldSnapshotEntry,
+  RespecFormUpdateOptions,
+  RespecMatchSelection,
+  RespecSelectionMatch,
+} from "../types/respec.types";
+import type {
   AutofillResult,
   ChatResult,
   EnhancedFormUpdate,
   FormProcessingResult,
   FormUpdate,
-  Maybe,
   SessionMessage,
 } from "../types/service.types";
 import type {
@@ -22,7 +30,6 @@ import type {
   AgentAnalysisResult,
   AgentRequirement,
 } from "../types/semantic.types";
-import type { UCSpecification } from "../types/uc-data.types";
 
 /**
  * RespecService - Orchestrates chat processing and the refactored pipeline.
@@ -31,27 +38,13 @@ import type { UCSpecification } from "../types/uc-data.types";
  * UI-ready responses and form updates.
  */
 
-export interface FieldOptionsMap {
-  [section: string]: {
-    [field: string]: {
-      type: FieldDefinitionInput["type"];
-      options?: string[]; // For dropdown/multiselect
-      min?: number; // For number fields
-      max?: number; // For number fields
-      validation?: string; // Regex pattern for text
-      label?: string; // Human readable label
-    };
-  };
-}
-
 export class RespecService {
   private isInitialized = false;
   private anthropicService: AnthropicService;
   private preSaleEngineer: PreSaleEngineer;
   private promptProvider: LocalPromptProvider;
   private sessionStore: SessionStore;
-  private fieldMappings: Map<string, { section: string; field: string }> =
-    new Map();
+  private fieldMappings: Map<string, FieldMapping> = new Map();
   private fieldOptionsMap: FieldOptionsMap = {};
 
   // Core services for conflict detection and resolution
@@ -88,7 +81,7 @@ export class RespecService {
     },
   };
 
-  constructor() {
+  public constructor() {
     this.anthropicService = new AnthropicService();
     this.promptProvider = new LocalPromptProvider();
     this.sessionStore = new LocalSessionStore();
@@ -99,7 +92,7 @@ export class RespecService {
     );
   }
 
-  async initialize(fieldDefinitions?: FieldDefinitions): Promise<void> {
+  public async initialize(fieldDefinitions?: FieldDefinitions): Promise<void> {
     if (this.isInitialized) {
       console.log("!!! [Respec] Already initialized");
       return;
@@ -138,7 +131,7 @@ export class RespecService {
     console.log("!!! [Respec] Initialization complete");
   }
 
-  setArtifactManager(artifactManager: ArtifactManager): void {
+  public setArtifactManager(artifactManager: ArtifactManager): void {
     this.artifactManager = artifactManager;
   }
 
@@ -219,13 +212,11 @@ export class RespecService {
     const mappingsBySection: Record<string, string[]> = {};
 
     this.fieldMappings.forEach((mapping, _name) => {
-      if (!mappingsBySection[mapping.section]) {
+      if (!mappingsBySection[mapping.section])
         mappingsBySection[mapping.section] = [];
-      }
       // Avoid duplicates
-      if (!mappingsBySection[mapping.section].includes(mapping.field)) {
+      if (!mappingsBySection[mapping.section].includes(mapping.field))
         mappingsBySection[mapping.section].push(mapping.field);
-      }
     });
 
     return mappingsBySection;
@@ -239,9 +230,7 @@ export class RespecService {
     this.fieldMappings.forEach((mapping, name) => {
       if (messageLower.includes(name.toLowerCase())) {
         const fieldPath = `${mapping.section}.${mapping.field}`;
-        if (!relevantFields.includes(fieldPath)) {
-          relevantFields.push(fieldPath);
-        }
+        if (!relevantFields.includes(fieldPath)) relevantFields.push(fieldPath);
       }
     });
 
@@ -268,13 +257,10 @@ export class RespecService {
     };
 
     Object.entries(commonFieldPatterns).forEach(([keyword, fields]) => {
-      if (messageLower.includes(keyword)) {
+      if (messageLower.includes(keyword))
         fields.forEach((field) => {
-          if (!relevantFields.includes(field)) {
-            relevantFields.push(field);
-          }
+          if (!relevantFields.includes(field)) relevantFields.push(field);
         });
-      }
     });
 
     return relevantFields;
@@ -302,18 +288,15 @@ export class RespecService {
               ", ",
             )}]\n`;
             prompt += `  Instruction: Select the closest matching option from the available list. If substituting, explain why in substitutionNote.\n`;
-          } else if (fieldOptions.type === "number") {
-            if (
-              fieldOptions.min !== undefined ||
-              fieldOptions.max !== undefined
-            ) {
-              prompt += `  Range: ${fieldOptions.min || "no minimum"} to ${
-                fieldOptions.max || "no maximum"
-              }\n`;
-            }
-          } else if (fieldOptions.validation) {
+          } else if (
+            fieldOptions.type === "number" &&
+            (fieldOptions.min !== undefined || fieldOptions.max !== undefined)
+          )
+            prompt += `  Range: ${fieldOptions.min || "no minimum"} to ${
+              fieldOptions.max || "no maximum"
+            }\n`;
+          else if (fieldOptions.type !== "number" && fieldOptions.validation)
             prompt += `  Validation pattern: ${fieldOptions.validation}\n`;
-          }
         }
       });
 
@@ -329,28 +312,8 @@ export class RespecService {
     return prompt;
   }
 
-  private getRespecFieldSnapshot(): Map<
-    string,
-    {
-      specId: string;
-      value: Maybe<string | number | boolean | string[]>;
-      isAssumption: boolean;
-      confidence: number;
-      originalRequest?: string;
-      substitutionNote?: string;
-    }
-  > {
-    const snapshot = new Map<
-      string,
-      {
-        specId: string;
-        value: Maybe<string | number | boolean | string[]>;
-        isAssumption: boolean;
-        confidence: number;
-        originalRequest?: string;
-        substitutionNote?: string;
-      }
-    >();
+  private getRespecFieldSnapshot(): RespecFieldSnapshot {
+    const snapshot: RespecFieldSnapshot = new Map();
 
     if (!this.artifactManager) return snapshot;
     if (!ucDataLayer.isLoaded()) return snapshot;
@@ -364,9 +327,8 @@ export class RespecService {
       if (!fieldName) return;
 
       const existing = bestByField.get(fieldName);
-      if (!existing || (spec.confidence || 0) > (existing.confidence || 0)) {
+      if (!existing || (spec.confidence || 0) > (existing.confidence || 0))
         bestByField.set(fieldName, spec);
-      }
     });
 
     bestByField.forEach((spec, fieldName) => {
@@ -377,14 +339,15 @@ export class RespecService {
         fullSpec?.name ??
         null;
 
-      snapshot.set(fieldName, {
+      const entry: RespecFieldSnapshotEntry = {
         specId: spec.id,
         value: selectedValue,
         isAssumption: spec.attribution === "assumption",
         confidence: spec.confidence || 1,
         originalRequest: spec.originalRequest,
         substitutionNote: spec.substitutionNote,
-      });
+      };
+      snapshot.set(fieldName, entry);
     });
 
     return snapshot;
@@ -400,28 +363,8 @@ export class RespecService {
   }
 
   private buildRespecDeltaUpdates(
-    before: Map<
-      string,
-      {
-        specId: string;
-        value: Maybe<string | number | boolean | string[]>;
-        isAssumption: boolean;
-        confidence: number;
-        originalRequest?: string;
-        substitutionNote?: string;
-      }
-    >,
-    after: Map<
-      string,
-      {
-        specId: string;
-        value: Maybe<string | number | boolean | string[]>;
-        isAssumption: boolean;
-        confidence: number;
-        originalRequest?: string;
-        substitutionNote?: string;
-      }
-    >,
+    before: RespecFieldSnapshot,
+    after: RespecFieldSnapshot,
   ): EnhancedFormUpdate[] {
     const updates: EnhancedFormUpdate[] = [];
 
@@ -438,9 +381,8 @@ export class RespecService {
       if (
         this.valuesEqual(beforeValue, afterValue) &&
         beforeAssumption === afterAssumption
-      ) {
+      )
         return;
-      }
 
       const uiField = ucDataLayer.getUiFieldByFieldName(fieldName);
       if (!uiField) return;
@@ -479,17 +421,15 @@ export class RespecService {
       normalized === "option a" ||
       normalized === "first" ||
       normalized === "first one"
-    ) {
+    )
       return "a";
-    }
     if (
       normalized === "b" ||
       normalized === "option b" ||
       normalized === "second" ||
       normalized === "second one"
-    ) {
+    )
       return "b";
-    }
     return null;
   }
 
@@ -509,44 +449,38 @@ export class RespecService {
     message: string,
     conflict: ActiveConflict,
   ): Promise<ChatResult> {
-    if (!this.artifactManager) {
+    if (!this.artifactManager)
       return {
         success: false,
         systemMessage: "Conflict handling is unavailable.",
         formUpdates: [],
         confidence: 0,
       };
-    }
 
     const directChoice = this.parseConflictChoice(message);
     const choice =
       directChoice ||
       (await this.preSaleEngineer.interpretConflictChoice(message, conflict));
 
-    if (!choice) {
-      return this.buildConflictResult(conflict);
-    }
+    if (!choice) return this.buildConflictResult(conflict);
 
     const respecSnapshotBefore = this.getRespecFieldSnapshot();
     await this.artifactManager.applyConflictChoice(conflict.id, choice);
 
     const nextConflict = this.artifactManager.getPendingConflict();
-    if (nextConflict) {
-      return this.buildConflictResult(nextConflict);
-    }
+    if (nextConflict) return this.buildConflictResult(nextConflict);
 
     const respecSnapshotAfter = this.getRespecFieldSnapshot();
     const respecDeltaUpdates = this.buildRespecDeltaUpdates(
       respecSnapshotBefore,
       respecSnapshotAfter,
     );
-    if (respecDeltaUpdates.length > 0) {
+    if (respecDeltaUpdates.length > 0)
       console.log(
         "!!! [Respec] ?? Using respec updates for",
         respecDeltaUpdates.length,
         "fields",
       );
-    }
     const updates =
       respecDeltaUpdates.length > 0
         ? respecDeltaUpdates
@@ -562,10 +496,8 @@ export class RespecService {
     };
   }
 
-  async processChatMessage(message: string): Promise<ChatResult> {
-    if (!this.isInitialized) {
-      await this.initialize();
-    }
+  public async processChatMessage(message: string): Promise<ChatResult> {
+    if (!this.isInitialized) await this.initialize();
 
     console.log(`!!! [Respec] Processing: "${message}"`);
 
@@ -574,37 +506,6 @@ export class RespecService {
       console.log("!!! [Respec] Conflict pending - resolving");
       return this.handleConflictResponse(message, pendingConflict);
     }
-
-    // Check for active conflicts FIRST - if yes, route to conflict resolution
-    // const conflictStatus = this.getActiveConflictsForAgent();
-
-    // if (conflictStatus.hasConflicts && this.artifactManager) {
-    //   console.log(`!!! [Respec] 🎯 Conflict resolution mode - routing to agent`);
-
-    //   // Use PreSaleEngineer to handle conflict resolution (parse A/B, resolve, confirm)
-    //   const resolutionResult =
-    //     await this.preSaleEngineer.handleConflictResolution(
-    //       message,
-    //       conflictStatus,
-    //       this.artifactManager,
-    //     );
-
-    //   const formUpdates =
-    //     resolutionResult.mode === "resolution_success"
-    //       ? this.artifactManager.generateFormUpdatesFromRespec()
-    //       : [];
-
-    //   return {
-    //     success: true,
-    //     systemMessage: resolutionResult.response,
-    //     formUpdates,
-    //     confidence:
-    //       formUpdates.length > 0
-    //         ? formUpdates.reduce((sum, u) => sum + u.confidence, 0) /
-    //           formUpdates.length
-    //         : 1.0,
-    //   };
-    // }
 
     try {
       // New flow with agent extraction
@@ -627,9 +528,7 @@ export class RespecService {
       const respecSnapshotBefore = this.getRespecFieldSnapshot();
       await this.syncSelectionsToArtifacts(agentResult.requirements);
       const conflictAfterSync = this.artifactManager?.getPendingConflict();
-      if (conflictAfterSync) {
-        return this.buildConflictResult(conflictAfterSync);
-      }
+      if (conflictAfterSync) return this.buildConflictResult(conflictAfterSync);
       console.log(
         `!!! [Respec] ✅ Agent extracted:`,
         agentResult.requirements.length,
@@ -656,13 +555,12 @@ export class RespecService {
         respecSnapshotBefore,
         respecSnapshotAfter,
       );
-      if (respecDeltaUpdates.length > 0) {
+      if (respecDeltaUpdates.length > 0)
         console.log(
           "!!! [Respec] ?? Using respec updates for",
           respecDeltaUpdates.length,
           "fields",
         );
-      }
       const finalUpdates =
         respecDeltaUpdates.length > 0 ? respecDeltaUpdates : formUpdates;
 
@@ -688,127 +586,11 @@ export class RespecService {
     }
   }
 
-  /**
-   * Get active conflicts formatted for agent consumption
-   * Returns structured conflict data to agent for binary question generation
-   * Enhanced with priority queue (one conflict at a time)
-   */
-  // getActiveConflictsForAgent(): StructuredConflicts {
-  //   if (!this.artifactManager) {
-  //     return {
-  //       hasConflicts: false,
-  //       count: 0,
-  //       currentConflict: 0,
-  //       totalConflicts: 0,
-  //       systemBlocked: false,
-  //       conflicts: [],
-  //     };
-  //   }
-
-  //   const state = this.artifactManager.getState();
-  //   let activeConflicts = state.conflicts.active;
-
-  //   if (activeConflicts.length === 0) {
-  //     return {
-  //       hasConflicts: false,
-  //       count: 0,
-  //       currentConflict: 0,
-  //       totalConflicts: 0,
-  //       systemBlocked: false,
-  //       conflicts: [],
-  //     };
-  //   }
-
-  //   // Sort by priority
-  //   const priorityOrder: Record<string, number> = {
-  //     exclusion: 1,
-  //     field_overwrite: 2,
-  //     cascade: 3,
-  //     field_constraint: 3,
-  //   };
-
-  //   activeConflicts = [...activeConflicts].sort((a, b) => {
-  //     const priorityA = priorityOrder[a.type as string] || 99;
-  //     const priorityB = priorityOrder[b.type as string] || 99;
-  //     return priorityA - priorityB;
-  //   });
-
-  //   // Return ALL conflicts (agent will aggregate into one question)
-  //   const structuredConflicts = activeConflicts.map((conflict) => ({
-  //     id: conflict.id,
-  //     type: conflict.type,
-  //     description: conflict.description,
-  //     affectedNodes: conflict.affectedNodes.map((nodeId) => ({
-  //       id: nodeId,
-  //       ...this.getNodeDetails(nodeId),
-  //     })),
-  //     resolutionOptions: conflict.resolutionOptions.map((option) => ({
-  //       id: option.id,
-  //       label: option.description,
-  //       outcome: option.expectedOutcome,
-  //     })),
-  //     cycleCount: conflict.cycleCount,
-  //     priority: (conflict.type === "exclusion" ? "critical" : "high") as
-  //       | "critical"
-  //       | "high",
-  //   }));
-
-  //   console.log(
-  //     "[Conflicts] total",
-  //     structuredConflicts.length,
-  //     structuredConflicts,
-  //   );
-
-  //   return {
-  //     hasConflicts: true,
-  //     count: activeConflicts.length, // Total count for transparency
-  //     currentConflict: 1, // Currently handling first batch
-  //     totalConflicts: activeConflicts.length, // For progress indicators
-  //     systemBlocked: state.conflicts.metadata.systemBlocked,
-  //     conflicts: structuredConflicts, // ALL conflicts for agent aggregation
-  //   };
-  // }
-
-  // async generateConflictQuestion(
-  //   conflictStatus: StructuredConflicts,
-  // ): Promise<string> {
-  //   const question =
-  //     await this.preSaleEngineer.generateConflictQuestion(conflictStatus);
-  //   await this.recordAssistantMessage(question);
-  //   return question;
-  // }
-
-  /**
-   * Get node details for conflict display
-   * Helper for structuring conflict data
-   */
-  // private getNodeDetails(nodeId: string): {
-  //   name: string;
-  //   value?: unknown;
-  //   hierarchy?: { domain: string; requirement: string };
-  // } {
-  //   if (!this.artifactManager) return { name: nodeId };
-
-  //   const spec = this.artifactManager.findSpecificationInArtifact(
-  //     "mapped",
-  //     nodeId,
-  //   );
-
-  //   return {
-  //     name: spec?.name || nodeId,
-  //     value: spec?.value,
-  //   };
-  // }
-
-  async processFormUpdate(
+  public async processFormUpdate(
     section: string,
     field: string,
     value: unknown,
-    options?: {
-      source?: "user" | "system";
-      skipAcknowledgment?: boolean;
-      isAssumption?: boolean;
-    },
+    options?: RespecFormUpdateOptions,
   ): Promise<FormProcessingResult> {
     console.log(`!!! [Respec] Form update: ${section}.${field} = ${value}`);
 
@@ -840,26 +622,20 @@ export class RespecService {
       if (!hasSelection) {
         this.artifactManager.clearFieldSelections(field);
         const conflict = this.artifactManager.getPendingConflict();
-        if (conflict) {
+        if (conflict)
           return {
             acknowledged: true,
             acknowledgment:
               this.artifactManager.buildConflictQuestion(conflict),
           };
-        }
         await this.artifactManager.moveNonConflictingToRespec();
         this.artifactManager.pruneToDependencyClosure?.();
       } else {
-        const matches: Array<{
-          spec: UCSpecification;
-          selection: unknown;
-        }> = [];
+        const matches: RespecMatchSelection[] = [];
         const seen = new Set<string>();
 
         selections.forEach((selection) => {
-          if (isEmptySelection(selection)) {
-            return;
-          }
+          if (isEmptySelection(selection)) return;
 
           const normalized = String(selection);
           const matchedSpec = specs.find(
@@ -874,7 +650,7 @@ export class RespecService {
           matches.push({ spec: matchedSpec, selection });
         });
 
-        for (const match of matches) {
+        for (const match of matches)
           await this.artifactManager.addSpecificationToMapped(
             match.spec,
             match.selection,
@@ -884,16 +660,14 @@ export class RespecService {
             undefined,
             attributionOverride,
           );
-        }
 
         const conflict = this.artifactManager.getPendingConflict();
-        if (conflict) {
+        if (conflict)
           return {
             acknowledged: true,
             acknowledgment:
               this.artifactManager.buildConflictQuestion(conflict),
           };
-        }
 
         await this.artifactManager.moveNonConflictingToRespec();
         this.artifactManager.pruneToDependencyClosure?.();
@@ -904,18 +678,14 @@ export class RespecService {
         respecSnapshotBefore,
         respecSnapshotAfter,
       );
-      if (respecDeltaUpdates.length > 0) {
-        formUpdates = respecDeltaUpdates;
-      }
+      if (respecDeltaUpdates.length > 0) formUpdates = respecDeltaUpdates;
     }
 
     const acknowledgment = skipAcknowledgment
       ? undefined
       : this.generateFormAcknowledgment(section, field, value);
 
-    if (acknowledgment) {
-      await this.recordAssistantMessage(acknowledgment);
-    }
+    if (acknowledgment) await this.recordAssistantMessage(acknowledgment);
 
     return {
       acknowledged: true,
@@ -924,7 +694,7 @@ export class RespecService {
     };
   }
 
-  async triggerAutofill(trigger: string): Promise<AutofillResult> {
+  public async triggerAutofill(trigger: string): Promise<AutofillResult> {
     console.log(`!!! [Respec] Autofill triggered: ${trigger}`);
 
     // Determine context from conversation history
@@ -994,33 +764,15 @@ export class RespecService {
       contextMessages[context as keyof typeof contextMessages] ||
       contextMessages.generic;
 
-    if (trigger === "dont_know") {
+    if (trigger === "dont_know")
       message +=
         " You can modify any of these that don't fit your specific needs.";
-    } else if (trigger === "button_header") {
+    else if (trigger === "button_header")
       message +=
         " These are marked as assumptions - review and update as needed.";
-    }
 
     return message;
   }
-
-  /* DISABLED
-  private generateClarificationQuestion(analysis: any): string {
-    if (analysis.requirements.length === 0) {
-      return "Could you provide more specific details about your requirements? For example, how many inputs/outputs do you need?";
-    }
-
-    const questions = [
-      "Could you confirm the exact quantities you need?",
-      "What voltage levels are you working with?",
-      "Are there specific communication protocols required?",
-      "What's the intended application for this system?",
-    ];
-
-    return questions[Math.floor(Math.random() * questions.length)];
-  }
-  END DISABLED */
 
   private getFriendlyFieldName(section: string, field: string): string {
     const friendlyNames: Record<string, Record<string, string>> = {
@@ -1102,11 +854,7 @@ export class RespecService {
       return;
     }
 
-    const selections: Array<{
-      spec: AgentRequirement;
-      match: UCSpecification;
-      selection: unknown;
-    }> = [];
+    const selections: RespecSelectionMatch[] = [];
     const seen = new Set<string>();
 
     requirements.forEach((req) => {
@@ -1121,9 +869,8 @@ export class RespecService {
           selection === undefined ||
           selection === "" ||
           selection === "Not Required"
-        ) {
+        )
           return;
-        }
         const normalized = String(selection);
         const match = specs.find(
           (spec) =>
@@ -1158,8 +905,7 @@ export class RespecService {
       );
     }
 
-    if (!this.artifactManager.getPendingConflict()) {
+    if (!this.artifactManager.getPendingConflict())
       await this.artifactManager.moveNonConflictingToRespec();
-    }
   }
 }

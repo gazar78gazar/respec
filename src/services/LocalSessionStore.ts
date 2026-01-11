@@ -4,22 +4,21 @@
  * Persists conversation history per session for threaded LLM calls.
  */
 import type { SessionMessage } from "../types/service.types";
+import type { StoredSession } from "../types/session-store.types";
 import type { SessionStore } from "./interfaces/SessionStore";
-
-type StoredSession = {
-  history: SessionMessage[];
-  lastUpdated: string;
-};
 
 const STORAGE_PREFIX = "respec_session_";
 
 export class LocalSessionStore implements SessionStore {
-  async getHistory(sessionId: string): Promise<SessionMessage[]> {
+  public async getHistory(sessionId: string): Promise<SessionMessage[]> {
     const session = this.readSession(sessionId);
     return session?.history ?? [];
   }
 
-  async append(sessionId: string, message: SessionMessage): Promise<void> {
+  public async append(
+    sessionId: string,
+    message: SessionMessage,
+  ): Promise<void> {
     const session = this.readSession(sessionId) ?? {
       history: [],
       lastUpdated: new Date().toISOString(),
@@ -34,20 +33,18 @@ export class LocalSessionStore implements SessionStore {
     this.writeSession(sessionId, session);
   }
 
-  async clear(sessionId: string): Promise<void> {
+  public async clear(sessionId: string): Promise<void> {
     localStorage.removeItem(this.storageKey(sessionId));
   }
 
-  async trim(sessionId: string, maxTurns: number): Promise<void> {
+  public async trim(sessionId: string, maxTurns: number): Promise<void> {
     if (maxTurns <= 0) {
       await this.clear(sessionId);
       return;
     }
 
     const session = this.readSession(sessionId);
-    if (!session || session.history.length <= maxTurns) {
-      return;
-    }
+    if (!session || session.history.length <= maxTurns) return;
 
     session.history = session.history.slice(-maxTurns);
     session.lastUpdated = new Date().toISOString();

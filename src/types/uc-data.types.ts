@@ -2,7 +2,7 @@
  * TypeScript interfaces for UC v8.0 dataset
  */
 
-export interface UCMetadata {
+export type UCMetadata = {
   schema_version: string;
   dataset_version: string;
   description: string;
@@ -13,9 +13,9 @@ export interface UCMetadata {
     comments: string;
     exclusions: string;
   };
-}
+};
 
-export interface UCSpecification {
+export type UCSpecification = {
   id: string;
   type: "specification";
   name: string;
@@ -24,33 +24,33 @@ export interface UCSpecification {
   description?: string;
   technical_details?: Record<string, unknown>;
   selected_value?: string; // TODO zeev to be removed when all the ui is defined by the dataset
-}
+};
 
 type UCUIType = "dropdown" | "multi_select";
 export type UCSelectionType = "single_choice" | "multi_choice";
 
-export interface UCUIField {
+export type UCUIField = {
   section: string;
   category: string;
   field_name: string;
   ui_type: UCUIType;
   selection_type: UCSelectionType;
   options: string[];
-}
+};
 
-export interface UCSpecificationDependency {
+export type UCSpecificationDependency = {
   [category: string]: string[]; // OR within category, AND across
-}
+};
 
-export interface UCComment {
+export type UCComment = {
   id: string;
   type: "comment";
   name: string;
   content: string;
   technical_context?: Record<string, unknown>;
-}
+};
 
-export interface UCExclusion {
+export type UCExclusion = {
   id: string;
   nodes: [string, string]; // Pair-wise exclusion
   type:
@@ -61,12 +61,14 @@ export interface UCExclusion {
   reason: string;
   resolution_priority: 1 | 2 | 3 | 4; // 1 = highest (blocks form)
   question_template: string;
-}
+};
 
-export interface UCDataset {
+export type UCDataset = {
   metadata: UCMetadata;
   specifications: Record<string, UCSpecification>;
   comments: Record<string, UCComment>;
   exclusions: Record<string, UCExclusion>;
   ui_fields: Record<string, UCUIField>;
-}
+};
+
+export type UCNode = UCSpecification | UCComment;

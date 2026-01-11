@@ -9,41 +9,41 @@ import type {
   SessionMessage,
 } from "./service.types";
 
-export interface AgentRequirement extends RequirementField {
+export type AgentRequirement = RequirementField & {
   confidence: number;
   isAssumption: boolean;
   originalRequest?: string;
   substitutionNote?: string;
-}
+};
 
-export interface AgentAnalysisResult {
+export type AgentAnalysisResult = {
   requirements: AgentRequirement[];
   response: string;
   clarificationNeeded?: string;
-}
+};
 
-export interface AgentAnalysisContext {
+export type AgentAnalysisContext = {
   conversationHistory?: SessionMessage[];
   [key: string]: unknown;
-}
+};
 
-export interface ConflictResponseParseResult {
+export type ConflictResponseParseResult = {
   isResolution: boolean;
   choice: Maybe<"a" | "b">;
   confidence: number;
   rawResponse: string;
   reasoning?: string;
-}
+};
 
-export interface ConflictResolutionOutcome {
+export type ConflictResolutionOutcome = {
   response: string;
   mode: string;
   conflictId?: string;
   chosenOption?: EntryResolutionOption;
   cycleCount?: number;
-}
+};
 
-export interface FieldDefinitionInput {
+export type FieldDefinitionInput = {
   type: string;
   options?: string[];
   min?: number;
@@ -51,7 +51,7 @@ export interface FieldDefinitionInput {
   validation?: string;
   label?: string;
   group?: string;
-}
+};
 
 export type FieldDefinitions = Record<
   string,

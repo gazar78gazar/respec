@@ -10,7 +10,7 @@ export type ConflictType =
   | "cascade" // Dependencies cause overwrites
   | "field_constraint"; // Field has zero valid options
 
-interface GenericConflict {
+type GenericConflict = {
   id: string;
   key: string;
   description: string;
@@ -19,7 +19,7 @@ interface GenericConflict {
   affectedNodes: string[];
   firstDetected?: Date;
   lastUpdated?: Date;
-}
+};
 
 // export interface OverwriteConflict extends GenericConflict {
 //   type: "field_overwrite";
@@ -29,53 +29,53 @@ interface GenericConflict {
 //   resolutionOptions?: OverwriteResolutionOption[];
 // }
 
-export interface ExclusionConflict extends GenericConflict {
+export type ExclusionConflict = GenericConflict & {
   type: "exclusion";
   exclusionId: string;
   existingValue: string;
   proposedValue: string;
   resolutionOptions?: ExclusionResolutionOption[];
-}
+};
 
-export interface CascadeConflict extends GenericConflict {
+export type CascadeConflict = GenericConflict & {
   type: "cascade";
   proposedValue: string;
   resolutionOptions?: CascadeResolutionOption[];
-}
+};
 
-export interface ConstraintConflict extends GenericConflict {
+export type ConstraintConflict = GenericConflict & {
   type: "field_constraint";
   field: string;
   proposedValue: string;
   resolutionOptions?: ConstraintResolutionOption[];
-}
+};
 
 export type Conflict =
   // | OverwriteConflict
   ExclusionConflict | CascadeConflict | ConstraintConflict;
 
-interface GenericResolutionOption {
+type GenericResolutionOption = {
   id: string;
   description: string;
   targetNodes: string[];
   expectedOutcome: string;
-}
+};
 
-export interface ExclusionResolutionOption extends GenericResolutionOption {
+export type ExclusionResolutionOption = GenericResolutionOption & {
   action: "select_option_a" | "select_option_b";
-}
+};
 
-export interface OverwriteResolutionOption extends GenericResolutionOption {
+export type OverwriteResolutionOption = GenericResolutionOption & {
   action: "keep_existing" | "apply_new";
-}
+};
 
-export interface CascadeResolutionOption extends GenericResolutionOption {
+export type CascadeResolutionOption = GenericResolutionOption & {
   action: "keep_existing" | "apply_new";
-}
+};
 
-export interface ConstraintResolutionOption extends GenericResolutionOption {
+export type ConstraintResolutionOption = GenericResolutionOption & {
   action: "keep_existing" | "apply_new";
-}
+};
 
 export type ResolutionOption =
   | ExclusionResolutionOption
@@ -83,7 +83,7 @@ export type ResolutionOption =
   | CascadeResolutionOption
   | ConstraintResolutionOption;
 
-export interface ConflictResolution {
+export type ConflictResolution = {
   // Unused in refactored flow; resolution history is not wired to UI.
   conflictId: string;
   action: "keep_existing" | "apply_new";
@@ -91,9 +91,9 @@ export interface ConflictResolution {
   nodeToAdd?: string;
   userChoice: string;
   timestamp: Date;
-}
+};
 
-export interface ConflictResult {
+export type ConflictResult = {
   hasConflict: boolean;
   conflicts: Conflict[];
-}
+};
