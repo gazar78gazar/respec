@@ -9,3 +9,9 @@ node_modules
 *api-key*
 *API_KEY*nul 
 nul 
+
+.ai
+.ai/*
+
+coverage
+coverage/*

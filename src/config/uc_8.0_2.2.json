@@ -1,0 +1,1610 @@
+{
+  "metadata": {
+    "schema_version": "8.0",
+    "dataset_version": "2.2",
+    "description": "UC dataset with coded IDs and pair-wise exclusions - FIXED VERSION",
+    "created_at": "2025-01-30",
+    "updated_at": "2025-01-30",
+    "id_format": {
+      "specifications": "P##",
+      "comments": "C##",
+      "exclusions": "E_XX_###"
+    }
+  },
+  "specifications": {
+    "P01": {
+      "id": "P01",
+      "type": "specification",
+      "name": "Intel Atom Processor",
+      "selected_value": "Entry (Intel Atom)",
+      "description": "Low-power processor for battery operation",
+      "requires": {
+        "storageCapacity": ["P08"],
+        "coolingMethod": ["P57"]
+      },
+      "field_name": "processorType"
+    },
+    "P02": {
+      "id": "P02",
+      "type": "specification",
+      "name": "Intel Core i3 Processor",
+      "selected_value": "Standard (Intel Core i3)",
+      "description": "Entry-level processor for basic tasks",
+      "requires": {
+        "memoryCapacity": ["P05", "P06"],
+        "storageCapacity": ["P08", "P09"]
+      },
+      "field_name": "processorType"
+    },
+    "P03": {
+      "id": "P03",
+      "type": "specification",
+      "name": "Intel Core i5 Processor",
+      "selected_value": "Performance (Intel Core i5)",
+      "description": "Standard industrial processor",
+      "requires": {
+        "memoryCapacity": ["P06", "P07"],
+        "storageCapacity": ["P09", "P10"]
+      },
+      "field_name": "processorType"
+    },
+    "P04": {
+      "id": "P04",
+      "type": "specification",
+      "name": "Intel Core i7 Processor",
+      "selected_value": "Premium (Intel Core i7)",
+      "description": "High-performance processor",
+      "requires": {
+        "memoryCapacity": ["P07"],
+        "storageCapacity": ["P10"],
+        "coolingMethod": ["P58"]
+      },
+      "field_name": "processorType"
+    },
+    "P05": {
+      "id": "P05",
+      "type": "specification",
+      "name": "8GB RAM",
+      "selected_value": "8GB",
+      "description": "Basic memory capacity",
+      "field_name": "memoryCapacity"
+    },
+    "P06": {
+      "id": "P06",
+      "type": "specification",
+      "name": "16GB RAM",
+      "selected_value": "16GB",
+      "description": "Standard memory capacity",
+      "field_name": "memoryCapacity"
+    },
+    "P07": {
+      "id": "P07",
+      "type": "specification",
+      "name": "32GB RAM",
+      "selected_value": "32GB",
+      "description": "High memory capacity",
+      "field_name": "memoryCapacity"
+    },
+    "P08": {
+      "id": "P08",
+      "type": "specification",
+      "name": "256GB Storage",
+      "selected_value": "256GB",
+      "description": "Basic storage capacity",
+      "field_name": "storageCapacity"
+    },
+    "P09": {
+      "id": "P09",
+      "type": "specification",
+      "name": "512GB Storage",
+      "selected_value": "512GB",
+      "description": "Standard industrial storage",
+      "field_name": "storageCapacity"
+    },
+    "P10": {
+      "id": "P10",
+      "type": "specification",
+      "name": "1TB Storage",
+      "selected_value": "1TB",
+      "description": "Large storage for data logging",
+      "field_name": "storageCapacity"
+    },
+    "P11": {
+      "id": "P11",
+      "type": "specification",
+      "name": "RAID Storage",
+      "selected_value": "NVMe",
+      "description": "Redundant storage for data integrity with RAID configuration",
+      "requires": {
+        "powerInput": ["P13"]
+      },
+      "field_name": "storageType"
+    },
+    "P12": {
+      "id": "P12",
+      "type": "specification",
+      "name": "Under 20W Power",
+      "selected_value": "10-20W",
+      "description": "Low power consumption for battery operation",
+      "requires": {
+        "processorType": ["P01"],
+        "coolingMethod": ["P57"]
+      },
+      "field_name": "maxPowerConsumption"
+    },
+    "P13": {
+      "id": "P13",
+      "type": "specification",
+      "name": "Redundant Power Supply",
+      "selected_value": "Dual",
+      "description": "Dual power inputs for high availability",
+      "field_name": "redundantPower"
+    },
+    "P14": {
+      "id": "P14",
+      "type": "specification",
+      "name": "Extended Temperature",
+      "selected_value": "-40° to 70°",
+      "description": "Wide temperature range for outdoor installations",
+      "field_name": "operatingTemperature"
+    },
+    "P15": {
+      "id": "P15",
+      "type": "specification",
+      "name": "Extreme Temperature",
+      "selected_value": "-40° to 70°",
+      "description": "Extreme temperature range for harsh environments",
+      "requires": {
+        "coolingMethod": ["P57"],
+        "ingressProtection": ["P18"]
+      },
+      "field_name": "operatingTemperature"
+    },
+    "P17": {
+      "id": "P17",
+      "type": "specification",
+      "name": "IP54 Protection",
+      "selected_value": "IP54 (Dust/Splash)",
+      "description": "Industrial dust and splash protection",
+      "field_name": "ingressProtection"
+    },
+    "P18": {
+      "id": "P18",
+      "type": "specification",
+      "name": "IP65 Protection",
+      "selected_value": "IP65 (Dust/Water Jets)",
+      "description": "Complete dust protection and water jet resistance",
+      "requires": {
+        "coolingMethod": ["P57"]
+      },
+      "field_name": "ingressProtection"
+    },
+    "P19": {
+      "id": "P19",
+      "type": "specification",
+      "name": "IP69K Protection",
+      "selected_value": "IP69K (High Pressure)",
+      "description": "High-pressure washdown protection",
+      "requires": {
+        "coolingMethod": ["P57"]
+      },
+      "field_name": "ingressProtection"
+    },
+    "P20": {
+      "id": "P20",
+      "type": "specification",
+      "name": "DIN Rail Mount",
+      "selected_value": "DIN Rail",
+      "description": "Standard DIN rail mounting",
+      "field_name": "mountingType"
+    },
+    "P21": {
+      "id": "P21",
+      "type": "specification",
+      "name": "Panel Mount with Touch",
+      "selected_value": "Panel/Wall Mount",
+      "description": "Panel mount with integrated touchscreen",
+      "field_name": "mountingType"
+    },
+    "P22": {
+      "id": "P22",
+      "type": "specification",
+      "name": "Modbus TCP Protocol",
+      "selected_value": "Modbus TCP",
+      "description": "Modbus TCP ethernet protocol",
+      "requires": {
+        "network_ports": ["P35", "P78"]
+      },
+      "field_name": "ethernetProtocols"
+    },
+    "P23": {
+      "id": "P23",
+      "type": "specification",
+      "name": "Modbus RTU Protocol",
+      "selected_value": "Modbus RTU",
+      "description": "Modbus RTU serial protocol",
+      "field_name": "serialProtocols"
+    },
+    "P24": {
+      "id": "P24",
+      "type": "specification",
+      "name": "OPC UA Protocol",
+      "selected_value": "OPC UA",
+      "description": "OPC UA protocol for industrial connectivity",
+      "requires": {
+        "network_ports": ["P35", "P78"]
+      },
+      "field_name": "ethernetProtocols"
+    },
+    "P25": {
+      "id": "P25",
+      "type": "specification",
+      "name": "MQTT Protocol",
+      "selected_value": "MQTT",
+      "description": "MQTT protocol for IoT messaging",
+      "requires": {
+        "network_ports": ["P35", "P78"]
+      },
+      "field_name": "ethernetProtocols"
+    },
+    "P26": {
+      "id": "P26",
+      "type": "specification",
+      "name": "Ethernet/IP Protocol",
+      "selected_value": "Ethernet/IP",
+      "description": "Ethernet/IP protocol support",
+      "requires": {
+        "network_ports": ["P35", "P78"]
+      },
+      "field_name": "ethernetProtocols"
+    },
+    "P27": {
+      "id": "P27",
+      "type": "specification",
+      "name": "PROFINET Protocol",
+      "selected_value": "PROFINET",
+      "description": "PROFINET industrial ethernet protocol",
+      "requires": {
+        "network_ports": ["P35", "P78"]
+      },
+      "field_name": "ethernetProtocols"
+    },
+    "P29": {
+      "id": "P29",
+      "type": "specification",
+      "name": "EtherCAT Protocol",
+      "selected_value": "EtherCAT",
+      "description": "EtherCAT real-time ethernet protocol",
+      "requires": {
+        "processorType": ["P03", "P04"],
+        "responseLatency": ["P50"],
+        "network_ports": ["P35", "P78"]
+      },
+      "field_name": "ethernetProtocols"
+    },
+    "P30": {
+      "id": "P30",
+      "type": "specification",
+      "name": "DNP3 Protocol",
+      "selected_value": "DNP3",
+      "description": "DNP3 protocol for SCADA systems",
+      "requires": {
+        "network_ports": ["P35", "P78"]
+      },
+      "field_name": "utilityProtocols"
+    },
+    "P31": {
+      "id": "P31",
+      "type": "specification",
+      "name": "IEC 61850 Protocol",
+      "selected_value": "IEC 61850",
+      "description": "IEC 61850 substation automation protocol",
+      "requires": {
+        "network_ports": ["P35", "P78"]
+      },
+      "field_name": "utilityProtocols"
+    },
+    "P32": {
+      "id": "P32",
+      "type": "specification",
+      "name": "BACnet MS/TP",
+      "selected_value": "BACnet MS/TP",
+      "description": "BACnet MS/TP serial protocol",
+      "field_name": "serialProtocols"
+    },
+    "P33": {
+      "id": "P33",
+      "type": "specification",
+      "name": "BACnet/IP",
+      "selected_value": "BACnet/IP",
+      "description": "BACnet/IP protocol support",
+      "requires": {
+        "network_ports": ["P35", "P78"]
+      },
+      "field_name": "ethernetProtocols"
+    },
+    "P35": {
+      "id": "P35",
+      "type": "specification",
+      "name": "Quad Ethernet Ports",
+      "selected_value": "4",
+      "description": "Four isolated ethernet ports",
+      "requires": {
+        "memoryCapacity": ["P06"]
+      },
+      "field_name": "networkPorts"
+    },
+    "P36": {
+      "id": "P36",
+      "type": "specification",
+      "name": "16-Channel Analog I/O",
+      "selected_value": "16",
+      "description": "16 analog input channels",
+      "requires": {
+        "memoryCapacity": ["P06"]
+      },
+      "field_name": "analogIO"
+    },
+    "P38": {
+      "id": "P38",
+      "type": "specification",
+      "name": "16-Channel Digital I/O",
+      "selected_value": "16",
+      "description": "16 digital I/O channels",
+      "field_name": "digitalIO"
+    },
+    "P40": {
+      "id": "P40",
+      "type": "specification",
+      "name": "100kHz Analog Sampling",
+      "selected_value": "100 kHz",
+      "description": "High-speed analog sampling for vibration",
+      "requires": {
+        "processorType": ["P03", "P04"],
+        "storageCapacity": ["P09", "P10"],
+        "analogIO": ["P36", "P70", "P71"]
+      },
+      "field_name": "samplingRate"
+    },
+    "P43": {
+      "id": "P43",
+      "type": "specification",
+      "name": "2x USB3 Ports",
+      "selected_value": "2",
+      "description": "Two USB3 ports for cameras",
+      "requires": {
+        "memoryCapacity": ["P06", "P07"]
+      },
+      "field_name": "usbPorts"
+    },
+    "P44": {
+      "id": "P44",
+      "type": "specification",
+      "name": "4G LTE Modem",
+      "selected_value": "LTE",
+      "description": "4G LTE cellular modem",
+      "field_name": "wirelessExtension"
+    },
+    "P45": {
+      "id": "P45",
+      "type": "specification",
+      "name": "1 Gbps Ethernet Speed",
+      "selected_value": "1 Gbps",
+      "description": "Gigabit ethernet for standard industrial applications",
+      "field_name": "ethernetSpeed"
+    },
+    "P46": {
+      "id": "P46",
+      "type": "specification",
+      "name": "10 Gbps Ethernet Speed",
+      "selected_value": "10 Gbps",
+      "description": "10 Gigabit ethernet for high-speed data transfer",
+      "requires": {
+        "processorType": ["P03", "P04"],
+        "memoryCapacity": ["P07"],
+        "storageCapacity": ["P10"]
+      },
+      "field_name": "ethernetSpeed"
+    },
+    "P48": {
+      "id": "P48",
+      "type": "specification",
+      "name": "TSN Support",
+      "selected_value": "TSN (Time-Sensitive Networking)",
+      "description": "Time-Sensitive Networking for deterministic communication",
+      "requires": {
+        "processorType": ["P03", "P04"],
+        "responseLatency": ["P50"]
+      },
+      "field_name": "deterministicFeatures"
+    },
+    "P49": {
+      "id": "P49",
+      "type": "specification",
+      "name": "IEEE 1588 PTP",
+      "selected_value": "IEEE 1588 PTP",
+      "description": "Precision Time Protocol for sub-microsecond synchronization",
+      "requires": {
+        "processorType": ["P03", "P04"],
+        "responseLatency": ["P50"]
+      },
+      "field_name": "deterministicFeatures"
+    },
+    "P50": {
+      "id": "P50",
+      "type": "specification",
+      "name": "Real-time Latency (<10ms)",
+      "selected_value": "Standard Real-Time (<10ms)",
+      "description": "Real-time response for industrial control",
+      "field_name": "responseLatency"
+    },
+    "P51": {
+      "id": "P51",
+      "type": "specification",
+      "name": "Windows 11 IoT Enterprise",
+      "selected_value": "Windows 11 IoT",
+      "description": "Windows 11 IoT for industrial applications",
+      "field_name": "operatingSystem"
+    },
+    "P52": {
+      "id": "P52",
+      "type": "specification",
+      "name": "Ubuntu 22.04 LTS",
+      "selected_value": "Ubuntu 22.04 LTS",
+      "description": "Ubuntu LTS for long-term support",
+      "field_name": "operatingSystem"
+    },
+    "P57": {
+      "id": "P57",
+      "type": "specification",
+      "name": "Fanless Cooling",
+      "selected_value": "Fanless (Passive)",
+      "description": "Passive cooling for dusty/wet environments",
+      "field_name": "coolingMethod"
+    },
+    "P58": {
+      "id": "P58",
+      "type": "specification",
+      "name": "Active Fan Cooling",
+      "selected_value": "Fan Cooled (Active)",
+      "description": "Active cooling for high-performance systems",
+      "field_name": "coolingMethod"
+    },
+    "P59": {
+      "id": "P59",
+      "type": "specification",
+      "name": "Industrial Vibration Resistance",
+      "selected_value": "Standard (2G)",
+      "description": "Standard industrial vibration resistance",
+      "field_name": "vibrationResistance"
+    },
+    "P60": {
+      "id": "P60",
+      "type": "specification",
+      "name": "Mobile/Vehicle Vibration Resistance",
+      "selected_value": "Heavy (5G)",
+      "description": "Enhanced vibration resistance for mobile installations",
+      "requires": {
+        "coolingMethod": ["P57"]
+      },
+      "field_name": "vibrationResistance"
+    },
+    "P61": {
+      "id": "P61",
+      "type": "specification",
+      "name": "Industrial Shock Protection",
+      "selected_value": "Industrial (30G, 11ms)",
+      "description": "Industrial-grade shock protection",
+      "field_name": "shockProtection"
+    },
+    "P62": {
+      "id": "P62",
+      "type": "specification",
+      "name": "LoRa Connectivity",
+      "selected_value": "LoRa",
+      "description": "LoRaWAN for long-range IoT sensors",
+      "field_name": "wirelessExtension"
+    },
+    "P69": {
+      "id": "P69",
+      "type": "specification",
+      "name": "8-Channel Digital I/O",
+      "selected_value": "8",
+      "description": "8 digital I/O channels for basic control",
+      "field_name": "digitalIO"
+    },
+    "P70": {
+      "id": "P70",
+      "type": "specification",
+      "name": "8-Channel Analog I/O",
+      "selected_value": "8",
+      "description": "8 analog input channels for basic measurements",
+      "field_name": "analogIO"
+    },
+    "P71": {
+      "id": "P71",
+      "type": "specification",
+      "name": "32-Channel Analog I/O",
+      "selected_value": "32",
+      "description": "32 analog channels for multi-point vibration monitoring",
+      "requires": {
+        "processorType": ["P03", "P04"],
+        "memoryCapacity": ["P06", "P07"],
+        "sampling_rate": ["P40"]
+      },
+      "field_name": "analogIO"
+    },
+    "P72": {
+      "id": "P72",
+      "type": "specification",
+      "name": "32-Channel Digital I/O",
+      "selected_value": "32",
+      "description": "32 digital I/O for production line control",
+      "requires": {
+        "processorType": ["P02", "P03", "P04"],
+        "memoryCapacity": ["P06", "P07"]
+      },
+      "field_name": "digitalIO"
+    },
+    "P73": {
+      "id": "P73",
+      "type": "specification",
+      "name": "DDR5 Memory",
+      "selected_value": "DDR5",
+      "description": "Latest DDR5 memory for maximum performance",
+      "requires": {
+        "processorType": ["P03", "P04"]
+      },
+      "field_name": "memoryType"
+    },
+    "P74": {
+      "id": "P74",
+      "type": "specification",
+      "name": "NVMe Gen4 Storage",
+      "selected_value": "NVMe Gen4",
+      "description": "Ultra-fast NVMe Gen4 storage for high-speed data",
+      "requires": {
+        "processorType": ["P03", "P04"]
+      },
+      "field_name": "storageType"
+    },
+    "P75": {
+      "id": "P75",
+      "type": "specification",
+      "name": "WiFi Connectivity",
+      "selected_value": "WiFi 6",
+      "description": "WiFi 6 for local wireless connectivity",
+      "field_name": "wirelessExtension"
+    },
+    "P76": {
+      "id": "P76",
+      "type": "specification",
+      "name": "5G Connectivity",
+      "selected_value": "5G",
+      "description": "5G cellular for high-speed mobile data",
+      "requires": {
+        "processorType": ["P03", "P04"]
+      },
+      "field_name": "wirelessExtension"
+    },
+    "P77": {
+      "id": "P77",
+      "type": "specification",
+      "name": "24-bit ADC Resolution",
+      "selected_value": "24-bit",
+      "description": "High-resolution 24-bit ADC for precision measurements",
+      "requires": {
+        "processorType": ["P03", "P04"],
+        "analogIO": ["P36", "P70", "P71"]
+      },
+      "field_name": "adcResolution"
+    },
+    "P78": {
+      "id": "P78",
+      "type": "specification",
+      "name": "8 Network Ports",
+      "selected_value": "8",
+      "description": "8 ethernet ports for complex multi-network setups",
+      "requires": {
+        "processorType": ["P03", "P04"],
+        "memoryCapacity": ["P06", "P07"]
+      },
+      "field_name": "networkPorts"
+    },
+    "P79": {
+      "id": "P79",
+      "type": "specification",
+      "name": "Intel Xe Graphics",
+      "selected_value": "Intel Xe Graphics",
+      "description": "Integrated Intel Xe graphics for basic GPU acceleration",
+      "field_name": "gpuAcceleration"
+    },
+    "P80": {
+      "id": "P80",
+      "type": "specification",
+      "name": "Dedicated GPU Required",
+      "selected_value": "Dedicated GPU Required",
+      "description": "Discrete GPU for high-performance computing",
+      "requires": {
+        "power_consumption": ["P13"],
+        "coolingMethod": ["P58"]
+      },
+      "field_name": "gpuAcceleration"
+    },
+    "P81": {
+      "id": "P81",
+      "type": "specification",
+      "name": "AI Accelerator (NPU/TPU)",
+      "selected_value": "AI Accelerator (NPU/TPU)",
+      "description": "Specialized AI acceleration hardware",
+      "requires": {
+        "processorType": ["P03", "P04", "P82"],
+        "coolingMethod": ["P58"]
+      },
+      "field_name": "gpuAcceleration"
+    },
+    "P82": {
+      "id": "P82",
+      "type": "specification",
+      "name": "Intel Core i9 processor",
+      "selected_value": "Extreme (Intel Core i9)",
+      "description": "Extreme performance processor",
+      "requires": {
+        "memoryCapacity": ["P07"],
+        "storageCapacity": ["P10"],
+        "coolingMethod": ["P58"],
+        "power_consumption": ["P13"]
+      },
+      "field_name": "processorType"
+    },
+    "P83": {
+      "id": "P83",
+      "type": "specification",
+      "name": "Ultra Low Power (<10W)",
+      "selected_value": "< 10W",
+      "description": "Ultra low power consumption for battery/solar operation",
+      "requires": {
+        "processorType": ["P01"],
+        "coolingMethod": ["P57"]
+      },
+      "field_name": "maxPowerConsumption"
+    },
+    "P84": {
+      "id": "P84",
+      "type": "specification",
+      "name": "Standart (20-35W)",
+      "selected_value": "20-35W",
+      "description": "Middle power consumption",
+      "requires": {
+        "processorType": ["P03"],
+        "coolingMethod": ["P57"]
+      },
+      "field_name": "maxPowerConsumption"
+    },
+    "P85": {
+      "id": "P85",
+      "type": "specification",
+      "name": "High (35-65W)",
+      "selected_value": "35-65W",
+      "description": "Middle power consumption",
+      "requires": {
+        "processorType": ["P04"],
+        "coolingMethod": ["P57"]
+      },
+      "field_name": "maxPowerConsumption"
+    },
+    "P86": {
+      "id": "P86",
+      "type": "specification",
+      "name": "Very high (> 65W)",
+      "selected_value": "> 65W",
+      "description": "Middle power consumption",
+      "requires": {
+        "processorType": ["P04"],
+        "coolingMethod": ["P57"]
+      },
+      "field_name": "maxPowerConsumption"
+    }
+  },
+  "comments": {
+    "C01": {
+      "id": "C01",
+      "type": "comment",
+      "name": "Stainless Steel Construction",
+      "content": "316L stainless steel construction required for pharmaceutical washdown environments. Not available as standard form field option.",
+      "technical_context": {
+        "material": "316L stainless steel",
+        "finish": "electropolished",
+        "compliance": "FDA CFR Title 21"
+      }
+    },
+    "C02": {
+      "id": "C02",
+      "type": "comment",
+      "name": "HART Protocol",
+      "content": "HART protocol multiplexer support for smart field instruments. Requires specialized HART modem hardware not available in standard form options.",
+      "technical_context": {
+        "protocol": "HART",
+        "version": "7.x",
+        "channels": "8-16"
+      }
+    },
+    "C03": {
+      "id": "C03",
+      "type": "comment",
+      "name": "SQL Database Integration",
+      "content": "SQL database connectivity for MES and enterprise systems. Requires middleware or custom application layer.",
+      "technical_context": {
+        "database_types": ["MySQL", "PostgreSQL", "SQL Server"],
+        "connectivity": "ODBC/JDBC drivers"
+      }
+    },
+    "C04": {
+      "id": "C04",
+      "type": "comment",
+      "name": "REST API Support",
+      "content": "RESTful API for enterprise integration. Requires custom application development.",
+      "technical_context": {
+        "api_type": "RESTful",
+        "formats": ["JSON", "XML"],
+        "authentication": ["OAuth2", "API Keys"]
+      }
+    },
+    "C05": {
+      "id": "C05",
+      "type": "comment",
+      "name": "FDA 21 CFR Part 11 Compliance",
+      "content": "System must support electronic signatures and audit trails for FDA compliance",
+      "technical_context": {
+        "electronic_signatures": true,
+        "audit_trail": "complete"
+      }
+    },
+    "C06": {
+      "id": "C06",
+      "type": "comment",
+      "name": "EPA Reporting Requirements",
+      "content": "Municipal water plants require EPA-compliant data formats",
+      "technical_context": {
+        "reporting_frequency": "monthly",
+        "data_format": "EPA DMR"
+      }
+    },
+    "C07": {
+      "id": "C07",
+      "type": "comment",
+      "name": "Solar String Monitoring",
+      "content": "String combiner monitoring with 0.5% accuracy for MPPT optimization",
+      "technical_context": {
+        "measurement_accuracy": "0.5%",
+        "sampling_rate": "1Hz minimum"
+      }
+    },
+    "C08": {
+      "id": "C08",
+      "type": "comment",
+      "name": "ISO 10816 Vibration Standards",
+      "content": "Vibration monitoring must comply with ISO 10816 standards",
+      "technical_context": {
+        "standard": "ISO 10816",
+        "frequency_range": "10Hz-10kHz"
+      }
+    }
+  },
+  "exclusions": {
+    "E_PP_001": {
+      "id": "E_PP_001",
+      "nodes": ["P01", "P07"],
+      "type": "hard_incompatible",
+      "reason": "Atom processor cannot support 32GB RAM",
+      "resolution_priority": 1,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_002": {
+      "id": "E_PP_002",
+      "nodes": ["P01", "P73"],
+      "type": "hard_incompatible",
+      "reason": "Atom processor doesn't support DDR5",
+      "resolution_priority": 1,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_003": {
+      "id": "E_PP_003",
+      "nodes": ["P01", "P74"],
+      "type": "hard_incompatible",
+      "reason": "Atom processor lacks PCIe 4.0 for NVMe Gen4",
+      "resolution_priority": 1,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_004": {
+      "id": "E_PP_004",
+      "nodes": ["P01", "P46"],
+      "type": "hard_incompatible",
+      "reason": "Atom processor insufficient for 10Gbps ethernet",
+      "resolution_priority": 1,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_005": {
+      "id": "E_PP_005",
+      "nodes": ["P01", "P48"],
+      "type": "performance_mismatch",
+      "reason": "Atom processor insufficient for TSN real-time",
+      "resolution_priority": 2,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_006": {
+      "id": "E_PP_006",
+      "nodes": ["P01", "P29"],
+      "type": "performance_mismatch",
+      "reason": "Atom processor insufficient for EtherCAT",
+      "resolution_priority": 2,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_007": {
+      "id": "E_PP_007",
+      "nodes": ["P01", "P40"],
+      "type": "performance_mismatch",
+      "reason": "Atom processor insufficient for 100kHz sampling",
+      "resolution_priority": 2,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_008": {
+      "id": "E_PP_008",
+      "nodes": ["P01", "P10"],
+      "type": "efficiency_warning",
+      "reason": "Large storage typically not paired with low-power CPU",
+      "resolution_priority": 3,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_009": {
+      "id": "E_PP_009",
+      "nodes": ["P12", "P04"],
+      "type": "hard_incompatible",
+      "reason": "i7 processor requires more than 20W power",
+      "resolution_priority": 1,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_010": {
+      "id": "E_PP_010",
+      "nodes": ["P12", "P07"],
+      "type": "hard_incompatible",
+      "reason": "32GB RAM requires more than 20W power",
+      "resolution_priority": 1,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_011": {
+      "id": "E_PP_011",
+      "nodes": ["P12", "P58"],
+      "type": "hard_incompatible",
+      "reason": "Fan cooling adds to power consumption",
+      "resolution_priority": 2,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_012": {
+      "id": "E_PP_012",
+      "nodes": ["P12", "P46"],
+      "type": "hard_incompatible",
+      "reason": "10Gbps ethernet exceeds low power budget",
+      "resolution_priority": 1,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_013": {
+      "id": "E_PP_013",
+      "nodes": ["P12", "P50"],
+      "type": "performance_mismatch",
+      "reason": "Real-time latency needs performance not low power",
+      "resolution_priority": 2,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_014": {
+      "id": "E_PP_014",
+      "nodes": ["P12", "P76"],
+      "type": "hard_incompatible",
+      "reason": "5G modem exceeds 20W power budget",
+      "resolution_priority": 1,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_015": {
+      "id": "E_PP_015",
+      "nodes": ["P19", "P20"],
+      "type": "hard_incompatible",
+      "reason": "IP69K sealed enclosure incompatible with DIN rail",
+      "resolution_priority": 1,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_016": {
+      "id": "E_PP_016",
+      "nodes": ["P19", "P58"],
+      "type": "hard_incompatible",
+      "reason": "IP69K sealed enclosure cannot have fan openings",
+      "resolution_priority": 1,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_017": {
+      "id": "E_PP_017",
+      "nodes": ["P18", "P58"],
+      "type": "hard_incompatible",
+      "reason": "IP65 water jets incompatible with fan openings",
+      "resolution_priority": 1,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_018": {
+      "id": "E_PP_018",
+      "nodes": ["P57", "P04"],
+      "type": "performance_warning",
+      "reason": "Fanless cooling may throttle i7 processor",
+      "resolution_priority": 3,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_019": {
+      "id": "E_PP_019",
+      "nodes": ["P57", "P07"],
+      "type": "performance_warning",
+      "reason": "Fanless cooling insufficient for 32GB RAM heat",
+      "resolution_priority": 3,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_020": {
+      "id": "E_PP_020",
+      "nodes": ["P02", "P73"],
+      "type": "hard_incompatible",
+      "reason": "Entry i3 processor may not support DDR5",
+      "resolution_priority": 2,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_021": {
+      "id": "E_PP_021",
+      "nodes": ["P02", "P74"],
+      "type": "hard_incompatible",
+      "reason": "Entry i3 processor lacks PCIe 4.0",
+      "resolution_priority": 2,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_022": {
+      "id": "E_PP_022",
+      "nodes": ["P02", "P46"],
+      "type": "hard_incompatible",
+      "reason": "Entry i3 processor insufficient PCIe lanes for 10Gbps",
+      "resolution_priority": 2,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_023": {
+      "id": "E_PP_023",
+      "nodes": ["P02", "P71"],
+      "type": "efficiency_warning",
+      "reason": "Entry i3 processor insufficient for 32 analog channels",
+      "resolution_priority": 3,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_024": {
+      "id": "E_PP_024",
+      "nodes": ["P02", "P78"],
+      "type": "efficiency_warning",
+      "reason": "Entry i3 processor insufficient for 8-port networking",
+      "resolution_priority": 3,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_025": {
+      "id": "E_PP_025",
+      "nodes": ["P02", "P29"],
+      "type": "performance_mismatch",
+      "reason": "Entry i3 processor insufficient for EtherCAT real-time",
+      "resolution_priority": 2,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_026": {
+      "id": "E_PP_026",
+      "nodes": ["P46", "P08"],
+      "type": "hard_incompatible",
+      "reason": "10Gbps needs more than 256GB storage for buffering",
+      "resolution_priority": 2,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_027": {
+      "id": "E_PP_027",
+      "nodes": ["P46", "P09"],
+      "type": "performance_mismatch",
+      "reason": "10Gbps needs more than 512GB storage",
+      "resolution_priority": 3,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_028": {
+      "id": "E_PP_028",
+      "nodes": ["P46", "P05"],
+      "type": "hard_incompatible",
+      "reason": "10Gbps needs more than 8GB memory for buffering",
+      "resolution_priority": 2,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_029": {
+      "id": "E_PP_029",
+      "nodes": ["P46", "P06"],
+      "type": "performance_mismatch",
+      "reason": "10Gbps performs better with more than 16GB memory",
+      "resolution_priority": 3,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_030": {
+      "id": "E_PP_030",
+      "nodes": ["P40", "P01"],
+      "type": "hard_incompatible",
+      "reason": "100kHz sampling needs more processing than Atom",
+      "resolution_priority": 2,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_031": {
+      "id": "E_PP_031",
+      "nodes": ["P40", "P02"],
+      "type": "performance_mismatch",
+      "reason": "100kHz sampling needs more than entry i3",
+      "resolution_priority": 3,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_032": {
+      "id": "E_PP_032",
+      "nodes": ["P40", "P08"],
+      "type": "hard_incompatible",
+      "reason": "100kHz sampling needs more than 256GB storage",
+      "resolution_priority": 2,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_033": {
+      "id": "E_PP_033",
+      "nodes": ["P48", "P01"],
+      "type": "hard_incompatible",
+      "reason": "TSN real-time needs more than Atom processor",
+      "resolution_priority": 1,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_034": {
+      "id": "E_PP_034",
+      "nodes": ["P48", "P12"],
+      "type": "hard_incompatible",
+      "reason": "TSN real-time needs more than 20W power",
+      "resolution_priority": 2,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_035": {
+      "id": "E_PP_035",
+      "nodes": ["P29", "P01"],
+      "type": "hard_incompatible",
+      "reason": "EtherCAT needs more than Atom processor",
+      "resolution_priority": 1,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_036": {
+      "id": "E_PP_036",
+      "nodes": ["P29", "P02"],
+      "type": "hard_incompatible",
+      "reason": "EtherCAT needs more than entry i3 processor",
+      "resolution_priority": 2,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_037": {
+      "id": "E_PP_037",
+      "nodes": ["P78", "P01"],
+      "type": "hard_incompatible",
+      "reason": "8-port networking needs more than Atom processor",
+      "resolution_priority": 2,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_038": {
+      "id": "E_PP_038",
+      "nodes": ["P78", "P05"],
+      "type": "hard_incompatible",
+      "reason": "8-port routing needs more than 8GB memory",
+      "resolution_priority": 2,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_039": {
+      "id": "E_PP_039",
+      "nodes": ["P71", "P01"],
+      "type": "hard_incompatible",
+      "reason": "32 analog channels need more than Atom processor",
+      "resolution_priority": 2,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_040": {
+      "id": "E_PP_040",
+      "nodes": ["P71", "P02"],
+      "type": "performance_mismatch",
+      "reason": "32 analog channels need more than entry i3",
+      "resolution_priority": 3,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_041": {
+      "id": "E_PP_041",
+      "nodes": ["P71", "P05"],
+      "type": "hard_incompatible",
+      "reason": "32 analog channels need more than 8GB memory",
+      "resolution_priority": 2,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_042": {
+      "id": "E_PP_042",
+      "nodes": ["P72", "P01"],
+      "type": "hard_incompatible",
+      "reason": "32 digital channels need more than Atom processor",
+      "resolution_priority": 2,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_043": {
+      "id": "E_PP_043",
+      "nodes": ["P72", "P05"],
+      "type": "performance_mismatch",
+      "reason": "32 digital channels need more than 8GB memory",
+      "resolution_priority": 3,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_044": {
+      "id": "E_PP_044",
+      "nodes": ["P60", "P58"],
+      "type": "hard_incompatible",
+      "reason": "Mobile vibration damages fan bearings",
+      "resolution_priority": 1,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_045": {
+      "id": "E_PP_045",
+      "nodes": ["P76", "P12"],
+      "type": "hard_incompatible",
+      "reason": "5G modem exceeds 20W power budget",
+      "resolution_priority": 1,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_046": {
+      "id": "E_PP_046",
+      "nodes": ["P77", "P01"],
+      "type": "hard_incompatible",
+      "reason": "24-bit ADC processing needs more than Atom",
+      "resolution_priority": 2,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_047": {
+      "id": "E_PP_047",
+      "nodes": ["P50", "P51"],
+      "type": "performance_mismatch",
+      "reason": "Hard real-time needs RTOS not Windows IoT",
+      "resolution_priority": 2,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_048": {
+      "id": "E_PP_048",
+      "nodes": ["P50", "P52"],
+      "type": "performance_mismatch",
+      "reason": "Hard real-time needs RTOS not Ubuntu",
+      "resolution_priority": 2,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_049": {
+      "id": "E_PP_049",
+      "nodes": ["P15", "P21"],
+      "type": "hard_incompatible",
+      "reason": "Touchscreens fail at extreme temperatures",
+      "resolution_priority": 1,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_050": {
+      "id": "E_PP_050",
+      "nodes": ["P27", "P26"],
+      "type": "efficiency_warning",
+      "reason": "PROFINET and Ethernet/IP are competing standards",
+      "resolution_priority": 4,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_051": {
+      "id": "E_PP_051",
+      "nodes": ["P79", "P83"],
+      "type": "hard_incompatible",
+      "reason": "Intel Xe Graphics requires more than 10W power",
+      "resolution_priority": 1,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_052": {
+      "id": "E_PP_052",
+      "nodes": ["P79", "P12"],
+      "type": "hard_incompatible",
+      "reason": "Intel Xe Graphics requires more than 20W power",
+      "resolution_priority": 1,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_053": {
+      "id": "E_PP_053",
+      "nodes": ["P80", "P83"],
+      "type": "hard_incompatible",
+      "reason": "Dedicated GPU requires significantly more than 10W power",
+      "resolution_priority": 1,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_054": {
+      "id": "E_PP_054",
+      "nodes": ["P80", "P12"],
+      "type": "hard_incompatible",
+      "reason": "Dedicated GPU requires significantly more than 20W power",
+      "resolution_priority": 1,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_055": {
+      "id": "E_PP_055",
+      "nodes": ["P81", "P83"],
+      "type": "hard_incompatible",
+      "reason": "AI accelerator requires more than 10W power",
+      "resolution_priority": 1,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_056": {
+      "id": "E_PP_056",
+      "nodes": ["P81", "P12"],
+      "type": "hard_incompatible",
+      "reason": "AI accelerator requires more than 20W power",
+      "resolution_priority": 1,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_057": {
+      "id": "E_PP_057",
+      "nodes": ["P82", "P83"],
+      "type": "hard_incompatible",
+      "reason": "Core i9 processor requires significantly more than 10W power",
+      "resolution_priority": 1,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_058": {
+      "id": "E_PP_058",
+      "nodes": ["P82", "P12"],
+      "type": "hard_incompatible",
+      "reason": "Core i9 processor requires significantly more than 20W power",
+      "resolution_priority": 1,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_059": {
+      "id": "E_PP_059",
+      "nodes": ["P82", "P57"],
+      "type": "performance_warning",
+      "reason": "Fanless cooling severely throttles Core i9 performance",
+      "resolution_priority": 2,
+      "question_template": "Choose between {option_a} and {option_b}."
+    },
+    "E_PP_060": {
+      "id": "E_PP_060",
+      "nodes": ["P80", "P57"],
+      "type": "hard_incompatible",
+      "reason": "Dedicated GPU cannot operate with passive cooling",
+      "resolution_priority": 1,
+      "question_template": "Choose between {option_a} and {option_b}."
+    }
+  },
+  "ui_fields": {
+    "adcResolution": {
+      "section": "IOConnectivity",
+      "category": "core_io",
+      "field_name": "adcResolution",
+      "ui_type": "dropdown",
+      "selection_type": "single_choice",
+      "options": ["Not Required", "16-bit", "24-bit"]
+    },
+    "analogIO": {
+      "section": "IOConnectivity",
+      "category": "core_io",
+      "field_name": "analogIO",
+      "ui_type": "dropdown",
+      "selection_type": "single_choice",
+      "options": ["None", "2", "4", "8", "16", "32", "64"]
+    },
+    "coolingMethod": {
+      "section": "formFactor",
+      "category": "physical_design",
+      "field_name": "coolingMethod",
+      "ui_type": "dropdown",
+      "selection_type": "single_choice",
+      "options": [
+        "Fanless (Passive)",
+        "Fan Cooled (Active)",
+        "Extended Heatsink",
+        "Any"
+      ]
+    },
+    "deterministicFeatures": {
+      "section": "IOConnectivity",
+      "category": "ethernet",
+      "field_name": "deterministicFeatures",
+      "ui_type": "multi_select",
+      "selection_type": "multi_choice",
+      "options": [
+        "None",
+        "TSN (Time-Sensitive Networking)",
+        "IEEE 1588 PTP",
+        "Hardware Timestamping"
+      ]
+    },
+    "digitalIO": {
+      "section": "IOConnectivity",
+      "category": "core_io",
+      "field_name": "digitalIO",
+      "ui_type": "dropdown",
+      "selection_type": "single_choice",
+      "options": ["None", "2", "4", "8", "16", "32", "64"]
+    },
+    "ethernetProtocols": {
+      "section": "IOConnectivity",
+      "category": "ethernet",
+      "field_name": "ethernetProtocols",
+      "ui_type": "multi_select",
+      "selection_type": "multi_choice",
+      "options": [
+        "None",
+        "Modbus TCP",
+        "OPC UA",
+        "MQTT",
+        "BACnet/IP",
+        "PROFINET",
+        "EtherCAT",
+        "Ethernet/IP"
+      ]
+    },
+    "ethernetSpeed": {
+      "section": "IOConnectivity",
+      "category": "ethernet",
+      "field_name": "ethernetSpeed",
+      "ui_type": "dropdown",
+      "selection_type": "single_choice",
+      "options": ["Not Required", "100 Mbps", "1 Gbps", "10 Gbps"]
+    },
+    "gpuAcceleration": {
+      "section": "computePerformance",
+      "category": "gpu_acceleration",
+      "field_name": "gpuAcceleration",
+      "ui_type": "dropdown",
+      "selection_type": "single_choice",
+      "options": [
+        "None",
+        "Intel Xe Graphics",
+        "Dedicated GPU Required",
+        "AI Accelerator (NPU/TPU)"
+      ]
+    },
+    "ingressProtection": {
+      "section": "environmentStandards",
+      "category": "environment",
+      "field_name": "ingressProtection",
+      "ui_type": "dropdown",
+      "selection_type": "single_choice",
+      "options": [
+        "Not Required",
+        "IP20 (Basic)",
+        "IP40 (Dust Protected)",
+        "IP54 (Dust/Splash)",
+        "IP65 (Dust/Water Jets)",
+        "IP67 (Dust/Immersion)",
+        "IP69K (High Pressure)"
+      ]
+    },
+    "memoryCapacity": {
+      "section": "computePerformance",
+      "category": "memory",
+      "field_name": "memoryCapacity",
+      "ui_type": "dropdown",
+      "selection_type": "single_choice",
+      "options": ["4GB", "8GB", "16GB", "32GB", "64GB"]
+    },
+    "memoryType": {
+      "section": "computePerformance",
+      "category": "memory",
+      "field_name": "memoryType",
+      "ui_type": "dropdown",
+      "selection_type": "single_choice",
+      "options": ["DDR4", "DDR5", "Any"]
+    },
+    "mountingType": {
+      "section": "formFactor",
+      "category": "physical_design",
+      "field_name": "mountingType",
+      "ui_type": "dropdown",
+      "selection_type": "single_choice",
+      "options": [
+        "DIN Rail",
+        "19-inch Rack",
+        "Panel/Wall Mount",
+        "Desktop/Bench",
+        "Embedded/OEM",
+        "Any"
+      ]
+    },
+    "networkPorts": {
+      "section": "IOConnectivity",
+      "category": "ethernet",
+      "field_name": "networkPorts",
+      "ui_type": "dropdown",
+      "selection_type": "single_choice",
+      "options": ["2", "4", "8", "16"]
+    },
+    "operatingSystem": {
+      "section": "computePerformance",
+      "category": "software",
+      "field_name": "operatingSystem",
+      "ui_type": "dropdown",
+      "selection_type": "single_choice",
+      "options": [
+        "Not Required",
+        "Windows 11 IoT",
+        "Ubuntu 20.04 LTS",
+        "Ubuntu 22.04 LTS",
+        "Real-Time Linux"
+      ]
+    },
+    "operatingTemperature": {
+      "section": "environmentStandards",
+      "category": "environment",
+      "field_name": "operatingTemperature",
+      "ui_type": "dropdown",
+      "selection_type": "single_choice",
+      "options": [
+        "Not Required",
+        "0° to 50°",
+        "-20° to 60°",
+        "-40° to 70°",
+        "-40° to 85°"
+      ]
+    },
+    "powerInput": {
+      "section": "formFactor",
+      "category": "power_requirements",
+      "field_name": "powerInput",
+      "ui_type": "dropdown",
+      "selection_type": "single_choice",
+      "options": [
+        "9-36V DC Wide Input",
+        "18-36V DC",
+        "24V DC Standard",
+        "24/48V DC",
+        "110-240V AC",
+        "PoE+ (25.5W)",
+        "Redundant Power",
+        "Any"
+      ]
+    },
+    "processorType": {
+      "section": "computePerformance",
+      "category": "processing",
+      "field_name": "processorType",
+      "ui_type": "dropdown",
+      "selection_type": "single_choice",
+      "options": [
+        "Not Required",
+        "Entry (Intel Atom)",
+        "Standard (Intel Core i3)",
+        "Performance (Intel Core i5)",
+        "Premium (Intel Core i7)",
+        "Extreme (Intel Core i9)"
+      ]
+    },
+    "responseLatency": {
+      "section": "computePerformance",
+      "category": "response_time",
+      "field_name": "responseLatency",
+      "ui_type": "dropdown",
+      "selection_type": "single_choice",
+      "options": [
+        "Not Required",
+        "Standard Real-Time (<10ms)",
+        "Near Real-Time (<20ms)",
+        "Interactive (<50ms)",
+        "Responsive (<100ms)"
+      ]
+    },
+    "samplingRate": {
+      "section": "IOConnectivity",
+      "category": "core_io",
+      "field_name": "samplingRate",
+      "ui_type": "dropdown",
+      "selection_type": "single_choice",
+      "options": ["Not Required", "10 kHz", "100 kHz", "1 MHz", "1.6 MHz"]
+    },
+    "serialProtocols": {
+      "section": "IOConnectivity",
+      "category": "serial_protocols",
+      "field_name": "serialProtocols",
+      "ui_type": "multi_select",
+      "selection_type": "multi_choice",
+      "options": ["None", "Modbus RTU", "Modbus ASCII", "BACnet MS/TP"]
+    },
+    "shockProtection": {
+      "section": "environmentStandards",
+      "category": "environment",
+      "field_name": "shockProtection",
+      "ui_type": "dropdown",
+      "selection_type": "single_choice",
+      "options": [
+        "Standard (10G, 11ms)",
+        "Industrial (30G, 11ms)",
+        "Rugged (50G, 11ms)",
+        "Military (100G, MIL-STD-810)"
+      ]
+    },
+    "storageCapacity": {
+      "section": "computePerformance",
+      "category": "storage",
+      "field_name": "storageCapacity",
+      "ui_type": "dropdown",
+      "selection_type": "single_choice",
+      "options": ["128GB", "256GB", "512GB", "1TB", "2TB"]
+    },
+    "storageType": {
+      "section": "computePerformance",
+      "category": "storage",
+      "field_name": "storageType",
+      "ui_type": "dropdown",
+      "selection_type": "single_choice",
+      "options": ["SATA SSD", "NVMe", "NVMe Gen4", "Any"]
+    },
+    "usbPorts": {
+      "section": "IOConnectivity",
+      "category": "serial_usb",
+      "field_name": "usbPorts",
+      "ui_type": "dropdown",
+      "selection_type": "single_choice",
+      "options": ["0", "2", "4", "8", "16"]
+    },
+    "utilityProtocols": {
+      "section": "IOConnectivity",
+      "category": "utility_protocols",
+      "field_name": "utilityProtocols",
+      "ui_type": "multi_select",
+      "selection_type": "multi_choice",
+      "options": ["None", "IEC 61850", "DNP3", "IEC 60870-5"]
+    },
+    "vibrationResistance": {
+      "section": "environmentStandards",
+      "category": "environment",
+      "field_name": "vibrationResistance",
+      "ui_type": "dropdown",
+      "selection_type": "single_choice",
+      "options": [
+        "Not Required",
+        "Standard (2G)",
+        "Heavy (5G)",
+        "Extreme (10G)"
+      ]
+    },
+    "wirelessExtension": {
+      "section": "IOConnectivity",
+      "category": "wireless",
+      "field_name": "wirelessExtension",
+      "ui_type": "multi_select",
+      "selection_type": "multi_choice",
+      "options": [
+        "Not Required",
+        "WiFi 6",
+        "WiFi 6E",
+        "LTE",
+        "5G",
+        "LoRa",
+        "Bluetooth 5.3"
+      ]
+    },
+    "maxPowerConsumption": {
+      "section": "formFactor",
+      "category": "power_requirements",
+      "field_name": "maxPowerConsumption",
+      "ui_type": "dropdown",
+      "selection_type": "single_choice",
+      "options": [
+        "Not Required",
+        "< 10W",
+        "10-20W",
+        "20-35W",
+        "35-65W",
+        "> 65W"
+      ]
+    },
+    "redundantPower": {
+      "section": "formFactor",
+      "category": "power_requirements",
+      "field_name": "redundantPower",
+      "ui_type": "dropdown",
+      "selection_type": "single_choice",
+      "options": ["Not Required", "Single", "Dual", "N+1"]
+    }
+  }
+}
+
+

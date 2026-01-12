@@ -6,12 +6,15 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint": "eslint \"src/**/*.ts*\" --ignore-pattern \"**/__tests__/**\" --fix",
+    "ts:check": "npx tsc --noEmit -p tsconfig.precommit.json",
+    "format": "prettier --write \"src/**/*.ts*\"",
     "preview": "vite preview",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
-    "test:quick": "node -e \"console.log('Open browser console and paste test-runner.js content')\""
+    "test:quick": "node -e \"console.log('Open browser console and paste test-runner.js content')\"",
+    "prepare": "husky install"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.63.1",
@@ -28,18 +31,21 @@
     "@types/react": "^18.2.15",
     "@types/react-dom": "^18.2.7",
     "@types/uuid": "^10.0.0",
-    "@typescript-eslint/eslint-plugin": "^6.0.0",
-    "@typescript-eslint/parser": "^6.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.16.0",
+    "@typescript-eslint/parser": "^8.16.0",
     "@vitejs/plugin-react": "^4.0.3",
+    "@vitest/coverage-v8": "^0.34.6",
     "@vitest/ui": "^0.34.0",
     "autoprefixer": "^10.4.14",
-    "eslint": "^8.45.0",
+    "eslint": "^8.57.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.22",
+    "husky": "^8.0.0",
     "postcss": "^8.4.27",
+    "prettier": "^3.4.2",
     "tailwindcss": "^3.3.3",
     "typescript": "^5.0.2",
-    "vite": "^4.4.5",
+    "vite": "^7.3.0",
     "vitest": "^0.34.0"
   }
 }
