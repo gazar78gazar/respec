@@ -381,6 +381,9 @@ export const formFieldsData = {
         group: "logistics_support",
       },
     },
+
+    // Area: Comments
+    comments: {},
   },
 
   field_groups: {
@@ -484,6 +487,7 @@ export const formFieldsData = {
         defaultOpen: false,
       },
     },
+    comments: {},
   },
 
   // Priority system for required fields
@@ -494,6 +498,16 @@ export const formFieldsData = {
       "ethernetPorts",
       "budgetPerUnit",
       "quantity",
+      "processorType",
+      "memoryCapacity",
+      "storageCapacity",
+      "responseLatency",
+      "serialPortType",
+      "serialProtocolSupport",
+      "fieldbusProtocolSupport",
+      "wirelessExtension",
+      "maxPowerConsumption",
+      "operatingTemperature",
     ],
     priority_levels: {
       "1": {
@@ -523,4 +537,5 @@ export const SECTION_MAPPING = {
   "Form Factor": ["formFactor"],
   "Environment & Standards": ["environmentStandards"],
   Commercial: ["commercial"],
+  Comments: ["comments"],
 };

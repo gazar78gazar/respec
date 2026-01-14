@@ -32,6 +32,8 @@ import { formFieldsData, SECTION_MAPPING } from "./config/uiConfig";
 import { ProcessingPopup } from "./components/ProcessingPopup";
 import { RequirementsForm } from "./components/RequirementsForm";
 import { RequirementsHeader } from "./components/RequirementsHeader";
+import ConfigurePage from "./configure";
+import EngagementReview from "./review";
 import {
   mapValueToFormField,
   validateField,
@@ -1337,28 +1339,44 @@ export default function App() {
       <div className="flex-1 flex flex-col">
         <HeaderBar
           ids={{ rootId: "project-header" }}
-          title="Requirements"
+          title={
+            currentStage === 1
+              ? "Require"
+              : currentStage === 3
+                ? "Configure"
+                : "Review"
+          }
           projectName={projectName}
-          onAutofillAll={autofillAll}
+          onAutofillAll={currentStage === 1 ? autofillAll : undefined}
           onExport={handleExport}
-          disabled={{ share: true, configure: true }}
+          onConfigure={() => {
+            if (currentStage === 1) setCurrentStage(3);
+            else if (currentStage === 3) setCurrentStage(1);
+            else if (currentStage === 4) setCurrentStage(3);
+          }}
+          primaryActionLabel={currentStage === 3 ? "Require" : "Configure"}
+          disabled={{ share: true, configure: false }}
         />
 
-        <ProgressSummary
-          className="bg-white px-6 py-4 border-b"
-          completion={calculateCompletion(requirements)}
-          accuracy={calculateAccuracy(requirements)}
-          missingFields={mustFieldsStatus.missing}
-          getFieldLabel={(fieldKey) => getFieldLabel(fieldKey)}
-          onClickField={(fieldKey) => scrollToField(fieldKey)}
-        />
+        {currentStage === 1 && (
+          <>
+            <ProgressSummary
+              className="bg-white px-6 py-4 border-b"
+              completion={calculateCompletion(requirements)}
+              accuracy={calculateAccuracy(requirements)}
+              missingFields={mustFieldsStatus.missing}
+              getFieldLabel={(fieldKey) => getFieldLabel(fieldKey)}
+              onClickField={(fieldKey) => scrollToField(fieldKey)}
+            />
 
-        <TabsNav
-          className="bg-white px-6 py-3 border-b"
-          tabs={Object.keys(SECTION_MAPPING)}
-          active={activeTab}
-          onChange={setActiveTab}
-        />
+            <TabsNav
+              className="bg-white px-6 py-3 border-b"
+              tabs={Object.keys(SECTION_MAPPING)}
+              active={activeTab}
+              onChange={setActiveTab}
+            />
+          </>
+        )}
 
         <div className="flex-1 overflow-auto p-6">
           {currentStage === 1 && (
@@ -1391,6 +1409,8 @@ export default function App() {
               }
             />
           )}
+          {currentStage === 3 && <ConfigurePage />}
+          {currentStage === 4 && <EngagementReview />}
         </div>
 
         <div className="h-20"></div>

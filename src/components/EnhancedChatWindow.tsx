@@ -238,7 +238,6 @@ export const EnhancedChatWindow: React.FC<EnhancedChatWindowProps> = ({
       <div className="bg-white border-b px-4 py-3">
         <div className="flex justify-between items-center">
           <h3 className="text-sm font-semibold text-gray-800">
-            🤖 Semantic Requirements Assistant
           </h3>
           <button
             onClick={() => setShowExtractions(!showExtractions)}
@@ -354,8 +353,7 @@ export const EnhancedChatWindow: React.FC<EnhancedChatWindowProps> = ({
           </button>
         </div>
         <div className="mt-1 text-xs text-gray-500">
-          💡 Press Enter to send, Shift+Enter for new line • Powered by semantic
-          AI
+          💡 Press Enter to send, Shift+Enter for new line
         </div>
       </div>
     </div>

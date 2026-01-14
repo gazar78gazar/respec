@@ -6,6 +6,7 @@ export interface ActionButtonsProps {
   onExport?: () => void;
   onShare?: () => void;
   onConfigure?: () => void;
+  primaryActionLabel?: string;
   disabled?: {
     share?: boolean;
     configure?: boolean;
@@ -18,6 +19,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
   onExport,
   onShare,
   onConfigure,
+  primaryActionLabel = "Configure",
   disabled,
   className,
 }) => {
@@ -57,9 +59,9 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
       <button
         onClick={onConfigure}
         disabled={disabled?.configure ?? true}
-        className="px-4 py-2 bg-green-600 text-white rounded font-medium hover:bg-green-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="px-4 py-2 bg-purple-400/60 text-white rounded font-medium hover:bg-purple-400/80 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        Configure
+        {primaryActionLabel}
       </button>
     </div>
   );
