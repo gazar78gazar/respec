@@ -1,5 +1,6 @@
 import React from "react";
 import type { Requirements } from "../types/form-state.types";
+import type { BaseFieldValue } from "../types/service.types";
 
 export interface RequirementsReviewProps {
   requirements: Requirements;
@@ -8,7 +9,7 @@ export interface RequirementsReviewProps {
 }
 
 type ReviewFieldData = {
-  value?: string | number | boolean | string[];
+  value?: BaseFieldValue;
   isAssumption?: boolean;
   isComplete?: boolean;
 };

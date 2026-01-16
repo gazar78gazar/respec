@@ -13,7 +13,7 @@ Must be shortlisted through conversation before autofill available:
 - `responseLatency`: Not Required, Standard Real-Time (<10ms), Near Real-Time (<20ms), Interactive (<50ms), Responsive (<100ms)
 - `digitalIO`: None, 2, 4, 8, 16, 32, 64
 - `analogIO`: None, 2, 4, 8, 16, 32, 64
-- `networkPorts`: 2, 4, 8, 16
+- `ethernetPorts`: 2, 4, 8, 16
 - `serialProtocols`: None, Modbus RTU, Modbus ASCII, BACnet MS/TP
 - `utilityProtocols`: None, IEC 61850, DNP3, IEC 60870-5
 - `wirelessExtension`: Not Required, WiFi 6, WiFi 6E, LTE, 5G, LoRa, Bluetooth 5.3
@@ -36,7 +36,7 @@ Must be shortlisted through conversation before autofill available:
 - `deterministicFeatures`: None, TSN (Time-Sensitive Networking), IEEE 1588 PTP, Hardware Timestamping
 - `ethernetProtocols`: None, Modbus TCP, OPC UA, MQTT, BACnet/IP, PROFINET, EtherCAT, Ethernet/IP
 - `ethernetSpeed`: Not Required, 100 Mbps, 1 Gbps, 10 Gbps
-- `networkPorts`: 2, 4, 8, 16
+- `ethernetPorts`: 2, 4, 8, 16
 
 #### serial_protocols
 

@@ -85,6 +85,8 @@ export default function App() {
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   // const lastConflictSignatureRef = useRef<string | null>(null);
 
+  const [switchedToAutofill, setSwitchToAutoFill] = useState(false);
+
   const [respecService] = useState(() => new RespecService());
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingMessage, setProcessingMessage] = useState("");
@@ -369,7 +371,7 @@ export default function App() {
       action: A,
       data: PayloadMap[A],
     ): Promise<MASCommunicationResult> => {
-      console.log(`!!! [UI-RESPEC] ${action}:`, data);
+      console.log(`!!! [UI-RESPEC] ${action}:`, { data, switchedToAutofill });
 
       setIsProcessing(true);
 
@@ -379,8 +381,17 @@ export default function App() {
       // const handleConflicts = async () =>
       //   await presentConflictQuestion(conflictStatus);
 
+      let actionToComplete: string = action;
+      let message: string = "";
+      if (action === "chat_message" && switchedToAutofill) {
+        console.log("[UI-RESPEC] switched to autoifill intercepted");
+        actionToComplete = "trigger_autofill";
+        const d = data as PayloadMap["chat_message"];
+        message = d.message;
+      }
+
       try {
-        switch (action) {
+        switch (actionToComplete) {
           case "chat_message": {
             const d = data as PayloadMap["chat_message"];
             setProcessingMessage("Processing your message...");
@@ -408,7 +419,6 @@ export default function App() {
 
             return { success: true };
           }
-
           case "form_update": {
             const d = data as PayloadMap["form_update"];
             const source = d.source ?? "user";
@@ -445,60 +455,56 @@ export default function App() {
             }
             return { success: true };
           }
-
           case "trigger_autofill": {
+            setSwitchToAutoFill(true);
             const d = data as PayloadMap["trigger_autofill"];
-            setProcessingMessage("Generating defaults...");
-            addTrace("trigger_autofill", { trigger: d.trigger }, "SUCCESS");
-            autofillResult = await respecService.triggerAutofill(d.trigger);
-            addChatMessage("assistant", autofillResult.message);
+            setProcessingMessage("Autofilling requirements...");
+            addTrace("trigger_autofill", { section: d.section }, "SUCCESS");
+            autofillResult = await respecService.triggerAutofill(
+              d.section,
+              message,
+            );
+            if (autofillResult.message) {
+              addChatMessage("assistant", autofillResult.message);
+            }
+
+            if (
+              autofillResult.mode !== "selections" ||
+              autofillResult.fields.length === 0
+            )
+              return { success: true };
 
             for (const field of autofillResult.fields) {
               const currentValue =
                 requirements[field.section]?.[field.field]?.value;
+              const isEmptySelection =
+                currentValue === null ||
+                currentValue === undefined ||
+                currentValue === "" ||
+                (Array.isArray(currentValue) && currentValue.length === 0);
 
-              if (!currentValue || currentValue === "") {
-                setRequirements((prev) => {
-                  const prevSection = prev[field.section] || {};
-                  const prevField = prevSection[field.field] || {};
-                  return {
-                    ...prev,
-                    [field.section]: {
-                      ...prevSection,
-                      [field.field]: {
-                        ...prevField,
-                        value: field.value as FieldValue,
-                        isComplete: true,
-                        isAssumption: true,
-                        dataSource: "assumption",
-                        priority: prevField.priority || 1,
-                        source: "system",
-                        lastUpdated: new Date().toISOString(),
-                        toggleHistory: prevField.toggleHistory || [],
-                      },
-                    },
-                  };
-                });
-                const formResult = await respecService.processFormUpdate(
-                  field.section,
-                  field.field,
-                  field.value,
-                  {
-                    source: "system",
-                    skipAcknowledgment: true,
-                    isAssumption: true,
-                  },
+              if (!isEmptySelection) continue;
+
+              const formResult = await respecService.processFormUpdate(
+                field.section,
+                field.field,
+                field.value,
+                {
+                  source: "system",
+                  skipAcknowledgment: true,
+                  isAssumption: true,
+                },
+              );
+
+              if (formResult.formUpdates?.length) {
+                applyArtifactUpdates(
+                  formResult.formUpdates,
+                  "autofill_updates",
+                  "autofill_field_verification",
                 );
-                if (formResult.formUpdates?.length) {
-                  applyArtifactUpdates(
-                    formResult.formUpdates,
-                    "autofill_updates",
-                    "autofill_field_verification",
-                  );
-                }
-                if (formResult.acknowledgment) {
-                  addChatMessage("assistant", formResult.acknowledgment);
-                }
+              }
+              if (formResult.acknowledgment) {
+                addChatMessage("assistant", formResult.acknowledgment);
               }
             }
 
@@ -507,7 +513,7 @@ export default function App() {
           case "autofill": {
             const d = data as PayloadMap["autofill"];
             return await communicateWithMAS("trigger_autofill", {
-              trigger: d.section,
+              section: d.section,
             });
           }
 
@@ -895,7 +901,7 @@ export default function App() {
       fieldPermissions,
       requirements,
       respecService,
-      // presentConflictQuestion,
+      switchedToAutofill,
     ],
   );
 
@@ -1184,43 +1190,12 @@ export default function App() {
 
   const autofillAll = async () => {
     await communicateWithMAS("trigger_autofill", {
-      trigger: "button_header",
+      section: "all",
     });
   };
 
   const autofillSection = (tabName: string) => {
     communicateWithMAS("autofill", { section: tabName });
-
-    const sections =
-      (SECTION_MAPPING as Record<string, string[]>)[tabName] || [];
-    const updatedRequirements: Requirements = { ...requirements };
-
-    sections.forEach((section) => {
-      const sectionState = updatedRequirements[section] || {};
-      updatedRequirements[section] = sectionState;
-      Object.entries(FIELD_DEFS[section] || {}).forEach(
-        ([fieldKey, fieldDef]) => {
-          if (
-            !sectionState[fieldKey]?.isComplete &&
-            fieldDef.autofill_default
-          ) {
-            sectionState[fieldKey] = {
-              ...(sectionState[fieldKey] || {}),
-              value: fieldDef.autofill_default,
-              isComplete: true,
-              isAssumption: true,
-              dataSource: "assumption",
-              priority: sectionState[fieldKey]?.priority || 1,
-              source: "system",
-              lastUpdated: new Date().toISOString(),
-              toggleHistory: sectionState[fieldKey]?.toggleHistory || [],
-            };
-          }
-        },
-      );
-    });
-
-    setRequirements(updatedRequirements);
   };
 
   const handleExport = useCallback(async () => {

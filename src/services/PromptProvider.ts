@@ -2,6 +2,7 @@ import flowPrompt from "../config/prompts/presale_engineer/flow.md?raw";
 import domainPrompt from "../config/prompts/presale_engineer/domain.md?raw";
 import preSaleEngineerPrompt from "../config/prompts/presale_engineer/presale-engineer.md?raw";
 import specificationsPrompt from "../config/prompts/presale_engineer/specifications.md?raw";
+import autofillPrompt from "../config/prompts/autofill_agent/autofill.md?raw";
 import type { PromptKey, PromptProvider } from "./interfaces/PromptProvider";
 
 export class LocalPromptProvider implements PromptProvider {
@@ -19,7 +20,8 @@ export class LocalPromptProvider implements PromptProvider {
       .join("\n\n");
 
     this.promptMap = {
-      "presale-engineer": presalePrompt,
+      "presale-engineer": presalePrompt.trim(),
+      "autofill-agent": autofillPrompt.trim(),
     };
   }
 

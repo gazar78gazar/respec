@@ -121,6 +121,7 @@ export class PreSaleEngineer implements StatefulAgent {
     message: string,
     context?: string,
   ): Promise<AgentAnalysisResult> {
+    console.log("[PreSaleEngineer] analyzeRequirements");
     await this.ensureSessionReady();
 
     if (!this.isInitialized || !this.anthropicService.hasClient()) {

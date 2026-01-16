@@ -1,14 +1,18 @@
 import { AnthropicService } from "./AnthropicService";
 import { PreSaleEngineer } from "./agents/PreSaleEngineer";
+import { AutofillAgent } from "./agents/AutofillAgent";
 import { LocalPromptProvider } from "./PromptProvider";
 import { LocalSessionStore } from "./LocalSessionStore";
 import type { SessionStore } from "./interfaces/SessionStore";
 import { ArtifactManager } from "./ArtifactManager";
 
+import { formFieldsData, SECTION_MAPPING } from "../config/uiConfig";
+import { getFieldLabel as getUiFieldLabel } from "../utils/fields-utils";
 import { ucDataLayer } from "./DataLayer";
 import type { ActiveConflict } from "../types/artifacts.types";
 import type {
   FieldMapping,
+  FieldOptionsEntry,
   FieldOptionsMap,
   RespecFieldSnapshot,
   RespecFieldSnapshotEntry,
@@ -20,8 +24,10 @@ import type {
   AutofillResult,
   ChatResult,
   EnhancedFormUpdate,
+  BaseFieldValue,
   FormProcessingResult,
   FormUpdate,
+  Maybe,
   SessionMessage,
 } from "../types/service.types";
 import type {
@@ -29,7 +35,9 @@ import type {
   FieldDefinitions,
   AgentAnalysisResult,
   AgentRequirement,
+  AutofillAgentSelection,
 } from "../types/semantic.types";
+import type { UCSpecification } from "../types/uc-data.types";
 
 /**
  * RespecService - Orchestrates chat processing and the refactored pipeline.
@@ -42,6 +50,7 @@ export class RespecService {
   private isInitialized = false;
   private anthropicService: AnthropicService;
   private preSaleEngineer: PreSaleEngineer;
+  private autofillAgent: AutofillAgent;
   private promptProvider: LocalPromptProvider;
   private sessionStore: SessionStore;
   private fieldMappings: Map<string, FieldMapping> = new Map();
@@ -49,37 +58,6 @@ export class RespecService {
 
   // Core services for conflict detection and resolution
   private artifactManager?: ArtifactManager;
-
-  // Smart defaults based on common engineering requirements
-  private smartDefaults = {
-    substation: {
-      "io.digital_inputs": 16,
-      "io.analog_inputs": 8,
-      "io.digital_outputs": 8,
-      "power.supply_voltage": "24",
-      "communication.ethernet": true,
-      "communication.modbus": true,
-      "environmental.operating_temp_min": "-40",
-      "environmental.operating_temp_max": "70",
-      "compliance.iec61850": true,
-    },
-    industrial: {
-      "io.digital_inputs": 12,
-      "io.analog_inputs": 4,
-      "io.digital_outputs": 6,
-      "power.supply_voltage": "24",
-      "communication.ethernet": true,
-      "environmental.operating_temp_min": "0",
-      "environmental.operating_temp_max": "60",
-    },
-    generic: {
-      "io.digital_inputs": 8,
-      "io.analog_inputs": 2,
-      "io.digital_outputs": 4,
-      "power.supply_voltage": "12",
-      "communication.ethernet": true,
-    },
-  };
 
   public constructor() {
     this.anthropicService = new AnthropicService();
@@ -89,6 +67,10 @@ export class RespecService {
       this.anthropicService,
       this.promptProvider,
       this.sessionStore,
+    );
+    this.autofillAgent = new AutofillAgent(
+      this.anthropicService,
+      this.promptProvider,
     );
   }
 
@@ -116,6 +98,7 @@ export class RespecService {
 
     // Initialize pre sale engineer agent with field mappings
     await this.preSaleEngineer.initialize(this.getFieldMappingsForPrompt());
+    await this.autofillAgent.initialize();
 
     // Build field options map if field definitions provided
     if (fieldDefinitions) {
@@ -205,6 +188,78 @@ export class RespecService {
         0,
       ),
     });
+  }
+
+  private normalizeSelectionValue(value: unknown): string {
+    return String(value).trim().toLowerCase();
+  }
+
+  private findMatchingSpec(
+    specs: UCSpecification[],
+    selection: unknown,
+  ): UCSpecification | null {
+    if (selection === null || selection === undefined) return null;
+    const normalized = this.normalizeSelectionValue(selection);
+
+    return (
+      specs.find((spec) => {
+        const candidates = [spec.id, spec.selected_value, spec.name].filter(
+          Boolean,
+        ) as string[];
+        return candidates.some(
+          (candidate) => this.normalizeSelectionValue(candidate) === normalized,
+        );
+      }) || null
+    );
+  }
+
+  private isSelectionAllowed(
+    fieldOptions: FieldOptionsEntry | undefined,
+    selection: unknown,
+  ): boolean {
+    if (!fieldOptions) return false;
+    if (selection === null || selection === undefined) return false;
+    if (typeof selection === "string" && selection.trim() === "") return false;
+
+    if (fieldOptions.type === "number") {
+      const numericValue =
+        typeof selection === "number" ? selection : Number(selection);
+      return Number.isFinite(numericValue);
+    }
+
+    if (fieldOptions.options && fieldOptions.options.length > 0) {
+      const normalizedSelection = this.normalizeSelectionValue(selection);
+      return fieldOptions.options.some(
+        (option) =>
+          this.normalizeSelectionValue(option) === normalizedSelection,
+      );
+    }
+
+    return true;
+  }
+
+  private buildManualSpec(
+    section: string,
+    field: string,
+    selection: unknown,
+    fieldOptions: FieldOptionsEntry | undefined,
+  ): UCSpecification | null {
+    if (!this.isSelectionAllowed(fieldOptions, selection)) return null;
+
+    const rawValue = String(selection).trim();
+    const safeValue = rawValue.replace(/\s+/g, "_");
+    const specId = `manual:${field}:${safeValue}`;
+    const label = fieldOptions?.label || field;
+    const specName = `${label} ${rawValue}`.trim();
+
+    return {
+      id: specId,
+      type: "specification",
+      name: specName,
+      field_name: field,
+      selected_value: rawValue,
+      description: `Manual selection for ${section}.${field}`,
+    };
   }
 
   private getFieldMappingsForPrompt(): Record<string, string[]> {
@@ -304,7 +359,7 @@ export class RespecService {
       prompt += `- If exact requested value is available, use it directly with no substitutionNote\n`;
       prompt += `- If substitution needed, include originalRequest and substitutionNote explaining the choice\n`;
       prompt += `- For dropdown fields, ONLY select from available options\n`;
-      prompt += `- For unit conversions (e.g. "half a tera" = 500GB → 512GB), explain the conversion\n`;
+      prompt += `- For unit conversions (e.g. "half a tera" = 500GB -> 512GB), explain the conversion\n`;
     } else {
       prompt += `No specific field options identified. Process as normal requirements extraction.\n`;
     }
@@ -335,7 +390,7 @@ export class RespecService {
       const fullSpec = ucDataLayer.getSpecification(spec.id);
       const selectedValue =
         fullSpec?.selected_value ??
-        (spec.value as string | number | boolean | string[] | null) ??
+        (spec.value as BaseFieldValue) ??
         fullSpec?.name ??
         null;
 
@@ -526,6 +581,13 @@ export class RespecService {
       const agentResult: AgentAnalysisResult =
         await this.preSaleEngineer.analyzeRequirements(contextPrompt);
       const respecSnapshotBefore = this.getRespecFieldSnapshot();
+      agentResult.requirements.forEach((requirement) =>
+        this.validateAgentSelection(
+          requirement.field,
+          requirement.value ?? null,
+          "pre-sale-engineer",
+        ),
+      );
       await this.syncSelectionsToArtifacts(agentResult.requirements);
       const conflictAfterSync = this.artifactManager?.getPendingConflict();
       if (conflictAfterSync) return this.buildConflictResult(conflictAfterSync);
@@ -609,12 +671,10 @@ export class RespecService {
 
     if (this.artifactManager && ucDataLayer.isLoaded()) {
       const specs = ucDataLayer.getSpecificationsForFormField(field);
+      const fieldOptions = this.fieldOptionsMap[section]?.[field];
       const selections = Array.isArray(value) ? value : [value];
       const isEmptySelection = (selection: unknown) =>
-        selection === null ||
-        selection === undefined ||
-        selection === "" ||
-        selection === "Not Required";
+        this.isEmptySelection(selection as Maybe<BaseFieldValue>);
       const hasSelection = selections.some(
         (selection) => !isEmptySelection(selection),
       );
@@ -637,13 +697,33 @@ export class RespecService {
         selections.forEach((selection) => {
           if (isEmptySelection(selection)) return;
 
-          const normalized = String(selection);
-          const matchedSpec = specs.find(
-            (spec) =>
-              spec.id === normalized ||
-              spec.selected_value === normalized ||
-              spec.name === normalized,
-          );
+          let matchedSpec = this.findMatchingSpec(specs, selection);
+
+          if (!matchedSpec) {
+            const manualSpec = this.buildManualSpec(
+              section,
+              field,
+              selection,
+              fieldOptions,
+            );
+            if (manualSpec) {
+              console.warn(
+                "[Respec] Using manual spec for selection without UC match",
+                {
+                  section,
+                  field,
+                  selection,
+                  specId: manualSpec.id,
+                },
+              );
+              matchedSpec = manualSpec;
+            } else {
+              console.error(
+                "[Respec] Selection not mapped to UC spec or UI options",
+                { section, field, selection },
+              );
+            }
+          }
 
           if (!matchedSpec || seen.has(matchedSpec.id)) return;
           seen.add(matchedSpec.id);
@@ -679,6 +759,24 @@ export class RespecService {
         respecSnapshotAfter,
       );
       if (respecDeltaUpdates.length > 0) formUpdates = respecDeltaUpdates;
+
+      if (value === "Not Required") {
+        const replacement = {
+          section,
+          field,
+          value: "Not Required",
+          confidence: 1,
+          isAssumption: options?.isAssumption ?? source === "system",
+          originalRequest: "",
+          substitutionNote: "",
+        };
+        const filtered = formUpdates
+          ? formUpdates.filter(
+              (update) => update.section !== section || update.field !== field,
+            )
+          : [];
+        formUpdates = [...filtered, replacement];
+      }
     }
 
     const acknowledgment = skipAcknowledgment
@@ -694,42 +792,147 @@ export class RespecService {
     };
   }
 
-  public async triggerAutofill(trigger: string): Promise<AutofillResult> {
-    console.log(`!!! [Respec] Autofill triggered: ${trigger}`);
+  public async triggerAutofill(
+    section: string,
+    message: string,
+  ): Promise<AutofillResult> {
+    console.log(`!!! [Respec] Autofill triggered for section: ${section}`);
 
-    // Determine context from conversation history
-    const context = await this.determineApplicationContext();
+    if (!this.artifactManager || !ucDataLayer.isLoaded()) {
+      return {
+        message:
+          "Autofill is unavailable until the UC8 dataset is loaded and the artifact manager is ready.",
+        fields: [],
+        section,
+        mode: "empty",
+      };
+    }
 
-    // Get appropriate defaults
-    const defaults =
-      this.smartDefaults[context as keyof typeof this.smartDefaults] ||
-      this.smartDefaults.generic;
+    const pendingConflict = this.artifactManager.getPendingConflict();
+    if (pendingConflict) {
+      const conflictMessage =
+        this.artifactManager.buildConflictQuestion(pendingConflict);
+      return {
+        message: conflictMessage,
+        fields: [],
+        section,
+        mode: "empty",
+      };
+    }
 
-    // Convert to form updates
-    const fields: FormUpdate[] = Object.entries(defaults).map(
-      ([path, value]) => {
-        const [section, field] = path.split(".");
-        return {
-          section,
-          field,
-          value,
-          isAssumption: true,
-          confidence: 0.8,
-        };
-      },
+    const targetSection = this.resolveAutofillSection(section);
+    const respecArtifact = this.artifactManager.getState().respec;
+    const respecSnapshot = this.getRespecFieldSnapshot();
+    const currentSelections: Record<string, Maybe<BaseFieldValue>> = {};
+
+    respecSnapshot.forEach((entry, fieldName) => {
+      currentSelections[fieldName] = entry.value ?? null;
+    });
+
+    const missingKeyFields = this.getMissingKeyFields(
+      currentSelections,
+      targetSection,
     );
+    if (missingKeyFields.length > 0) {
+      return {
+        message: `Autofill paused because some key fields are not filled: ${missingKeyFields.join(
+          ", ",
+        )}.`,
+        fields: [],
+        section: targetSection,
+        mode: "empty",
+      };
+    }
 
-    const message = this.generateAutofillMessage(
-      context,
-      trigger,
-      fields.length,
+    const selectedSpecIds = Object.keys(respecArtifact.specifications || {});
+    const remainingSpecs = this.buildRemainingSpecs(
+      currentSelections,
+      targetSection,
+      selectedSpecIds,
     );
+    if (Object.keys(remainingSpecs).length === 0) {
+      return {
+        message: "No empty fields left to autofill.",
+        fields: [],
+        section: targetSection,
+        mode: "empty",
+      };
+    }
+
+    const conversationHistory = await this.getConversationHistory();
+
+    const context = {
+      lastUserMessage: message,
+      conversationHistory,
+      respecArtifact,
+      currentSelections,
+      remainingSpecs,
+      missingKeyFields,
+      section: targetSection,
+    };
+
+    const agentResult = await this.autofillAgent.runAutofill(context);
+    const fields = this.buildAutofillFieldUpdates(
+      agentResult.selections,
+      remainingSpecs,
+    );
+    const hasSelections = fields.length > 0;
+    const mode =
+      agentResult.mode === "selections" && !hasSelections
+        ? "empty"
+        : agentResult.mode;
+    const fallbackMessage = hasSelections
+      ? `Autofill completed with ${fields.length} selections. Review and adjust as needed.`
+      : "Autofill is ready when you are. Let me know what to prioritize.";
 
     return {
-      message,
+      message: agentResult.message || fallbackMessage,
       fields,
-      trigger,
+      section: targetSection,
+      mode,
     };
+  }
+
+  private getMissingKeyFields(
+    currentSelections: Record<string, Maybe<BaseFieldValue>>,
+    section: string,
+  ): string[] {
+    const priorityFields =
+      formFieldsData.priority_system?.priority_levels?.["1"]?.fields ??
+      formFieldsData.priority_system?.must_fields ??
+      [];
+    const missing = priorityFields
+      .filter(
+        (fieldName) =>
+          section === "all" ||
+          ucDataLayer.getUiFieldByFieldName(fieldName)?.section === section,
+      )
+      .filter((fieldName) =>
+        this.isEmptySelection(currentSelections[fieldName]),
+      );
+
+    return missing.map((fieldName) => getUiFieldLabel(fieldName));
+  }
+
+  private resolveAutofillSection(section: string): string {
+    if (section === "all" || !section) return "all";
+    const normalized = section.trim().replace(/^['"]|['"]$/g, "");
+    const sectionMapping = SECTION_MAPPING as Record<string, string[]>;
+    const mappedSection = sectionMapping[normalized]?.[0];
+    if (mappedSection) return mappedSection;
+
+    const uiFields = ucDataLayer.getAllUiFields();
+    const knownSections = new Set(
+      Object.values(uiFields).map((field) => field.section),
+    );
+    return knownSections.has(normalized) ? normalized : "all";
+  }
+
+  private isEmptySelection(value: Maybe<BaseFieldValue>): boolean {
+    if (value === null || value === undefined) return true;
+    if (value === "") return true;
+    if (Array.isArray(value)) return value.length === 0;
+    return false;
   }
 
   private generateFormAcknowledgment(
@@ -747,31 +950,6 @@ export class RespecService {
     ];
 
     return acknowledgments[Math.floor(Math.random() * acknowledgments.length)];
-  }
-
-  private generateAutofillMessage(
-    context: string,
-    trigger: string,
-    fieldCount: number,
-  ): string {
-    const contextMessages = {
-      substation: `Based on typical substation requirements, I've filled in ${fieldCount} common specifications as assumptions.`,
-      industrial: `Based on common industrial automation needs, I've added ${fieldCount} typical requirements as assumptions.`,
-      generic: `I've filled in ${fieldCount} common electronic system requirements as assumptions.`,
-    };
-
-    let message =
-      contextMessages[context as keyof typeof contextMessages] ||
-      contextMessages.generic;
-
-    if (trigger === "dont_know")
-      message +=
-        " You can modify any of these that don't fit your specific needs.";
-    else if (trigger === "button_header")
-      message +=
-        " These are marked as assumptions - review and update as needed.";
-
-    return message;
   }
 
   private getFriendlyFieldName(section: string, field: string): string {
@@ -817,32 +995,109 @@ export class RespecService {
     }
   }
 
-  private async determineApplicationContext(): Promise<string> {
-    const recentMessages = await this.getRecentConversationText();
-
-    if (recentMessages.includes("substation")) return "substation";
-    if (
-      recentMessages.includes("industrial") ||
-      recentMessages.includes("factory")
-    )
-      return "industrial";
-    return "generic";
-  }
-
-  private async getRecentConversationText(): Promise<string> {
+  private async getConversationHistory(): Promise<SessionMessage[]> {
     try {
-      const history = await this.sessionStore.getHistory(
+      return await this.sessionStore.getHistory(
         this.preSaleEngineer.getSessionId(),
       );
-      return history
-        .slice(-5)
-        .map((entry) => entry.content)
-        .join(" ")
-        .toLowerCase();
     } catch (error) {
       console.warn("[Respec] Could not read conversation history:", error);
-      return "";
+      return [];
     }
+  }
+
+  private buildRemainingSpecs(
+    currentSelections: Record<string, Maybe<BaseFieldValue>>,
+    section: string,
+    selectedSpecIds: string[],
+  ): Record<string, string[]> {
+    const remainingSpecs: Record<string, string[]> = {};
+    const uiFields = ucDataLayer.getAllUiFields();
+
+    Object.keys(uiFields)
+      .filter(
+        (fieldName) =>
+          section === "all" || uiFields[fieldName]?.section === section,
+      )
+      .forEach((fieldName) => {
+        if (fieldName in currentSelections) return;
+        const validOptions = ucDataLayer.getValidOptionsForField(
+          fieldName,
+          selectedSpecIds,
+        );
+        const optionValues = validOptions
+          .map((option) => option.selected_value || option.name || option.id)
+          .filter((value) => value !== null && value !== undefined)
+          .map((value) => String(value))
+          .filter((value) => value.length > 0);
+        const unique = Array.from(new Set(optionValues));
+        remainingSpecs[fieldName] =
+          unique.length > 0 ? unique : ["Not Required"];
+      });
+
+    return remainingSpecs;
+  }
+
+  private buildAutofillFieldUpdates(
+    selections: AutofillAgentSelection[],
+    remainingSpecs: Record<string, string[]>,
+  ): FormUpdate[] {
+    const updates: FormUpdate[] = [];
+    const seen = new Set<string>();
+
+    selections.forEach((selection) => {
+      if (seen.has(selection.field)) return;
+      const options = remainingSpecs[selection.field];
+      if (!options || options.length === 0) return;
+      const match = this.findMatchingOption(options, selection.value);
+      if (!match) return;
+      const uiField = ucDataLayer.getUiFieldByFieldName(selection.field);
+      if (!uiField) return;
+      this.validateAgentSelection(selection.field, match, "autofill-agent");
+      seen.add(selection.field);
+      updates.push({
+        section: uiField.section,
+        field: selection.field,
+        value: match,
+        isAssumption: true,
+        confidence: 0.8,
+      });
+    });
+
+    return updates;
+  }
+
+  private findMatchingOption(options: string[], value: string): string | null {
+    if (options.includes(value)) return value;
+    const normalized = this.normalizeSelectionValue(value);
+    const match = options.find(
+      (option) => this.normalizeSelectionValue(option) === normalized,
+    );
+    return match || null;
+  }
+
+  private validateAgentSelection(
+    fieldName: string,
+    value: Maybe<BaseFieldValue>,
+    source: string,
+  ): void {
+    if (!ucDataLayer.isLoaded()) return;
+    const uiField = ucDataLayer.getUiFieldByFieldName(fieldName);
+    const options = uiField?.options ?? [];
+    if (options.length === 0) return;
+    const values = Array.isArray(value) ? value : [value];
+
+    values.forEach((entry) => {
+      if (entry === null || entry === undefined || entry === "") return;
+      const normalized = String(entry);
+      if (!options.includes(normalized))
+        console.error("[Respec] Agent selection not in UI options", {
+          source,
+          field: fieldName,
+          value: normalized,
+          options,
+        });
+    });
   }
 
   private async syncSelectionsToArtifacts(
@@ -871,13 +1126,7 @@ export class RespecService {
           selection === "Not Required"
         )
           return;
-        const normalized = String(selection);
-        const match = specs.find(
-          (spec) =>
-            spec.id === normalized ||
-            spec.selected_value === normalized ||
-            spec.name === normalized,
-        );
+        const match = this.findMatchingSpec(specs, selection);
         if (!match || seen.has(match.id)) return;
         seen.add(match.id);
         selections.push({ spec: req, match, selection });

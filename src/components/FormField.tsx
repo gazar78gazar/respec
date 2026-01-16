@@ -1,10 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { AlertCircle, AlertTriangle, Check, Info } from "lucide-react";
-import type { Maybe } from "../types/service.types";
+import type { BaseFieldValue, Maybe } from "../types/service.types";
 
-export type FieldValue =
-  | Maybe<string | number | boolean | string[]>
-  | undefined;
+export type FieldValue = Maybe<BaseFieldValue> | undefined;
 
 export type FieldDef = {
   type: "dropdown" | "multi-select" | "number" | "date" | "text";
@@ -101,7 +99,7 @@ export const FormField: React.FC<FormFieldProps> = ({
           : [];
         return (
           <div className="flex-1">
-            <div className={baseInputClass}>
+            <div id={`field-${fieldKey}`} className={baseInputClass}>
               {selectedValues.length > 0 ? (
                 <div className="flex flex-wrap gap-1">
                   {selectedValues.map((val) => (
@@ -159,7 +157,10 @@ export const FormField: React.FC<FormFieldProps> = ({
       case "number": {
         const isReadOnly = fieldDef.calculated === true;
         return (
-          <div className="flex-1 flex items-center space-x-2">
+          <div
+            id={`field-${fieldKey}`}
+            className="flex-1 flex items-center space-x-2"
+          >
             {!isReadOnly && (
               <button
                 onClick={() =>

@@ -176,6 +176,11 @@ export class UCDataLayer {
     return this.dataset?.ui_fields || {};
   }
 
+  public getAllUISections(): Set<string> {
+    const uiFields = ucDataLayer.getAllUiFields();
+    return new Set(Object.values(uiFields).map((field) => field.section));
+  }
+
   // ============= EXTENDED CONFLICT DETECTION (CRITICAL!) =============
 
   /**

@@ -3,7 +3,7 @@
  */
 
 import type { AgentRequirement, FieldDefinitionInput } from "./semantic.types";
-import type { Maybe } from "./service.types";
+import type { BaseFieldValue, Maybe } from "./service.types";
 import type { UCSpecification } from "./uc-data.types";
 
 export type FieldMapping = {
@@ -28,7 +28,7 @@ export type FieldOptionsMap = {
 
 export type RespecFieldSnapshotEntry = {
   specId: string;
-  value: Maybe<string | number | boolean | string[]>;
+  value: Maybe<BaseFieldValue>;
   isAssumption: boolean;
   confidence: number;
   originalRequest?: string;

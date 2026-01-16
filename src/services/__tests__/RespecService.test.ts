@@ -11,8 +11,17 @@ let preSaleEngineerInstance: {
   interpretConflictChoice: ReturnType<typeof vi.fn>;
 };
 
+let autofillAgentInstance: {
+  initialize: ReturnType<typeof vi.fn>;
+  runAutofill: ReturnType<typeof vi.fn>;
+};
+
 vi.mock("../agents/PreSaleEngineer", () => ({
   PreSaleEngineer: vi.fn(() => preSaleEngineerInstance),
+}));
+
+vi.mock("../agents/AutofillAgent", () => ({
+  AutofillAgent: vi.fn(() => autofillAgentInstance),
 }));
 
 const localStorageMock = {
@@ -24,6 +33,39 @@ const localStorageMock = {
 
 vi.stubGlobal("localStorage", localStorageMock);
 
+const buildRespecSpec = (
+  id: string,
+  fieldName: string,
+  value: string | number,
+) => ({
+  id,
+  name: fieldName,
+  value,
+  ucSource: {
+    id,
+    type: "specification",
+    name: fieldName,
+    selected_value: String(value),
+    field_name: fieldName,
+  },
+  attribution: "requirement",
+  confidence: 1,
+  source: "user",
+  timestamp: new Date(),
+});
+
+const buildRequiredRespecState = () => ({
+  respec: {
+    specifications: {
+      P100: buildRespecSpec("P100", "digitalIO", "8"),
+      P101: buildRespecSpec("P101", "analogIO", "4"),
+      P102: buildRespecSpec("P102", "ethernetPorts", "2"),
+      P103: buildRespecSpec("P103", "budgetPerUnit", 1000),
+      P104: buildRespecSpec("P104", "quantity", 25),
+    },
+  },
+});
+
 describe("RespecService (refactored)", () => {
   beforeEach(() => {
     preSaleEngineerInstance = {
@@ -32,6 +74,10 @@ describe("RespecService (refactored)", () => {
       getAgentConfig: vi.fn().mockReturnValue({ maxSessionTurns: 12 }),
       analyzeRequirements: vi.fn(),
       interpretConflictChoice: vi.fn(),
+    };
+    autofillAgentInstance = {
+      initialize: vi.fn(),
+      runAutofill: vi.fn(),
     };
     vi.clearAllMocks();
     localStorageMock.getItem.mockReturnValue(null);
@@ -656,6 +702,46 @@ describe("RespecService (refactored)", () => {
     );
   });
 
+  it("adds a manual spec when selection has no UC match", async () => {
+    vi.spyOn(ucDataLayer, "isLoaded").mockReturnValue(true);
+    vi.spyOn(ucDataLayer, "getSpecificationsForFormField").mockReturnValue([]);
+
+    const addSpecificationToMapped = vi.fn().mockResolvedValue(undefined);
+    const moveNonConflictingToRespec = vi.fn().mockResolvedValue(undefined);
+
+    const service = new RespecService();
+    (service as { artifactManager?: unknown }).artifactManager = {
+      addSpecificationToMapped,
+      getPendingConflict: vi.fn().mockReturnValue(null),
+      moveNonConflictingToRespec,
+      getState: vi.fn().mockReturnValue({ respec: { specifications: {} } }),
+    } as unknown;
+    (service as { fieldOptionsMap?: unknown }).fieldOptionsMap = {
+      commercial: {
+        budgetPerUnit: {
+          type: "number",
+          label: "Budget Per Unit",
+        },
+      },
+    } as unknown;
+
+    await service.processFormUpdate("commercial", "budgetPerUnit", "1500");
+
+    expect(addSpecificationToMapped).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "manual:budgetPerUnit:1500",
+        field_name: "budgetPerUnit",
+        selected_value: "1500",
+      }),
+      "1500",
+      "Manual update for commercial.budgetPerUnit",
+      "",
+      "user",
+      undefined,
+      undefined,
+    );
+  });
+
   it("returns respec delta updates when clearing a field", async () => {
     vi.spyOn(ucDataLayer, "isLoaded").mockReturnValue(true);
     const spec = {
@@ -725,25 +811,284 @@ describe("RespecService (refactored)", () => {
     ]);
   });
 
-  it("returns autofill suggestions based on conversation context", async () => {
-    localStorageMock.getItem.mockReturnValue(
-      JSON.stringify({
-        history: [
-          {
-            role: "user",
-            content: "substation project",
-            timestamp: new Date().toISOString(),
+  it("blocks autofill when key fields are missing", async () => {
+    vi.spyOn(ucDataLayer, "isLoaded").mockReturnValue(true);
+    vi.spyOn(ucDataLayer, "getSpecification").mockReturnValue(null);
+
+    const service = new RespecService();
+    (service as { artifactManager?: unknown }).artifactManager = {
+      getState: vi.fn().mockReturnValue({
+        respec: {
+          specifications: {
+            P100: buildRespecSpec("P100", "digitalIO", "8"),
           },
-        ],
-        lastUpdated: new Date().toISOString(),
+        },
       }),
+      getPendingConflict: vi.fn().mockReturnValue(null),
+    } as unknown;
+
+    const result = await service.triggerAutofill("button_header", "");
+
+    expect(autofillAgentInstance.runAutofill).not.toHaveBeenCalled();
+    expect(result.mode).toBe("empty");
+    expect(result.message).toContain("some key fields are not filled");
+    expect(result.message).toContain("Analog IO");
+  });
+
+  it("returns autofill selections using valid options", async () => {
+    autofillAgentInstance.runAutofill.mockResolvedValue({
+      mode: "selections",
+      message: "",
+      selections: [{ field: "processorType", value: "Performance" }],
+    });
+
+    vi.spyOn(ucDataLayer, "isLoaded").mockReturnValue(true);
+    vi.spyOn(ucDataLayer, "getSpecification").mockReturnValue(null);
+    vi.spyOn(ucDataLayer, "getAllUiFields").mockReturnValue({
+      processorType: {
+        section: "computePerformance",
+        category: "compute",
+        field_name: "processorType",
+        ui_type: "dropdown",
+        selection_type: "single_choice",
+        options: [],
+      },
+    });
+    vi.spyOn(ucDataLayer, "getValidOptionsForField").mockReturnValue([
+      {
+        id: "P82",
+        type: "specification",
+        name: "Performance CPU",
+        selected_value: "Performance",
+        field_name: "processorType",
+      },
+    ]);
+    vi.spyOn(ucDataLayer, "getUiFieldByFieldName").mockReturnValue({
+      section: "computePerformance",
+      category: "compute",
+      field_name: "processorType",
+      ui_type: "dropdown",
+      selection_type: "single_choice",
+      options: [],
+    });
+
+    const service = new RespecService();
+    (service as { artifactManager?: unknown }).artifactManager = {
+      getState: vi.fn().mockReturnValue({
+        respec: buildRequiredRespecState().respec,
+      }),
+      getPendingConflict: vi.fn().mockReturnValue(null),
+    } as unknown;
+
+    const result = await service.triggerAutofill("button_header", "");
+
+    expect(autofillAgentInstance.runAutofill).toHaveBeenCalledWith(
+      expect.objectContaining({
+        remainingSpecs: { processorType: ["Performance"] },
+      }),
+    );
+    expect(result.mode).toBe("selections");
+    expect(result.fields).toEqual([
+      {
+        section: "computePerformance",
+        field: "processorType",
+        value: "Performance",
+        isAssumption: true,
+        confidence: 0.8,
+      },
+    ]);
+  });
+
+  it("falls back to Not Required when no compatible options exist", async () => {
+    autofillAgentInstance.runAutofill.mockResolvedValue({
+      mode: "selections",
+      message: "",
+      selections: [{ field: "memoryType", value: "Not Required" }],
+    });
+
+    vi.spyOn(ucDataLayer, "isLoaded").mockReturnValue(true);
+    vi.spyOn(ucDataLayer, "getSpecification").mockReturnValue(null);
+    vi.spyOn(ucDataLayer, "getAllUiFields").mockReturnValue({
+      memoryType: {
+        section: "computePerformance",
+        category: "memory",
+        field_name: "memoryType",
+        ui_type: "dropdown",
+        selection_type: "single_choice",
+        options: [],
+      },
+    });
+    vi.spyOn(ucDataLayer, "getValidOptionsForField").mockReturnValue([]);
+    vi.spyOn(ucDataLayer, "getUiFieldByFieldName").mockReturnValue({
+      section: "computePerformance",
+      category: "memory",
+      field_name: "memoryType",
+      ui_type: "dropdown",
+      selection_type: "single_choice",
+      options: [],
+    });
+
+    const service = new RespecService();
+    (service as { artifactManager?: unknown }).artifactManager = {
+      getState: vi.fn().mockReturnValue({
+        respec: buildRequiredRespecState().respec,
+      }),
+      getPendingConflict: vi.fn().mockReturnValue(null),
+    } as unknown;
+
+    const result = await service.triggerAutofill("button_header", "");
+
+    expect(autofillAgentInstance.runAutofill).toHaveBeenCalledWith(
+      expect.objectContaining({
+        remainingSpecs: { memoryType: ["Not Required"] },
+      }),
+    );
+    expect(result.fields).toEqual([
+      {
+        section: "computePerformance",
+        field: "memoryType",
+        value: "Not Required",
+        isAssumption: true,
+        confidence: 0.8,
+      },
+    ]);
+  });
+
+  it("scopes autofill to a specific section", async () => {
+    autofillAgentInstance.runAutofill.mockResolvedValue({
+      mode: "selections",
+      message: "",
+      selections: [{ field: "processorType", value: "Performance" }],
+    });
+
+    vi.spyOn(ucDataLayer, "isLoaded").mockReturnValue(true);
+    vi.spyOn(ucDataLayer, "getSpecification").mockReturnValue(null);
+    vi.spyOn(ucDataLayer, "getAllUiFields").mockReturnValue({
+      processorType: {
+        section: "computePerformance",
+        category: "compute",
+        field_name: "processorType",
+        ui_type: "dropdown",
+        selection_type: "single_choice",
+        options: [],
+      },
+      digitalIO: {
+        section: "IOConnectivity",
+        category: "io",
+        field_name: "digitalIO",
+        ui_type: "dropdown",
+        selection_type: "single_choice",
+        options: [],
+      },
+    });
+    const validOptionsSpy = vi
+      .spyOn(ucDataLayer, "getValidOptionsForField")
+      .mockImplementation((fieldName) => {
+        if (fieldName === "processorType")
+          return [
+            {
+              id: "P82",
+              type: "specification",
+              name: "Performance CPU",
+              selected_value: "Performance",
+              field_name: "processorType",
+            },
+          ];
+        return [
+          {
+            id: "P01",
+            type: "specification",
+            name: "Digital IO",
+            selected_value: "8",
+            field_name: "digitalIO",
+          },
+        ];
+      });
+    vi.spyOn(ucDataLayer, "getUiFieldByFieldName").mockImplementation(
+      (fieldName) => {
+        if (fieldName === "processorType") {
+          return {
+            section: "computePerformance",
+            category: "compute",
+            field_name: "processorType",
+            ui_type: "dropdown",
+            selection_type: "single_choice",
+            options: [],
+          };
+        }
+        if (fieldName === "digitalIO") {
+          return {
+            section: "IOConnectivity",
+            category: "io",
+            field_name: "digitalIO",
+            ui_type: "dropdown",
+            selection_type: "single_choice",
+            options: [],
+          };
+        }
+        return null;
+      },
     );
 
     const service = new RespecService();
+    (service as { artifactManager?: unknown }).artifactManager = {
+      getState: vi.fn().mockReturnValue({
+        respec: buildRequiredRespecState().respec,
+      }),
+      getPendingConflict: vi.fn().mockReturnValue(null),
+    } as unknown;
 
-    const result = await service.triggerAutofill("button_header");
+    await service.triggerAutofill("computePerformance", "");
 
-    expect(result.fields.length).toBeGreaterThan(0);
-    expect(result.message).toContain("substation");
+    expect(validOptionsSpy).toHaveBeenCalledWith(
+      "processorType",
+      expect.any(Array),
+    );
+    expect(validOptionsSpy).not.toHaveBeenCalledWith(
+      "digitalIO",
+      expect.any(Array),
+    );
+  });
+
+  it("returns a conflict question before autofill", async () => {
+    vi.spyOn(ucDataLayer, "isLoaded").mockReturnValue(true);
+
+    const conflict = {
+      id: "conflict-1",
+      affectedNodes: ["P82", "P83"],
+      type: "exclusion",
+      description: "Conflict detected",
+      resolutionOptions: [
+        {
+          id: "option-a",
+          description: "Keep A",
+          expectedOutcome: "Keep A",
+          targetNodes: ["P82"],
+          action: "select_option_a",
+        },
+        {
+          id: "option-b",
+          description: "Keep B",
+          expectedOutcome: "Keep B",
+          targetNodes: ["P83"],
+          action: "select_option_b",
+        },
+      ],
+      cycleCount: 0,
+      firstDetected: new Date(),
+      lastUpdated: new Date(),
+    };
+
+    const service = new RespecService();
+    (service as { artifactManager?: unknown }).artifactManager = {
+      getPendingConflict: vi.fn().mockReturnValue(conflict),
+      buildConflictQuestion: vi.fn().mockReturnValue("Question"),
+    } as unknown;
+
+    const result = await service.triggerAutofill("button_header", "");
+
+    expect(autofillAgentInstance.runAutofill).not.toHaveBeenCalled();
+    expect(result.fields).toEqual([]);
+    expect(result.message).toBe("Question");
   });
 });
