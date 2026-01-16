@@ -8,6 +8,7 @@ export interface HeaderBarProps {
   onExport?: () => void;
   onShare?: () => void;
   onConfigure?: () => void;
+  autofillDisabled?: boolean;
   ids?: { rootId?: string };
   disabled?: { share?: boolean; configure?: boolean };
 }
@@ -19,6 +20,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   onExport,
   onShare,
   onConfigure,
+  autofillDisabled,
   ids,
   disabled,
 }) => {
@@ -37,6 +39,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
           onExport={onExport}
           onShare={onShare}
           onConfigure={onConfigure}
+          autofillDisabled={autofillDisabled}
           disabled={disabled}
         />
       </div>

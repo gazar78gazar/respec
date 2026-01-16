@@ -6,6 +6,7 @@ export interface ActionButtonsProps {
   onExport?: () => void;
   onShare?: () => void;
   onConfigure?: () => void;
+  autofillDisabled?: boolean;
   disabled?: {
     share?: boolean;
     configure?: boolean;
@@ -18,6 +19,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
   onExport,
   onShare,
   onConfigure,
+  autofillDisabled,
   disabled,
   className,
 }) => {
@@ -29,7 +31,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
     >
       <button
         onClick={onAutofillAll}
-        disabled={!onAutofillAll}
+        disabled={!onAutofillAll || autofillDisabled}
         className="px-4 py-2 bg-gray-200 hover:bg-gray-300 disabled:hover:bg-gray-200 disabled:opacity-60 rounded-lg text-sm font-medium flex items-center"
       >
         <Wand2 className="w-4 h-4 mr-2" />

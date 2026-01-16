@@ -33,7 +33,7 @@ export class ConflictResolver {
     newSpecId: string,
     currentSelections: string[],
   ): Conflict[] {
-    console.log(`!!! [ConflictResolver] 🔍 detectConflicts(${newSpecId})`);
+    console.log(`[ConflictResolver] 🔍 detectConflicts(${newSpecId})`);
 
     const exclusuionConflicts = this.detectExclusionConflicts(
       newSpecId,
@@ -92,9 +92,7 @@ export class ConflictResolver {
       ...constraintConflicts,
     ];
 
-    console.log(
-      `!!! [ConflictResolver]   → Found ${conflicts.length} conflicts`,
-    );
+    console.log(`[ConflictResolver]   → Found ${conflicts.length} conflicts`);
     return conflicts;
   }
 
@@ -110,7 +108,7 @@ export class ConflictResolver {
     currentSelections: string[],
   ): ResolutionOption[] {
     console.log(
-      "!!! [ConflictResolver] generateResolutionOptions",
+      "[ConflictResolver] generateResolutionOptions",
       conflict,
       currentSelections,
     );
@@ -250,7 +248,7 @@ export class ConflictResolver {
     toAdd: string[];
     cascadeEffects: string[];
   } {
-    console.log(`!!! [UCDataLayer] 📊 getConflictImpact()`);
+    console.log(`[UCDataLayer] 📊 getConflictImpact()`);
 
     const toRemove: Set<string> = new Set();
     const toAdd: Set<string> = new Set();
@@ -280,7 +278,7 @@ export class ConflictResolver {
     });
 
     console.log(
-      `!!! [UCDataLayer]   → Remove: ${toRemove.size}, Add: ${toAdd.size}, Cascade: ${cascadeEffects.size}`,
+      `[UCDataLayer]   → Remove: ${toRemove.size}, Add: ${toAdd.size}, Cascade: ${cascadeEffects.size}`,
     );
 
     return {
@@ -417,9 +415,7 @@ export class ConflictResolver {
           affectedNodes: [newSpecId, conflictingNode],
           resolution: exclusion.question_template,
         });
-        console.log(
-          `!!! [UCDataLayer]   🚫 Exclusion conflict: ${exclusion.id}`,
-        );
+        console.log(`[UCDataLayer]   🚫 Exclusion conflict: ${exclusion.id}`);
       }
     }
 
@@ -484,7 +480,7 @@ export class ConflictResolver {
         affectedNodes: [...currentSelections, newSpecId],
       });
       console.log(
-        `!!! [UCDataLayer]   🚨 Field constraint violation for "${fieldName}"`,
+        `[UCDataLayer]   🚨 Field constraint violation for "${fieldName}"`,
       );
     }
     return conflicts;
@@ -572,7 +568,7 @@ export class ConflictResolver {
     };
   }> {
     console.log(
-      `!!! [ConflictResolver] ✅ resolveConflict(${conflictId}, ${action})`,
+      `[ConflictResolver] ✅ resolveConflict(${conflictId}, ${action})`,
     );
 
     const conflict = this.conflictHistory.get(conflictId);
@@ -634,7 +630,7 @@ export class ConflictResolver {
     conflict.lastUpdated = new Date();
 
     console.log(
-      `!!! [ConflictResolver]   → Removed: ${changes.removed.length}, Added: ${changes.added.length}`,
+      `[ConflictResolver]   → Removed: ${changes.removed.length}, Added: ${changes.added.length}`,
     );
 
     return { newSelections, changes };
@@ -708,11 +704,11 @@ export class ConflictResolver {
   //         field,
   //         reason: `All options for "${field}" are excluded by current selections`,
   //       });
-  //       console.log(`!!! [UCDataLayer]   🚨 CONFLICT on field: ${field}`);
+  //       console.log(`[UCDataLayer]   🚨 CONFLICT on field: ${field}`);
   //     }
   //   });
 
-  //   console.log(`!!! [UCDataLayer]   → Found ${conflicts.length} field conflicts`);
+  //   console.log(`[UCDataLayer]   → Found ${conflicts.length} field conflicts`);
   //   return conflicts;
   // }
 }

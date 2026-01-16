@@ -76,16 +76,16 @@ export class RespecService {
 
   public async initialize(fieldDefinitions?: FieldDefinitions): Promise<void> {
     if (this.isInitialized) {
-      console.log("!!! [Respec] Already initialized");
+      console.log("[Respec] Already initialized");
       return;
     }
 
     try {
       if (ucDataLayer.isLoaded()) {
-        console.log("!!! [Respec] Using UC8 Data Layer for field mappings");
+        console.log("[Respec] Using UC8 Data Layer for field mappings");
         this.extractFieldMappingsFromDataLayer();
         console.log(
-          "!!! [Respec] UC8 field mappings extracted:",
+          "[Respec] UC8 field mappings extracted:",
           this.fieldMappings.size,
           "mappings",
         );
@@ -104,14 +104,14 @@ export class RespecService {
     if (fieldDefinitions) {
       this.buildFieldOptionsMap(fieldDefinitions);
       console.log(
-        "!!! [Respec] Field options map built with",
+        "[Respec] Field options map built with",
         Object.keys(this.fieldOptionsMap).length,
         "sections",
       );
     }
 
     this.isInitialized = true;
-    console.log("!!! [Respec] Initialization complete");
+    console.log("[Respec] Initialization complete");
   }
 
   public setArtifactManager(artifactManager: ArtifactManager): void {
@@ -119,11 +119,11 @@ export class RespecService {
   }
 
   private extractFieldMappingsFromDataLayer(): void {
-    console.log("!!! [Respec] Extracting field mappings from UC8 Data Layer");
+    console.log("[Respec] Extracting field mappings from UC8 Data Layer");
 
     const specifications = ucDataLayer.getAllSpecifications();
     console.log(
-      `!!! [Respec] Found ${specifications.length} specifications in UC8`,
+      `[Respec] Found ${specifications.length} specifications in UC8`,
       { specifications },
     );
 
@@ -157,7 +157,7 @@ export class RespecService {
     });
 
     console.log(
-      `!!! [Respec] Extracted ${this.fieldMappings.size} field mappings from UC8`,
+      `[Respec] Extracted ${this.fieldMappings.size} field mappings from UC8`,
     );
   }
 
@@ -181,7 +181,7 @@ export class RespecService {
       },
     );
 
-    console.log("!!! [Respec] Built field options map:", {
+    console.log("[Respec] Built field options map:", {
       sections: Object.keys(this.fieldOptionsMap).length,
       totalFields: Object.values(this.fieldOptionsMap).reduce(
         (sum, section) => sum + Object.keys(section).length,
@@ -532,7 +532,7 @@ export class RespecService {
     );
     if (respecDeltaUpdates.length > 0)
       console.log(
-        "!!! [Respec] ?? Using respec updates for",
+        "[Respec] ?? Using respec updates for",
         respecDeltaUpdates.length,
         "fields",
       );
@@ -554,30 +554,30 @@ export class RespecService {
   public async processChatMessage(message: string): Promise<ChatResult> {
     if (!this.isInitialized) await this.initialize();
 
-    console.log(`!!! [Respec] Processing: "${message}"`);
+    console.log(`[Respec] Processing: "${message}"`);
 
     const pendingConflict = this.artifactManager?.getPendingConflict();
     if (pendingConflict) {
-      console.log("!!! [Respec] Conflict pending - resolving");
+      console.log("[Respec] Conflict pending - resolving");
       return this.handleConflictResponse(message, pendingConflict);
     }
 
     try {
       // New flow with agent extraction
-      console.log(`!!! [Respec] ?? Starting flow: Agent extraction`);
+      console.log(`[Respec] ?? Starting flow: Agent extraction`);
 
       // Identify relevant fields from the message
       const identifiedFields = this.identifyRelevantFields(message);
-      console.log(`!!! [Respec] Identified relevant fields:`, identifiedFields);
+      console.log(`[Respec] Identified relevant fields:`, identifiedFields);
 
       // Build context with available options
       const contextPrompt = this.buildContextPrompt(message, identifiedFields);
-      console.log(`!!! [Respec] Built context prompt with field options`, {
+      console.log(`[Respec] Built context prompt with field options`, {
         contextPrompt,
       });
 
       // Step 1: Agent extracts requirements (with conversational flow)
-      console.log(`!!! [Respec] 📝 Step 1: Agent extracting requirements...`);
+      console.log(`[Respec] 📝 Step 1: Agent extracting requirements...`);
       const agentResult: AgentAnalysisResult =
         await this.preSaleEngineer.analyzeRequirements(contextPrompt);
       const respecSnapshotBefore = this.getRespecFieldSnapshot();
@@ -592,13 +592,11 @@ export class RespecService {
       const conflictAfterSync = this.artifactManager?.getPendingConflict();
       if (conflictAfterSync) return this.buildConflictResult(conflictAfterSync);
       console.log(
-        `!!! [Respec] ✅ Agent extracted:`,
+        `[Respec] ✅ Agent extracted:`,
         agentResult.requirements.length,
         "requirements",
       );
-      console.log(
-        `!!! [Respec] ??  Using extracted requirements for form updates`,
-      );
+      console.log(`[Respec] ??  Using extracted requirements for form updates`);
 
       // Convert Anthropic requirements to EnhancedFormUpdate format
       const formUpdates: EnhancedFormUpdate[] = agentResult.requirements.map(
@@ -619,7 +617,7 @@ export class RespecService {
       );
       if (respecDeltaUpdates.length > 0)
         console.log(
-          "!!! [Respec] ?? Using respec updates for",
+          "[Respec] ?? Using respec updates for",
           respecDeltaUpdates.length,
           "fields",
         );
@@ -654,7 +652,7 @@ export class RespecService {
     value: unknown,
     options?: RespecFormUpdateOptions,
   ): Promise<FormProcessingResult> {
-    console.log(`!!! [Respec] Form update: ${section}.${field} = ${value}`);
+    console.log(`[Respec] Form update: ${section}.${field} = ${value}`);
 
     const source = options?.source ?? "user";
     const skipAcknowledgment = options?.skipAcknowledgment ?? false;
@@ -796,7 +794,7 @@ export class RespecService {
     section: string,
     message: string,
   ): Promise<AutofillResult> {
-    console.log(`!!! [Respec] Autofill triggered for section: ${section}`);
+    console.log(`[Respec] Autofill triggered for section: ${section}`);
 
     if (!this.artifactManager || !ucDataLayer.isLoaded()) {
       return {

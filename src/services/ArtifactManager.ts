@@ -58,7 +58,7 @@ export class ArtifactManager {
 
     this.state.initialized = true;
 
-    console.log("!!! [ArtifactManager] Initialized with ucDataLayer");
+    console.log("[ArtifactManager] Initialized with ucDataLayer");
     // this.emit("initialized", { state: this.getState() });
   }
 
@@ -150,7 +150,7 @@ export class ArtifactManager {
       throw new Error("ArtifactManager not initialized");
 
     console.log(
-      `!!! [ArtifactManager] addSpecificationToMapped started for ${spec.id}`,
+      `[ArtifactManager] addSpecificationToMapped started for ${spec.id}`,
       {
         state: this.state,
         spec,
@@ -200,7 +200,7 @@ export class ArtifactManager {
     this.updateArtifactMetrics("mapped");
 
     console.log(
-      `!!! [ArtifactManager] Added specification ${
+      `[ArtifactManager] Added specification ${
         spec.id
       } to mapped artifact (source: ${source || "user"})`,
     );
@@ -213,9 +213,9 @@ export class ArtifactManager {
       );
       if (conflictResult.hasConflict) {
         console.log(
-          `!!! [ArtifactManager] Dependencies deferred due to conflict for ${spec.id}`,
+          `[ArtifactManager] Dependencies deferred due to conflict for ${spec.id}`,
         );
-        console.log(`!!! [addSpecificationToMapped] finished for ${spec.id}`, {
+        console.log(`[addSpecificationToMapped] finished for ${spec.id}`, {
           state: this.state,
         });
         return;
@@ -233,7 +233,7 @@ export class ArtifactManager {
       this.detectConflictsForSpecification(spec.id, scope);
     }
 
-    console.log(`!!! [addSpecificationToMapped] finished for ${spec.id}`, {
+    console.log(`[addSpecificationToMapped] finished for ${spec.id}`, {
       state: this.state,
     });
   }
@@ -244,7 +244,7 @@ export class ArtifactManager {
     depth: number = 0,
     conflictScope?: Set<SpecificationId>,
   ): Promise<void> {
-    console.log("!!! [ArtifactManager] fillSpecificationDependencies", {
+    console.log("[ArtifactManager] fillSpecificationDependencies", {
       spec,
       visited,
       depth,
@@ -412,7 +412,7 @@ export class ArtifactManager {
     specId: SpecificationId,
     scope?: Set<SpecificationId>,
   ): ConflictResult {
-    console.log("!!! [ArtifactManager] detectConflictsForSpecification", {
+    console.log("[ArtifactManager] detectConflictsForSpecification", {
       specId,
       scope: scope ? Array.from(scope) : [],
     });
@@ -582,8 +582,8 @@ export class ArtifactManager {
   //       console.log(
   //         `[ArtifactManager] 🔄 Auto-resolving cross-artifact conflict: ${specId}`
   //       );
-  //       console.log(`!!!    Old value (respec): "${respecSpec.value}"`);
-  //       console.log(`!!!    New value (mapped): "${mappedSpec.value}"`);
+  //       console.log(`   Old value (respec): "${respecSpec.value}"`);
+  //       console.log(`   New value (mapped): "${mappedSpec.value}"`);
 
   //       // Remove old spec from respec
   //       const respecLoc = respecSpecLocations.get(specId);
@@ -592,7 +592,7 @@ export class ArtifactManager {
   //         const respecReq = respecDomain?.requirements[respecLoc.reqId];
   //         if (respecReq?.specifications[specId]) {
   //           delete respecReq.specifications[specId];
-  //           console.log(`!!!    ✓ Removed old spec from respec`);
+  //           console.log(`   ✓ Removed old spec from respec`);
   //         }
   //       }
 
@@ -629,7 +629,7 @@ export class ArtifactManager {
   //           delete mappedReq.specifications[specId];
   //         }
 
-  //         console.log(`!!!    ✓ Moved new spec to respec`);
+  //         console.log(`   ✓ Moved new spec to respec`);
   //         resolvedSpecs.push(specId);
   //       }
   //     }
@@ -673,7 +673,7 @@ export class ArtifactManager {
     );
     if (exists) {
       console.log(
-        `!!! [ArtifactManager] Skipping duplicate conflict for signature ${signature}`,
+        `[ArtifactManager] Skipping duplicate conflict for signature ${signature}`,
       );
       return;
     }
@@ -689,7 +689,7 @@ export class ArtifactManager {
       ]),
     );
 
-    console.log(`!!! [ArtifactManager] Added active conflict: ${conflict.id}`);
+    console.log(`[ArtifactManager] Added active conflict: ${conflict.id}`);
   }
 
   // ============= CONFLICT RESOLUTION =============
@@ -753,7 +753,7 @@ export class ArtifactManager {
   //     this.state.conflicts.metadata.blockingConflicts = [];
   //   }
 
-  //   console.log(`!!! [ArtifactManager] Resolved conflict: ${conflictId}`);
+  //   console.log(`[ArtifactManager] Resolved conflict: ${conflictId}`);
 
   //   // After conflict resolved, move non-conflicting specs from MAPPED to RESPEC
   //   // This triggers the normal flow: MAPPED → RESPEC → Form heals from RESPEC
@@ -920,7 +920,7 @@ export class ArtifactManager {
 
   //   const { winningSpecs, losingSpecs } = plan;
 
-  //   console.log(`!!! [ArtifactManager] applyConflictResolution`, {
+  //   console.log(`[ArtifactManager] applyConflictResolution`, {
   //     conflict,
   //     resolution,
   //     winningSpecs,
@@ -995,7 +995,7 @@ export class ArtifactManager {
   //     this.purgeConflictsForNodes(removedIds);
   //     this.pruneInactiveConflicts();
 
-  //     console.log(`!!! [ArtifactManager] ✅ Resolution applied successfully`);
+  //     console.log(`[ArtifactManager] ✅ Resolution applied successfully`);
   //   } catch (error) {
   //     // ========== ROLLBACK ON FAILURE ==========
   //     console.error(
@@ -1005,7 +1005,7 @@ export class ArtifactManager {
 
   //     // Restore removed specs
   //     for (const { id, backup, artifact } of removedSpecs) {
-  //       console.log(`!!! [Rollback] Restoring spec ${id}`);
+  //       console.log(`[Rollback] Restoring spec ${id}`);
   //       this.restoreSpecificationToArtifact(id, backup, artifact);
   //     }
 
@@ -1018,7 +1018,7 @@ export class ArtifactManager {
     resolution: ResolutionOption,
   ): Promise<void> {
     console.log(
-      `!!! [ArtifactManager] Applying resolution ${resolution.id} to conflict ${conflict.id}`,
+      `[ArtifactManager] Applying resolution ${resolution.id} to conflict ${conflict.id}`,
     );
 
     let plan: ConflictResolutionPlan;
@@ -1067,7 +1067,7 @@ export class ArtifactManager {
       }
     });
 
-    console.log(`!!! [ArtifactManager] Resolution applied`, {
+    console.log(`[ArtifactManager] Resolution applied`, {
       conflictId: conflict.id,
       resolutionId: resolution.id,
       removed: plan.removals.map((entry) => entry.spec.id),
@@ -1174,7 +1174,7 @@ export class ArtifactManager {
     if (movable.length > 0) {
       await this.moveSpecificationsToRespec(movable);
       console.log(
-        `!!! [ArtifactManager] Moved ${movable.length} non-conflicting specs to respec`,
+        `[ArtifactManager] Moved ${movable.length} non-conflicting specs to respec`,
         { movable, state: this.state },
       );
     }
@@ -1697,7 +1697,7 @@ export class ArtifactManager {
   //   }
 
   //   if (this.state.conflicts.active.length > 0) {
-  //     console.log("!!! [ArtifactManager] Synced with form state");
+  //     console.log("[ArtifactManager] Synced with form state");
   //     return [];
   //   }
 
@@ -1728,7 +1728,7 @@ export class ArtifactManager {
   //     return valueChanged || assumptionChanged;
   //   });
 
-  //   console.log("!!! [ArtifactManager] Synced with form state");
+  //   console.log("[ArtifactManager] Synced with form state");
   //   return filtered;
   // }
 
