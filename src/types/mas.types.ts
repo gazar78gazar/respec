@@ -1,10 +1,8 @@
 // MAS action typing for strongly-typed communicateWithMAS
 
-import type { Maybe, RequirementField } from "./service.types";
+import type { BaseFieldValue, Maybe, RequirementField } from "./service.types";
 
-export type FieldValue =
-  | Maybe<string | number | boolean | string[]>
-  | undefined;
+export type FieldValue = Maybe<BaseFieldValue> | undefined;
 
 export type MASAction =
   | "chat_message"
@@ -25,7 +23,7 @@ type FieldPayload = RequirementField & {
 export type PayloadMap = {
   chat_message: { message: string };
   form_update: FieldPayload;
-  trigger_autofill: { trigger: string };
+  trigger_autofill: { section: string };
   autofill: { section: string };
   system_populate_field: FieldPayloadData;
   system_populate_multiple: {

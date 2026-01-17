@@ -4,18 +4,20 @@
 
 import type { UCArtifactSpecification } from "./artifacts.types";
 
+export type Maybe<T> = T | null;
+
+export type BaseFieldValue = string | number | boolean | string[];
+
 export type RequirementField = {
   section: string;
   field: string;
-  value: Maybe<string | number | boolean | string[]> | undefined;
+  value: Maybe<BaseFieldValue> | undefined;
 };
 
 export type FormUpdate = RequirementField & {
   isAssumption: boolean;
   confidence: number;
 };
-
-export type Maybe<T> = T | null;
 
 export type SessionMessage = {
   role: "user" | "assistant";
@@ -44,10 +46,13 @@ export type FormProcessingResult = {
   suggestions?: FormUpdate[];
 };
 
+export type AutofillMode = "questions" | "selections" | "empty";
+
 export type AutofillResult = {
   message: string;
   fields: FormUpdate[];
-  trigger: string;
+  section: string;
+  mode: AutofillMode;
 };
 
 export type EntryResolutionOption = {

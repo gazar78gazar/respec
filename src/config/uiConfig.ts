@@ -494,6 +494,16 @@ export const formFieldsData = {
       "ethernetPorts",
       "budgetPerUnit",
       "quantity",
+      "processorType",
+      "memoryCapacity",
+      "storageCapacity",
+      "responseLatency",
+      "serialPortType",
+      "serialProtocolSupport",
+      "fieldbusProtocolSupport",
+      "wirelessExtension",
+      "maxPowerConsumption",
+      "operatingTemperature",
     ],
     priority_levels: {
       "1": {

@@ -332,7 +332,7 @@
       "requires": {
         "memoryCapacity": ["P06"]
       },
-      "field_name": "networkPorts"
+      "field_name": "ethernetPorts"
     },
     "P36": {
       "id": "P36",
@@ -609,7 +609,7 @@
         "processorType": ["P03", "P04"],
         "memoryCapacity": ["P06", "P07"]
       },
-      "field_name": "networkPorts"
+      "field_name": "ethernetPorts"
     },
     "P79": {
       "id": "P79",
@@ -1409,10 +1409,10 @@
         "Any"
       ]
     },
-    "networkPorts": {
+    "ethernetPorts": {
       "section": "IOConnectivity",
       "category": "ethernet",
-      "field_name": "networkPorts",
+      "field_name": "ethernetPorts",
       "ui_type": "dropdown",
       "selection_type": "single_choice",
       "options": ["2", "4", "8", "16"]

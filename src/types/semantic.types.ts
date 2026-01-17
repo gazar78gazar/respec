@@ -4,10 +4,13 @@
 
 import type {
   EntryResolutionOption,
+  BaseFieldValue,
   Maybe,
   RequirementField,
   SessionMessage,
+  AutofillMode,
 } from "./service.types";
+import type { RespecArtifact } from "./artifacts.types";
 
 export type AgentRequirement = RequirementField & {
   confidence: number;
@@ -25,6 +28,27 @@ export type AgentAnalysisResult = {
 export type AgentAnalysisContext = {
   conversationHistory?: SessionMessage[];
   [key: string]: unknown;
+};
+
+export type AutofillAgentContext = {
+  lastUserMessage: string;
+  conversationHistory?: SessionMessage[];
+  respecArtifact?: RespecArtifact;
+  currentSelections: Record<string, Maybe<BaseFieldValue>>;
+  remainingSpecs: Record<string, string[]>;
+  missingKeyFields: string[];
+  section?: string;
+};
+
+export type AutofillAgentSelection = {
+  field: string;
+  value: string;
+};
+
+export type AutofillAgentResult = {
+  mode: AutofillMode;
+  message: string;
+  selections: AutofillAgentSelection[];
 };
 
 export type ConflictResponseParseResult = {

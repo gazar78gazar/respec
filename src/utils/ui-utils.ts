@@ -33,7 +33,7 @@ export type SectionKey =
 const MUST_FIELDS = [
   "digitalIO",
   "analogIO",
-  "networkPorts",
+  "ethernetPorts",
   "budgetPerUnit",
   "quantity",
 ];
@@ -50,7 +50,7 @@ const FIELD_SECTIONS: Record<string, SectionKey> = {
   // I/O & Connectivity
   digitalIO: "IOConnectivity",
   analogIO: "IOConnectivity",
-  networkPorts: "IOConnectivity",
+  ethernetPorts: "IOConnectivity",
   wirelessCapabilities: "IOConnectivity",
   serialPorts: "IOConnectivity",
   usbPorts: "IOConnectivity",
@@ -74,7 +74,7 @@ const FIELD_PRIORITIES: Record<string, 1 | 2 | 3 | 4> = {
   // Priority 1 (Must-have)
   digitalIO: 1,
   analogIO: 1,
-  networkPorts: 1,
+  ethernetPorts: 1,
   budgetPerUnit: 1,
   quantity: 1,
 

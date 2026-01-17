@@ -4,11 +4,13 @@ import React from "react";
 export interface RequirementsHeaderProps {
   activeTabTitle: string;
   onAutoFillClick: () => void;
+  autofillDisabled?: boolean;
 }
 
 export const RequirementsHeader: React.FC<RequirementsHeaderProps> = ({
   activeTabTitle,
   onAutoFillClick,
+  autofillDisabled,
 }) => {
   return (
     <div className="px-6 py-4 border-b flex items-center justify-between">
@@ -18,7 +20,8 @@ export const RequirementsHeader: React.FC<RequirementsHeaderProps> = ({
       <div className="flex items-center space-x-4">
         <button
           onClick={onAutoFillClick}
-          className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 rounded text-sm font-medium flex items-center"
+          disabled={autofillDisabled}
+          className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 disabled:hover:bg-gray-200 disabled:opacity-60 rounded text-sm font-medium flex items-center"
         >
           <Wand2 className="w-4 h-4 mr-1" />
           Autofill

@@ -214,7 +214,7 @@ class ExportService {
       ramSize: "performanceComputing",
       digitalIO: "IOConnectivity",
       analogIO: "IOConnectivity",
-      networkPorts: "IOConnectivity",
+      ethernetPorts: "IOConnectivity",
       powerSupply: "powerEnvironment",
       operatingTemp: "powerEnvironment",
       budgetPerUnit: "commercial",
@@ -483,7 +483,7 @@ class ImportService {
     const mustFields = [
       "digitalIO",
       "analogIO",
-      "networkPorts",
+      "ethernetPorts",
       "budgetPerUnit",
       "quantity",
     ];
@@ -881,7 +881,7 @@ class HelperUtilities {
       ramSize: "performanceComputing",
       digitalIO: "IOConnectivity",
       analogIO: "IOConnectivity",
-      networkPorts: "IOConnectivity",
+      ethernetPorts: "IOConnectivity",
       powerSupply: "powerEnvironment",
       operatingTemp: "powerEnvironment",
       budgetPerUnit: "commercial",

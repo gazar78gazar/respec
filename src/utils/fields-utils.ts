@@ -71,7 +71,6 @@ export const mapValueToFormField = (
       case "wirelessExtension":
         return "WiFi"; // Default WiFi option
       case "ethernetPorts":
-      case "networkPorts":
         return "2"; // Default 2 ports
       default:
         return value;
@@ -118,7 +117,6 @@ export const mapValueToFormField = (
         return "8"; // Default fallback
 
       case "ethernetPorts":
-      case "networkPorts":
         if (lowerValue.includes("2") || lowerValue.includes("two")) return "2";
         if (lowerValue.includes("4") || lowerValue.includes("four")) return "4";
         if (lowerValue.includes("8") || lowerValue.includes("eight"))
